@@ -32,13 +32,25 @@ export {
  *
  * Call this **once** before creating any particle systems that use WebGPU rendering.
  *
+ * Pass your renderer to get automatic capability detection: when the
+ * renderer cannot dispatch compute shaders (e.g. `THREE.WebGLRenderer`),
+ * registration is skipped with a console warning and all particle systems
+ * keep using the CPU/GLSL path. Without a renderer argument, registration
+ * is unconditional (previous behavior) — only do that when you know a
+ * WebGPU-capable renderer is in use.
+ *
+ * @param renderer - Optional Three.js renderer used for capability detection.
+ * @returns `true` when the WebGPU path was registered, `false` when the
+ *   provided renderer is not compute-capable and registration was skipped.
+ *
  * @example
  * ```typescript
  * import { enableWebGPU } from '@newkrok/three-particles/webgpu';
- * enableWebGPU();
+ * const renderer = new THREE.WebGPURenderer();
+ * const gpuEnabled = enableWebGPU(renderer); // false with a WebGLRenderer
  * ```
  */
-export function enableWebGPU(): void {
+export function enableWebGPU(renderer?: unknown): boolean {
   // The TSLMaterialFactory interface deliberately uses wider parameter types
   // (Record<string,…>) to avoid pulling WebGPU-specific imports into the
   // main DTS output. The concrete functions are fully type-safe at their
@@ -55,5 +67,8 @@ export function enableWebGPU(): void {
     encodeForceFieldsForGPU,
     encodeCollisionPlanesForGPU,
   };
-  registerTSLMaterialFactory(factory);
+  return registerTSLMaterialFactory(
+    factory,
+    renderer !== undefined ? { renderer } : undefined
+  );
 }

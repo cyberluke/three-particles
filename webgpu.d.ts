@@ -79,10 +79,20 @@ export declare function encodeCollisionPlanesForGPU(
  *
  * Call this **once** before creating any particle systems that use WebGPU rendering.
  *
+ * Pass your renderer to get automatic capability detection: when the
+ * renderer cannot dispatch compute shaders (e.g. `THREE.WebGLRenderer`),
+ * registration is skipped with a console warning and all particle systems
+ * keep using the CPU/GLSL path.
+ *
+ * @param renderer - Optional Three.js renderer used for capability detection.
+ * @returns `true` when the WebGPU path was registered, `false` when the
+ *   provided renderer is not compute-capable and registration was skipped.
+ *
  * @example
  * ```typescript
  * import { enableWebGPU } from '@newkrok/three-particles/webgpu';
- * enableWebGPU();
+ * const renderer = new THREE.WebGPURenderer();
+ * const gpuEnabled = enableWebGPU(renderer);
  * ```
  */
-export declare function enableWebGPU(): void;
+export declare function enableWebGPU(renderer?: unknown): boolean;

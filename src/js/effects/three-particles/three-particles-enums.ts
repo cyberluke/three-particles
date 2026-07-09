@@ -275,8 +275,13 @@ export const enum CollisionPlaneMode {
  */
 export const enum SimulationBackend {
   /**
-   * Automatically select the best backend based on the renderer type.
-   * Uses GPU compute when a WebGPU-capable renderer is detected, otherwise falls back to CPU.
+   * Use GPU compute when the WebGPU path has been registered via
+   * `enableWebGPU()` / `registerTSLMaterialFactory()`, otherwise CPU.
+   *
+   * Note: the library does not inspect the renderer itself — pass your
+   * renderer to `enableWebGPU(renderer)` so registration (and therefore the
+   * GPU backend) is automatically skipped when the renderer cannot dispatch
+   * compute shaders.
    */
   AUTO = 'AUTO',
 
@@ -287,9 +292,9 @@ export const enum SimulationBackend {
   CPU = 'CPU',
 
   /**
-   * Force GPU compute shader simulation.
-   * Requires a WebGPU-capable renderer (e.g. `THREE.WebGPURenderer`).
-   * Falls back to CPU if the renderer does not support compute.
+   * Use GPU compute shader simulation. Behaves like {@link SimulationBackend.AUTO}:
+   * the GPU backend requires the WebGPU path to be registered via
+   * `enableWebGPU()`; without it the system runs on the CPU.
    */
   GPU = 'GPU',
 }

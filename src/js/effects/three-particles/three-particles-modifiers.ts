@@ -89,6 +89,7 @@ export const applyModifiers = ({
   scalarArray,
   particleLifetimePercentage,
   particleIndex,
+  updateFlags,
 }: {
   delta: number;
   generalData: GeneralData;
@@ -97,6 +98,13 @@ export const applyModifiers = ({
   scalarArray: Float32Array;
   particleLifetimePercentage: number;
   particleIndex: number;
+  /**
+   * Optional aggregation target for attribute dirty flags. When provided,
+   * `position`/`quat` are set to `true` here instead of writing
+   * `attribute.needsUpdate` — the caller flushes once per frame rather than
+   * bumping the attribute version once per particle.
+   */
+  updateFlags?: { position: boolean; quat: boolean };
 }) => {
   const {
     particleSystemId,
@@ -105,6 +113,7 @@ export const applyModifiers = ({
     linearVelocityData,
     orbitalVelocityData,
     noise,
+    modifierCurves,
   } = generalData;
 
   const positionIndex = particleIndex * 3;
@@ -130,7 +139,8 @@ export const applyModifiers = ({
     positionArr[positionIndex + 1] += normalizedYSpeed * delta;
     positionArr[positionIndex + 2] += normalizedZSpeed * delta;
 
-    attributes.position.needsUpdate = true;
+    if (updateFlags) updateFlags.position = true;
+    else attributes.position.needsUpdate = true;
   }
 
   if (orbitalVelocityData) {
@@ -164,45 +174,61 @@ export const applyModifiers = ({
     positionArr[positionIndex + 1] += positionOffset.y;
     positionArr[positionIndex + 2] += positionOffset.z;
 
-    attributes.position.needsUpdate = true;
+    if (updateFlags) updateFlags.position = true;
+    else attributes.position.needsUpdate = true;
   }
 
+  // Size/opacity/color prefer the curve functions pre-resolved at system
+  // creation (see resolveModifierCurves) — calculateValue re-resolves the
+  // curve on every call, which is too expensive per particle per frame.
+  // The calculateValue fallback covers constant / random-range values and
+  // externally-constructed generalData without modifierCurves.
   if (normalizedConfig.sizeOverLifetime.isActive) {
-    const multiplier = calculateValue(
-      particleSystemId,
-      normalizedConfig.sizeOverLifetime.lifetimeCurve,
-      particleLifetimePercentage
-    );
+    const multiplier = modifierCurves?.size
+      ? modifierCurves.size(particleLifetimePercentage)
+      : calculateValue(
+          particleSystemId,
+          normalizedConfig.sizeOverLifetime.lifetimeCurve,
+          particleLifetimePercentage
+        );
     scalarArray[base + S_SIZE] =
       startValues.startSize[particleIndex] * multiplier;
   }
 
   if (normalizedConfig.opacityOverLifetime.isActive) {
-    const multiplier = calculateValue(
-      particleSystemId,
-      normalizedConfig.opacityOverLifetime.lifetimeCurve,
-      particleLifetimePercentage
-    );
+    const multiplier = modifierCurves?.opacity
+      ? modifierCurves.opacity(particleLifetimePercentage)
+      : calculateValue(
+          particleSystemId,
+          normalizedConfig.opacityOverLifetime.lifetimeCurve,
+          particleLifetimePercentage
+        );
     scalarArray[base + S_COLOR_A] =
       startValues.startOpacity[particleIndex] * multiplier;
   }
 
   if (normalizedConfig.colorOverLifetime.isActive) {
-    const rMultiplier = calculateValue(
-      particleSystemId,
-      normalizedConfig.colorOverLifetime.r,
-      particleLifetimePercentage
-    );
-    const gMultiplier = calculateValue(
-      particleSystemId,
-      normalizedConfig.colorOverLifetime.g,
-      particleLifetimePercentage
-    );
-    const bMultiplier = calculateValue(
-      particleSystemId,
-      normalizedConfig.colorOverLifetime.b,
-      particleLifetimePercentage
-    );
+    const rMultiplier = modifierCurves?.colorR
+      ? modifierCurves.colorR(particleLifetimePercentage)
+      : calculateValue(
+          particleSystemId,
+          normalizedConfig.colorOverLifetime.r,
+          particleLifetimePercentage
+        );
+    const gMultiplier = modifierCurves?.colorG
+      ? modifierCurves.colorG(particleLifetimePercentage)
+      : calculateValue(
+          particleSystemId,
+          normalizedConfig.colorOverLifetime.g,
+          particleLifetimePercentage
+        );
+    const bMultiplier = modifierCurves?.colorB
+      ? modifierCurves.colorB(particleLifetimePercentage)
+      : calculateValue(
+          particleSystemId,
+          normalizedConfig.colorOverLifetime.b,
+          particleLifetimePercentage
+        );
 
     scalarArray[base + S_COLOR_R] =
       startValues.startColorR[particleIndex] * rMultiplier;
@@ -257,7 +283,8 @@ export const applyModifiers = ({
     positionArr[positionIndex + 2] +=
       noiseOnPosition * noisePower * positionAmount;
 
-    attributes.position.needsUpdate = true;
+    if (updateFlags) updateFlags.position = true;
+    else attributes.position.needsUpdate = true;
   }
 
   // Sync packed quaternion vec4 from scalar rotation for mesh particles.
@@ -270,6 +297,7 @@ export const applyModifiers = ({
     attributes.quat.array[qi + 1] = 0;
     attributes.quat.array[qi + 2] = Math.sin(halfZ);
     attributes.quat.array[qi + 3] = Math.cos(halfZ);
-    attributes.quat.needsUpdate = true;
+    if (updateFlags) updateFlags.quat = true;
+    else attributes.quat.needsUpdate = true;
   }
 };

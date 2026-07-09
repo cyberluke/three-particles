@@ -1726,6 +1726,29 @@ export type GeneralData = {
    * Layout: `maxParticles * 3` (nx, ny, nz).
    */
   trailPrevNormal?: Float32Array;
+
+  /**
+   * Number of trail vertex-buffer slots filled per particle in the previous
+   * frame. Lets the trail update skip re-clearing slots that are already
+   * cleared (they stay invisible via zero alpha/half-width).
+   */
+  trailPrevFilledCount?: Uint16Array;
+
+  /**
+   * Pre-resolved lifetime-curve functions for the size / opacity / color
+   * modifiers (scale already applied). Resolved once at system creation and
+   * re-resolved by `updateConfig` — evaluating these per particle per frame
+   * avoids the curve-function lookup and closure allocations of
+   * `calculateValue`. Undefined entries fall back to `calculateValue`
+   * (e.g. constant or random-range values).
+   */
+  modifierCurves?: {
+    size?: CurveFunction;
+    opacity?: CurveFunction;
+    colorR?: CurveFunction;
+    colorG?: CurveFunction;
+    colorB?: CurveFunction;
+  };
 };
 
 /** Union of all buffer attribute types Three.js uses in geometry. */
@@ -1773,6 +1796,12 @@ export type ParticleSystemInstance = {
   onComplete: (data: { particleSystem: THREE.Points | THREE.Mesh }) => void;
   creationTime: number;
   lastEmissionTime: number;
+  /**
+   * Fractional particles carried over between frames by time-based emission.
+   * Prevents `Math.floor` from systematically dropping the remainder
+   * (e.g. rate 100/s at 60 FPS = 1.66 particles/frame).
+   */
+  emissionAccumulator: number;
   duration: number;
   looping: boolean;
   simulationSpace: SimulationSpace;
@@ -1785,6 +1814,12 @@ export type ParticleSystemInstance = {
   velocities: Array<THREE.Vector3>;
   freeList: Array<number>;
   deactivateParticle: (particleIndex: number) => void;
+  /**
+   * Deactivates a particle and fires death sub-emitters first (when
+   * configured). Stable per-system callback so the collision-plane hot loop
+   * does not allocate a closure per particle per frame.
+   */
+  killParticle: (particleIndex: number) => void;
   activateParticle: (data: {
     particleIndex: number;
     activationTime: number;
@@ -1878,6 +1913,11 @@ export type ParticleSystem = {
   pauseEmitter: () => void;
   dispose: () => void;
   update: (cycleData: CycleData) => void;
+  /**
+   * Returns the number of currently active (alive) particles. O(1) — derived
+   * from the internal free list, no buffer scan.
+   */
+  getActiveParticleCount?: () => number;
   /** GPU compute node for WebGPU dispatch. Call `renderer.compute(computeNode)` before `renderer.render()`. Null when CPU simulation. */
   computeNode: unknown | null;
   /**
@@ -1896,6 +1936,14 @@ export type ParticleSystem = {
    * `maxParticles`, `renderer.rendererType`, `shape`, and `map` (texture).
    * Passing these will update the internal config but have no visible effect since the
    * geometry and material are pre-allocated.
+   *
+   * **GPU compute limitation:** when the system runs on the WebGPU compute
+   * backend, modifier activation flags and lifetime curves
+   * (`sizeOverLifetime`, `opacityOverLifetime`, `colorOverLifetime`,
+   * `rotationOverLifetime`, `velocityOverLifetime`, `noise.isActive`) are
+   * baked into the compute kernel at creation and cannot be changed live —
+   * a console warning is emitted and the system must be recreated instead.
+   * On the CPU backend all of these update live.
    *
    * @example
    * ```typescript

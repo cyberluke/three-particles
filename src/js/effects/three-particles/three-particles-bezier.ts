@@ -34,12 +34,16 @@ export const createBezierCurveFunction = (
       let start = 0;
       let stop = bezierPoints.length - 1;
 
-      bezierPoints.find((point, index) => {
-        const result = percentage < (point.percentage ?? 0);
-        if (result) stop = index;
-        else if (point.percentage !== undefined) start = index;
-        return result;
-      });
+      // Plain loop instead of Array.find — this runs per particle per frame,
+      // so it must not allocate a callback closure.
+      for (let i = 0; i < bezierPoints.length; i++) {
+        const point = bezierPoints[i];
+        if (percentage < (point.percentage ?? 0)) {
+          stop = i;
+          break;
+        }
+        if (point.percentage !== undefined) start = i;
+      }
 
       const n = stop - start;
       const calculatedPercentage =

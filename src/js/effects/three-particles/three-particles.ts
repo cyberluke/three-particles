@@ -209,9 +209,28 @@ let _tslMaterialFactory: TSLMaterialFactory | null = null;
  * ```
  */
 export const registerTSLMaterialFactory = (
-  factory: TSLMaterialFactory
-): void => {
+  factory: TSLMaterialFactory,
+  options?: { renderer?: unknown }
+): boolean => {
+  // When a renderer is provided, verify it can actually run TSL materials +
+  // compute dispatches. Registering the factory alongside a plain
+  // WebGLRenderer would produce NodeMaterials and a compute pipeline that
+  // can never be dispatched.
+  if (
+    options &&
+    'renderer' in options &&
+    !isComputeCapableRenderer(options.renderer)
+  ) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      'three-particles: registerTSLMaterialFactory skipped — the provided ' +
+        'renderer does not support compute dispatches (expected ' +
+        'THREE.WebGPURenderer). Particle systems will use the CPU/GLSL path.'
+    );
+    return false;
+  }
   _tslMaterialFactory = factory;
+  return true;
 };
 
 // Pre-allocated objects for updateParticleSystemInstance to avoid GC pressure
@@ -253,6 +272,9 @@ const _trailPerp = new THREE.Vector3();
 const _trailToCam = new THREE.Vector3();
 const _distanceStep = { x: 0, y: 0, z: 0 };
 const _tempPosition = { x: 0, y: 0, z: 0 };
+// Aggregated needsUpdate flags filled by applyModifiers — the attribute
+// version counter is bumped once per frame instead of once per particle.
+const _modifierUpdateFlags = { position: false, quat: false };
 const _modifierParams = {
   delta: 0,
   generalData: null as unknown as GeneralData,
@@ -261,7 +283,36 @@ const _modifierParams = {
   scalarArray: null as unknown as Float32Array,
   particleLifetimePercentage: 0,
   particleIndex: 0,
+  updateFlags: _modifierUpdateFlags,
 };
+// Reusable parameter objects for the per-particle force-field / collision
+// hot loops (avoids one or two object allocations per particle per frame).
+const _forceFieldParams = {
+  particleSystemId: 0,
+  forceFields: null as unknown as Array<NormalizedForceFieldConfig>,
+  velocity: null as unknown as THREE.Vector3,
+  positionArr: null as unknown as THREE.TypedArray,
+  positionIndex: 0,
+  delta: 0,
+  systemLifetimePercentage: 0,
+};
+const _collisionParams = {
+  collisionPlanes: null as unknown as Array<NormalizedCollisionPlaneConfig>,
+  velocity: null as unknown as THREE.Vector3,
+  positionArr: null as unknown as THREE.TypedArray,
+  positionIndex: 0,
+  scalarArr: null as unknown as Float32Array,
+  scalarBase: 0,
+  deactivateParticle: null as unknown as (particleIndex: number) => void,
+  particleIndex: 0,
+};
+// Scratch vector for onBeforeRender viewport queries (avoids a Vector2
+// allocation every rendered frame).
+const _viewportSize = new THREE.Vector2();
+// Timestamp of the frame currently being processed by
+// updateParticleSystemInstance — read by the per-system killParticle
+// callbacks so they don't need a per-frame closure.
+let _frameNow = 0;
 
 /**
  * Converts a plain {x, y, z} object to a THREE.Vector3, using the fallback if undefined.
@@ -396,7 +447,7 @@ const DEFAULT_PARTICLE_SYSTEM_CONFIG: ParticleSystemConfig = {
       arc: 360.0,
     },
     rectangle: {
-      rotation: { x: 0.0, y: 0.0 }, // TODO: add z rotation
+      rotation: { x: 0.0, y: 0.0, z: 0.0 },
       scale: { x: 1.0, y: 1.0 },
     },
     box: {
@@ -751,6 +802,43 @@ export const createParticleSystem = (
   if (typeof renderer?.blending === 'string')
     renderer.blending = blendingMap[renderer.blending];
 
+  // Pre-resolve lifetime-curve functions once. applyModifiers evaluates
+  // size/opacity/color multipliers per particle per frame — resolving the
+  // curve function there (bezier cache scan + closure allocations) dominated
+  // the CPU-path modifier cost. Non-curve values (constants, random ranges)
+  // stay undefined and fall back to calculateValue in applyModifiers.
+  const resolveModifierCurve = (
+    value: Constant | RandomBetweenTwoConstants | LifetimeCurve | undefined
+  ): CurveFunction | undefined => {
+    if (value === undefined || typeof value === 'number') return undefined;
+    if (!isLifeTimeCurve(value)) return undefined;
+    const fn = getCurveFunctionFromConfig(generalData.particleSystemId, value);
+    const scale = value.scale ?? 1;
+    return scale === 1 ? fn : (time: number) => fn(time) * scale;
+  };
+
+  const resolveModifierCurves = () => {
+    const cfg = normalizedConfig;
+    generalData.modifierCurves = {
+      size: cfg.sizeOverLifetime.isActive
+        ? resolveModifierCurve(cfg.sizeOverLifetime.lifetimeCurve)
+        : undefined,
+      opacity: cfg.opacityOverLifetime.isActive
+        ? resolveModifierCurve(cfg.opacityOverLifetime.lifetimeCurve)
+        : undefined,
+      colorR: cfg.colorOverLifetime.isActive
+        ? resolveModifierCurve(cfg.colorOverLifetime.r)
+        : undefined,
+      colorG: cfg.colorOverLifetime.isActive
+        ? resolveModifierCurve(cfg.colorOverLifetime.g)
+        : undefined,
+      colorB: cfg.colorOverLifetime.isActive
+        ? resolveModifierCurve(cfg.colorOverLifetime.b)
+        : undefined,
+    };
+  };
+  resolveModifierCurves();
+
   const startPositions = Array.from(
     { length: maxParticles },
     () => new THREE.Vector3()
@@ -768,7 +856,16 @@ export const createParticleSystem = (
     (_, i) => maxParticles - 1 - i
   );
 
-  if (velocityOverLifetime.isActive) {
+  // Extracted so updateConfig can re-run it when velocityOverLifetime
+  // changes (previously the data arrays only existed when isActive was true
+  // at creation, making live activation a silent no-op).
+  const initVelocityLifetimeData = () => {
+    const velocityOverLifetime = normalizedConfig.velocityOverLifetime;
+    if (!velocityOverLifetime.isActive) {
+      generalData.linearVelocityData = undefined;
+      generalData.orbitalVelocityData = undefined;
+      return;
+    }
     generalData.linearVelocityData = Array.from(
       { length: maxParticles },
       () => ({
@@ -867,7 +964,8 @@ export const createParticleSystem = (
         positionOffset: new THREE.Vector3(),
       })
     );
-  }
+  };
+  initVelocityLifetimeData();
 
   const startValueKeys: Array<keyof NormalizedParticleSystemConfig> = [
     'startSize',
@@ -899,19 +997,21 @@ export const createParticleSystem = (
     () => 0
   );
 
-  const lifetimeValueKeys: Array<keyof NormalizedParticleSystemConfig> = [
-    'rotationOverLifetime',
-  ];
-  lifetimeValueKeys.forEach((key) => {
-    const value = normalizedConfig[key] as {
+  // Extracted so updateConfig can re-run it when rotationOverLifetime changes.
+  const initRotationLifetimeValues = () => {
+    const value = normalizedConfig.rotationOverLifetime as {
       isActive: boolean;
     } & RandomBetweenTwoConstants;
-    if (value.isActive)
-      generalData.lifetimeValues[key] = Array.from(
+    if (value.isActive) {
+      generalData.lifetimeValues.rotationOverLifetime = Array.from(
         { length: maxParticles },
         () => THREE.MathUtils.randFloat(value.min!, value.max!)
       );
-  });
+    } else {
+      delete generalData.lifetimeValues.rotationOverLifetime;
+    }
+  };
+  initRotationLifetimeValues();
 
   // Pre-compute FBM normalisation divisor once (avoids recalculating every frame).
   // fbmMax = 1 + 0.5 + 0.25 + ... = 2 - 2^(-octaves)
@@ -993,6 +1093,9 @@ export const createParticleSystem = (
     );
     generalData.positionHistoryIndex = new Uint16Array(maxParticles);
     generalData.positionHistoryCount = new Uint16Array(maxParticles);
+    // Tracks how many vertex slots were filled last frame per particle so the
+    // trail rebuild only clears slots that actually held data.
+    generalData.trailPrevFilledCount = new Uint16Array(maxParticles);
 
     // Adaptive sampling: track last sampled position per particle
     if (trailConfig.minVertexDistance > 0) {
@@ -1222,6 +1325,9 @@ export const createParticleSystem = (
   const scalarInterleavedBuffer = useInstancedAttributes
     ? new THREE.InstancedInterleavedBuffer(scalarArray, SCALAR_STRIDE)
     : new THREE.InterleavedBuffer(scalarArray, SCALAR_STRIDE);
+  // The scalar buffer is rewritten every frame on the CPU path — tell the
+  // driver so it allocates the GL buffer accordingly.
+  scalarInterleavedBuffer.setUsage(THREE.DynamicDrawUsage);
 
   if (useGPUCompute && gpuPipeline) {
     // ── GPU Compute Path: use storage buffers as geometry attributes ──
@@ -1249,6 +1355,8 @@ export const createParticleSystem = (
     const positionAttribute = useInstancedAttributes
       ? new THREE.InstancedBufferAttribute(positionArray, 3)
       : new THREE.BufferAttribute(positionArray, 3);
+    // Positions are integrated every frame — dynamic usage hint for the driver.
+    positionAttribute.setUsage(THREE.DynamicDrawUsage);
     geometry.setAttribute(posAttr, positionAttribute);
 
     geometry.setAttribute(
@@ -1343,6 +1451,8 @@ export const createParticleSystem = (
         particleIndex
       );
     } else {
+      // Partial-upload hint: only this particle's scalar slice changed.
+      scalarInterleavedBuffer.addUpdateRange(base, SCALAR_STRIDE);
       scalarInterleavedBuffer.needsUpdate = true;
     }
     freeList.push(particleIndex);
@@ -1512,6 +1622,7 @@ export const createParticleSystem = (
         aPosition.array[positionIndex + 2] = position.z + oz;
       }
       if (!useGPUCompute) {
+        (aPosition as THREE.BufferAttribute).addUpdateRange(positionIndex, 3);
         aPosition.needsUpdate = true;
       }
     }
@@ -1632,6 +1743,7 @@ export const createParticleSystem = (
       );
       // Modifiers run on GPU — no CPU applyModifiers needed
     } else {
+      scalarInterleavedBuffer.addUpdateRange(base, SCALAR_STRIDE);
       scalarInterleavedBuffer.needsUpdate = true;
 
       applyModifiers({
@@ -1666,20 +1778,27 @@ export const createParticleSystem = (
   const cleanupCompletedInstances = (instances: Array<ParticleSystem>) => {
     for (let i = instances.length - 1; i >= 0; i--) {
       const sub = instances[i];
-      const geomAttrs = sub.instance.geometry?.attributes;
-      const isActiveAttr = geomAttrs
-        ? (geomAttrs.isActive ?? geomAttrs.instanceIsActive)
-        : undefined;
-      if (!isActiveAttr) {
-        sub.dispose();
-        instances.splice(i, 1);
-        continue;
-      }
-      let hasActive = false;
-      for (let j = 0; j < isActiveAttr.count; j++) {
-        if (isActiveAttr.getX(j)) {
-          hasActive = true;
-          break;
+      let hasActive: boolean;
+      if (sub.getActiveParticleCount) {
+        // O(1) via the free list — avoids scanning every particle of every
+        // instance each time the instance cap is hit.
+        hasActive = sub.getActiveParticleCount() > 0;
+      } else {
+        const geomAttrs = sub.instance.geometry?.attributes;
+        const isActiveAttr = geomAttrs
+          ? (geomAttrs.isActive ?? geomAttrs.instanceIsActive)
+          : undefined;
+        if (!isActiveAttr) {
+          sub.dispose();
+          instances.splice(i, 1);
+          continue;
+        }
+        hasActive = false;
+        for (let j = 0; j < isActiveAttr.count; j++) {
+          if (isActiveAttr.getX(j)) {
+            hasActive = true;
+            break;
+          }
         }
       }
       if (!hasActive) {
@@ -1946,7 +2065,7 @@ export const createParticleSystem = (
       camera: THREE.Camera
     ) => {
       if (useInstancing) {
-        const size = glRenderer.getSize(new THREE.Vector2());
+        const size = glRenderer.getSize(_viewportSize);
         sharedUniforms.viewportHeight.value =
           size.y * glRenderer.getPixelRatio();
       }
@@ -2070,6 +2189,20 @@ export const createParticleSystem = (
       }
     : undefined;
 
+  // Stable kill callback for collision-plane KILL handling. Created once per
+  // system so the update loop doesn't allocate a closure per particle per
+  // frame; reads the frame timestamp from the module-level _frameNow.
+  const killParticle = (particleIndex: number) => {
+    if (onParticleDeath)
+      onParticleDeath(
+        particleIndex,
+        mappedAttributes.position.array,
+        velocities[particleIndex],
+        _frameNow
+      );
+    deactivateParticle(particleIndex);
+  };
+
   const instanceData: ParticleSystemInstance = {
     particleSystem,
     mappedAttributes,
@@ -2081,6 +2214,7 @@ export const createParticleSystem = (
     onComplete,
     creationTime: calculatedCreationTime,
     lastEmissionTime: calculatedCreationTime,
+    emissionAccumulator: 0,
     duration,
     looping,
     simulationSpace,
@@ -2093,6 +2227,7 @@ export const createParticleSystem = (
     velocities,
     freeList,
     deactivateParticle,
+    killParticle,
     activateParticle,
     onParticleDeath,
     onParticleBirth,
@@ -2232,6 +2367,74 @@ export const createParticleSystem = (
           : undefined,
       };
     }
+
+    // Re-resolve pre-baked modifier curve functions — the CPU update loop
+    // reads these instead of re-resolving curves per particle per frame.
+    if (
+      partialConfig.sizeOverLifetime !== undefined ||
+      partialConfig.opacityOverLifetime !== undefined ||
+      partialConfig.colorOverLifetime !== undefined
+    ) {
+      resolveModifierCurves();
+    }
+
+    // Re-initialize per-particle data arrays that only exist while their
+    // module is active (previously live activation was a silent no-op).
+    if (partialConfig.velocityOverLifetime !== undefined) {
+      initVelocityLifetimeData();
+    }
+    if (partialConfig.rotationOverLifetime !== undefined) {
+      initRotationLifetimeValues();
+    }
+
+    // GPU compute bakes modifier activation flags and lifetime curves into
+    // the compute kernel at creation — these cannot change live.
+    if (instanceData.useGPUCompute) {
+      const gpuBakedKeys = [
+        'sizeOverLifetime',
+        'opacityOverLifetime',
+        'colorOverLifetime',
+        'rotationOverLifetime',
+        'velocityOverLifetime',
+      ] as const;
+      for (const key of gpuBakedKeys) {
+        if (partialConfig[key] !== undefined) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `three-particles: updateConfig('${key}') has no effect on the ` +
+              'GPU compute backend — modifier curves are baked into the ' +
+              'compute kernel at creation. Recreate the system to change it.'
+          );
+        }
+      }
+      if (partialConfig.noise?.isActive !== undefined) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          "three-particles: updateConfig('noise.isActive') has no effect on " +
+            'the GPU compute backend — the noise toggle is baked into the ' +
+            'compute kernel at creation. Recreate the system to change it.'
+        );
+      }
+    }
+
+    // Structural properties are pre-allocated at creation and cannot change.
+    const structuralKeys = [
+      'maxParticles',
+      'renderer',
+      'shape',
+      'map',
+      'simulationBackend',
+    ] as const;
+    for (const key of structuralKeys) {
+      if (partialConfig[key] !== undefined) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `three-particles: updateConfig('${key}') is a structural property ` +
+            'set at creation time and has no runtime effect. Recreate the ' +
+            'particle system to change it.'
+        );
+      }
+    }
   };
 
   return {
@@ -2241,6 +2444,7 @@ export const createParticleSystem = (
     dispose,
     update,
     updateConfig,
+    getActiveParticleCount: () => maxParticles - freeList.length,
     computeNode: gpuPipeline?.computeNode ?? null,
   };
 };
@@ -2337,6 +2541,7 @@ const updateParticleSystemInstance = (
     velocities,
     freeList,
     deactivateParticle,
+    killParticle,
     activateParticle,
     simulationSpace,
     gravity,
@@ -2348,6 +2553,8 @@ const updateParticleSystemInstance = (
     useGPUCompute,
     computePipeline,
   } = props;
+
+  _frameNow = now;
 
   const hasForceFields = normalizedForceFields.length > 0;
   const hasCollisionPlanes = normalizedCollisionPlanes.length > 0;
@@ -2601,9 +2808,13 @@ const updateParticleSystemInstance = (
       );
       const curveArr = cp.buffers.curveData.array as Float32Array;
       const offset = cp.forceFieldInfo.offset;
-      curveArr.set(encodedFF, offset);
-      cp.buffers.curveData.addUpdateRange(offset, encodedFF.length);
-      cp.buffers.curveData.needsUpdate = true;
+      // Only re-upload when the encoded data actually changed — static
+      // force fields would otherwise be uploaded every frame.
+      if (!arraySlicesEqual(curveArr, offset, encodedFF, 0, encodedFF.length)) {
+        curveArr.set(encodedFF, offset);
+        cp.buffers.curveData.addUpdateRange(offset, encodedFF.length);
+        cp.buffers.curveData.needsUpdate = true;
+      }
       setUniformFloat(
         cp.forceFieldInfo.countUniform,
         normalizedForceFields.length
@@ -2620,9 +2831,12 @@ const updateParticleSystemInstance = (
       );
       const curveArr = cp.buffers.curveData.array as Float32Array;
       const offset = cp.collisionPlaneInfo.offset;
-      curveArr.set(encodedCP, offset);
-      cp.buffers.curveData.addUpdateRange(offset, encodedCP.length);
-      cp.buffers.curveData.needsUpdate = true;
+      // Only re-upload when the encoded data actually changed.
+      if (!arraySlicesEqual(curveArr, offset, encodedCP, 0, encodedCP.length)) {
+        curveArr.set(encodedCP, offset);
+        cp.buffers.curveData.addUpdateRange(offset, encodedCP.length);
+        cp.buffers.curveData.needsUpdate = true;
+      }
       setUniformFloat(
         cp.collisionPlaneInfo.countUniform,
         normalizedCollisionPlanes.length
@@ -2645,6 +2859,20 @@ const updateParticleSystemInstance = (
     // fields) so that positionArr contains an approximate current position
     // instead of the stale emission-time value — the GPU buffer is not
     // readable from the CPU without an async readback.
+    if (hasForceFields) {
+      _forceFieldParams.particleSystemId = generalData.particleSystemId;
+      _forceFieldParams.forceFields = _localForceFields;
+      _forceFieldParams.positionArr = positionArr;
+      _forceFieldParams.delta = delta;
+      _forceFieldParams.systemLifetimePercentage =
+        generalData.normalizedLifetimePercentage;
+    }
+    if (hasCollisionPlanes) {
+      _collisionParams.collisionPlanes = _localCollisionPlanes;
+      _collisionParams.positionArr = positionArr;
+      _collisionParams.scalarArr = scalarArr;
+      _collisionParams.deactivateParticle = killParticle;
+    }
     for (let index = 0; index < creationTimesLength; index++) {
       const base = index * SCALAR_STRIDE;
       if (scalarArr[base + S_IS_ACTIVE]) {
@@ -2666,16 +2894,9 @@ const updateParticleSystemInstance = (
           velocity.z -= gravityVelocity.z * delta;
 
           if (hasForceFields) {
-            applyForceFields({
-              particleSystemId: generalData.particleSystemId,
-              forceFields: _localForceFields,
-              velocity,
-              positionArr,
-              positionIndex: index * 3,
-              delta,
-              systemLifetimePercentage:
-                generalData.normalizedLifetimePercentage,
-            });
+            _forceFieldParams.velocity = velocity;
+            _forceFieldParams.positionIndex = index * 3;
+            applyForceFields(_forceFieldParams);
           }
 
           const positionIndex = index * 3;
@@ -2708,20 +2929,11 @@ const updateParticleSystemInstance = (
 
           // Collision planes (shadow sim — for KILL death detection only)
           if (hasCollisionPlanes) {
-            applyCollisionPlanes({
-              collisionPlanes: _localCollisionPlanes,
-              velocity,
-              positionArr,
-              positionIndex,
-              scalarArr,
-              scalarBase: base,
-              deactivateParticle: (pi: number) => {
-                if (onParticleDeath)
-                  onParticleDeath(pi, positionArr, velocities[pi], now);
-                deactivateParticle(pi);
-              },
-              particleIndex: index,
-            });
+            _collisionParams.velocity = velocity;
+            _collisionParams.positionIndex = positionIndex;
+            _collisionParams.scalarBase = base;
+            _collisionParams.particleIndex = index;
+            applyCollisionPlanes(_collisionParams);
           }
         }
       }
@@ -2731,16 +2943,38 @@ const updateParticleSystemInstance = (
 
     let positionNeedsUpdate = false;
     let scalarNeedsUpdate = false;
+    // Highest particle index written this frame. Particles fill from low
+    // indices (the free list pops ascending), so [0, maxTouched] is a
+    // superset of every write — used as a partial-upload hint below.
+    let maxTouchedIndex = -1;
 
+    _modifierUpdateFlags.position = false;
+    _modifierUpdateFlags.quat = false;
     _modifierParams.delta = delta;
     _modifierParams.generalData = generalData;
     _modifierParams.normalizedConfig = normalizedConfig;
     _modifierParams.attributes = ma;
     _modifierParams.scalarArray = scalarArr;
 
+    if (hasForceFields) {
+      _forceFieldParams.particleSystemId = generalData.particleSystemId;
+      _forceFieldParams.forceFields = _localForceFields;
+      _forceFieldParams.positionArr = positionArr;
+      _forceFieldParams.delta = delta;
+      _forceFieldParams.systemLifetimePercentage =
+        generalData.normalizedLifetimePercentage;
+    }
+    if (hasCollisionPlanes) {
+      _collisionParams.collisionPlanes = _localCollisionPlanes;
+      _collisionParams.positionArr = positionArr;
+      _collisionParams.scalarArr = scalarArr;
+      _collisionParams.deactivateParticle = killParticle;
+    }
+
     for (let index = 0; index < creationTimesLength; index++) {
       const base = index * SCALAR_STRIDE;
       if (scalarArr[base + S_IS_ACTIVE]) {
+        maxTouchedIndex = index;
         const particleLifetime = now - creationTimes[index];
         if (particleLifetime > scalarArr[base + S_START_LIFETIME]) {
           if (onParticleDeath)
@@ -2753,16 +2987,9 @@ const updateParticleSystemInstance = (
           velocity.z -= gravityVelocity.z * delta;
 
           if (hasForceFields) {
-            applyForceFields({
-              particleSystemId: generalData.particleSystemId,
-              forceFields: _localForceFields,
-              velocity,
-              positionArr,
-              positionIndex: index * 3,
-              delta,
-              systemLifetimePercentage:
-                generalData.normalizedLifetimePercentage,
-            });
+            _forceFieldParams.velocity = velocity;
+            _forceFieldParams.positionIndex = index * 3;
+            applyForceFields(_forceFieldParams);
           }
 
           if (
@@ -2781,20 +3008,11 @@ const updateParticleSystemInstance = (
 
           // Collision planes — after position update, before modifiers
           if (hasCollisionPlanes) {
-            const killed = applyCollisionPlanes({
-              collisionPlanes: _localCollisionPlanes,
-              velocity,
-              positionArr,
-              positionIndex: index * 3,
-              scalarArr,
-              scalarBase: base,
-              deactivateParticle: (pi: number) => {
-                if (onParticleDeath)
-                  onParticleDeath(pi, positionArr, velocities[pi], now);
-                deactivateParticle(pi);
-              },
-              particleIndex: index,
-            });
+            _collisionParams.velocity = velocity;
+            _collisionParams.positionIndex = index * 3;
+            _collisionParams.scalarBase = base;
+            _collisionParams.particleIndex = index;
+            const killed = applyCollisionPlanes(_collisionParams);
             if (killed) {
               positionNeedsUpdate = true;
               continue;
@@ -2812,22 +3030,55 @@ const updateParticleSystemInstance = (
       }
     }
 
-    if (positionNeedsUpdate) ma.position.needsUpdate = true;
-    if (scalarNeedsUpdate) props.scalarInterleavedBuffer.needsUpdate = true;
+    if (_modifierUpdateFlags.position) positionNeedsUpdate = true;
+    if (_modifierUpdateFlags.quat && ma.quat) ma.quat.needsUpdate = true;
+
+    if (positionNeedsUpdate) {
+      if (maxTouchedIndex >= 0)
+        (ma.position as THREE.BufferAttribute).addUpdateRange(
+          0,
+          (maxTouchedIndex + 1) * 3
+        );
+      ma.position.needsUpdate = true;
+    }
+    if (scalarNeedsUpdate) {
+      if (maxTouchedIndex >= 0)
+        props.scalarInterleavedBuffer.addUpdateRange(
+          0,
+          (maxTouchedIndex + 1) * SCALAR_STRIDE
+        );
+      props.scalarInterleavedBuffer.needsUpdate = true;
+    }
   } // end of CPU/GPU compute branch
 
   if (isEnabled && (looping || lifetime < duration * 1000)) {
+    // lastEmissionTime starts at creationTime (which includes startDelay and
+    // may be in the future) — a non-positive delta means emission hasn't
+    // started yet, so leave lastEmissionTime untouched until it has.
     const emissionDelta = now - lastEmissionTime;
-    const neededParticlesByTime = emission.rateOverTime
-      ? Math.floor(
+    let neededParticlesByTime = 0;
+    if (emissionDelta > 0) {
+      props.lastEmissionTime = now;
+
+      // Time-based emission uses a fractional accumulator: flooring the
+      // per-frame amount would systematically drop the remainder (e.g. a
+      // rate of 100/s at 60 FPS is ~1.66 particles per frame — flooring
+      // emits only 60/s). The fraction below 1 carries over; the integer
+      // part is consumed immediately, so a starved system never dumps a
+      // backlog burst either.
+      if (emission.rateOverTime) {
+        props.emissionAccumulator +=
           calculateValue(
             generalData.particleSystemId,
             emission.rateOverTime,
             generalData.normalizedLifetimePercentage
           ) *
-            (emissionDelta / 1000)
-        )
-      : 0;
+          (emissionDelta / 1000);
+      }
+      neededParticlesByTime = Math.floor(props.emissionAccumulator);
+      if (neededParticlesByTime > 0)
+        props.emissionAccumulator -= neededParticlesByTime;
+    }
 
     const rateOverDistance = emission.rateOverDistance
       ? calculateValue(
@@ -2857,7 +3108,13 @@ const updateParticleSystemInstance = (
     let neededParticles = neededParticlesByTime + neededParticlesByDistance;
 
     if (rateOverDistance > 0 && neededParticlesByDistance >= 1) {
-      generalData.distanceFromLastEmitByDistance = 0;
+      // Keep the fractional remainder instead of resetting to zero so slow,
+      // steady movement doesn't systematically under-emit.
+      generalData.distanceFromLastEmitByDistance = Math.max(
+        generalData.distanceFromLastEmitByDistance -
+          neededParticlesByDistance / rateOverDistance,
+        0
+      );
     }
 
     // Process burst emissions
@@ -2947,7 +3204,6 @@ const updateParticleSystemInstance = (
             velocities[particleIndex],
             now
           );
-        props.lastEmissionTime = now;
       }
     }
 
@@ -3123,8 +3379,9 @@ let _rawPoints: Float32Array | null = null;
 let _rawPointsSize = 0;
 let _smoothedPoints: Float32Array | null = null;
 let _smoothedPointsSize = 0;
-// Scratch buffer for connected ribbon particle indices (reused each frame)
-let _ribbonIndices: Uint16Array | null = null;
+// Scratch buffer for connected ribbon particle indices (reused each frame).
+// Uint32 so systems with more than 65535 particles don't silently wrap.
+let _ribbonIndices: Uint32Array | null = null;
 let _ribbonIndicesSize = 0;
 let _ribbonCount = 0;
 
@@ -3189,6 +3446,10 @@ const updateTrailGeometry = (props: ParticleSystemInstance, now: number) => {
 
   const trailScalarArr = props.scalarArray;
   const positionArr = ma.position.array;
+  // Vertex-buffer fill counts from the previous frame — cleared slots stay
+  // cleared (zero alpha/half-width), so re-clearing them every frame is
+  // redundant work proportional to maxParticles × trailLength.
+  const prevFilled = generalData.trailPrevFilledCount;
 
   const trailPosArr = trailPositionAttr.array as Float32Array;
   const trailAlphaArr = trailAlphaAttr.array as Float32Array;
@@ -3206,7 +3467,7 @@ const updateTrailGeometry = (props: ParticleSystemInstance, now: number) => {
   if (useRibbon) {
     // Pre-allocate scratch buffer for ribbon indices
     if (!_ribbonIndices || _ribbonIndicesSize < creationTimesLength) {
-      _ribbonIndices = new Uint16Array(creationTimesLength);
+      _ribbonIndices = new Uint32Array(creationTimesLength);
       _ribbonIndicesSize = creationTimesLength;
     }
     _ribbonCount = 0;
@@ -3437,6 +3698,8 @@ const updateTrailGeometry = (props: ParticleSystemInstance, now: number) => {
       }
 
       // --- Build ribbon vertices ---
+      const prevFilledSlots = prevFilled ? prevFilled[index] : trailLength;
+      if (prevFilled) prevFilled[index] = finalCount;
       for (let s = 0; s < trailLength; s++) {
         const vIdx = (vertBase + s * 2) * 3;
         const cIdx = (vertBase + s * 2) * 4;
@@ -3444,6 +3707,8 @@ const updateTrailGeometry = (props: ParticleSystemInstance, now: number) => {
         const uvIdxBase = (vertBase + s * 2) * 2;
 
         if (s >= finalCount) {
+          // Slots at or beyond the previous fill count are already cleared.
+          if (s >= prevFilledSlots) break;
           clearTrailVertex(
             vIdx,
             cIdx,
@@ -3654,12 +3919,17 @@ const updateTrailGeometry = (props: ParticleSystemInstance, now: number) => {
           prevNormal[nIdx + 2] = cnz;
         }
       }
-    } else if (historyCount[index] > 0) {
+    } else if (
+      historyCount[index] > 0 ||
+      (prevFilled && prevFilled[index] > 0)
+    ) {
       // Particle just became inactive — collapse ribbon and clear history once
       hasUpdates = true;
       historyCount[index] = 0;
       historyIndex[index] = 0;
-      for (let s = 0; s < trailLength; s++) {
+      const clearSlots = prevFilled ? prevFilled[index] : trailLength;
+      if (prevFilled) prevFilled[index] = 0;
+      for (let s = 0; s < clearSlots; s++) {
         const vIdx = (vertBase + s * 2) * 3;
         const cIdx = (vertBase + s * 2) * 4;
         const aIdx = vertBase + s * 2;
@@ -3770,6 +4040,8 @@ const updateTrailGeometry = (props: ParticleSystemInstance, now: number) => {
     const leaderCb = trailScalarArr[leaderBase + S_COLOR_B];
     const leaderCa = trailScalarArr[leaderBase + S_COLOR_A];
 
+    const leaderPrevFilled = prevFilled ? prevFilled[leader] : trailLength;
+    if (prevFilled) prevFilled[leader] = filledCount;
     for (let s = 0; s < trailLength; s++) {
       const vIdx = (leaderVertBase + s * 2) * 3;
       const cIdx = (leaderVertBase + s * 2) * 4;
@@ -3777,6 +4049,8 @@ const updateTrailGeometry = (props: ParticleSystemInstance, now: number) => {
       const uvIdxBase = (leaderVertBase + s * 2) * 2;
 
       if (s >= filledCount) {
+        // Slots at or beyond the previous fill count are already cleared.
+        if (s >= leaderPrevFilled) break;
         clearTrailVertex(
           vIdx,
           cIdx,
@@ -3951,11 +4225,14 @@ const updateTrailGeometry = (props: ParticleSystemInstance, now: number) => {
       }
     }
 
-    // Clear non-leader ribbon particles' trail vertices
+    // Clear non-leader ribbon particles' trail vertices (only the slots that
+    // were actually filled — already-cleared buffers are skipped entirely)
     for (let ri = 1; ri < _ribbonCount; ri++) {
       const pIdx = _ribbonIndices[ri];
       const pVertBase = pIdx * verticesPerParticle;
-      for (let s = 0; s < trailLength; s++) {
+      const pClearSlots = prevFilled ? prevFilled[pIdx] : trailLength;
+      if (prevFilled) prevFilled[pIdx] = 0;
+      for (let s = 0; s < pClearSlots; s++) {
         const vIdx = (pVertBase + s * 2) * 3;
         const cIdx = (pVertBase + s * 2) * 4;
         const aIdx = pVertBase + s * 2;
