@@ -67,7 +67,8 @@ function animate() {
 | `resumeEmitter()` | `() => void` | Resume emitting particles |
 | `dispose()` | `() => void` | Destroy system, free resources |
 | `update(cycleData)` | `(CycleData) => void` | Update this system individually |
-| `updateConfig(config)` | `(Partial<ParticleSystemConfig>) => void` | Update configuration at runtime without recreating the system. System-level properties (gravity, force fields, noise, emission, color/size/opacity over lifetime) take effect immediately. Per-particle spawn properties (startColor, startSize, etc.) affect only newly emitted particles. |
+| `updateConfig(config)` | `(Partial<ParticleSystemConfig>) => void` | Update configuration at runtime without recreating the system. System-level properties (gravity, force fields, noise, emission, color/size/opacity/rotation/velocity over lifetime) take effect immediately on the CPU backend. Per-particle spawn properties (startColor, startSize, etc.) affect only newly emitted particles. GPU backend limitation: modifier flags/curves are baked at creation and cannot change live. |
+| `getActiveParticleCount()` | `() => number` | Number of currently alive particles. O(1) — derived from the internal free list. |
 | `computeNode` | `unknown \| null` | GPU compute node for WebGPU dispatch. Non-null when GPU compute is active. Must be dispatched via `renderer.compute(system.computeNode)` every frame before `renderer.render()`. Null when CPU simulation is used. |
 
 ---
@@ -542,7 +543,7 @@ const system = createParticleSystem({
 `KILL` (deactivate particle immediately) | `CLAMP` (stop particle at the plane surface) | `BOUNCE` (reflect velocity with optional dampen)
 
 ### SimulationBackend
-`AUTO` (default — GPU compute if WebGPU renderer detected, else CPU) | `CPU` (always JavaScript update loop) | `GPU` (request GPU compute, falls back to CPU if unavailable)
+`AUTO` (default — GPU compute when the WebGPU path is registered via `enableWebGPU()`, else CPU) | `CPU` (always JavaScript update loop) | `GPU` (same as AUTO — GPU compute requires the registered WebGPU path)
 
 ---
 
@@ -857,14 +858,16 @@ Optional GPU-accelerated particle simulation via Three.js WebGPU renderer and TS
 ### Setup
 
 ```typescript
-// 1. Enable WebGPU support (once, before creating any particle system)
-import { enableWebGPU } from "@newkrok/three-particles/webgpu";
-enableWebGPU();
-
-// 2. Create a WebGPU renderer
+// 1. Create a WebGPU renderer
 import * as THREE from "three/webgpu";
 const renderer = new THREE.WebGPURenderer({ antialias: true });
 await renderer.init();
+
+// 2. Enable WebGPU support (once, before creating any particle system).
+// Passing the renderer enables capability detection — with a renderer that
+// cannot run compute shaders, registration is skipped with a warning.
+import { enableWebGPU } from "@newkrok/three-particles/webgpu";
+const gpuEnabled = enableWebGPU(renderer); // returns boolean
 // No outputColorSpace override needed — the library uses the standard
 // three.js linear workflow and works with the default (SRGBColorSpace).
 
@@ -895,17 +898,21 @@ For fine-grained control (e.g., selective registration of individual WebGPU func
 
 ```typescript
 enum SimulationBackend {
-  AUTO = 'AUTO',  // GPU compute if WebGPU renderer detected, else CPU (default)
+  AUTO = 'AUTO',  // GPU compute when the WebGPU path is registered, else CPU (default)
   CPU = 'CPU',    // Always JavaScript update loop (works with any renderer)
-  GPU = 'GPU',    // Request GPU compute; falls back to CPU if renderer lacks compute support
+  GPU = 'GPU',    // Same as AUTO — GPU compute requires the registered WebGPU path
 }
 ```
 
-| Value | WebGPU Renderer | WebGL Renderer |
-|-------|----------------|----------------|
+| Value | WebGPU path registered (`enableWebGPU()`) | Not registered |
+|-------|------------------------------------------|----------------|
 | `AUTO` | GPU compute | CPU (JavaScript) |
 | `CPU` | CPU (JavaScript) | CPU (JavaScript) |
-| `GPU` | GPU compute | CPU (fallback) |
+| `GPU` | GPU compute | CPU (JavaScript) |
+
+Note: the library never inspects the renderer on its own — call
+`enableWebGPU(renderer)` (returns boolean) to skip registration automatically
+when the renderer cannot dispatch compute shaders (e.g. `WebGLRenderer`).
 
 ### What Runs on GPU
 
@@ -941,9 +948,9 @@ When CPU simulation is active (no WebGPU, or `simulationBackend: 'CPU'`), `compu
 ### Fallback Behavior
 
 WebGPU is fully opt-in and non-breaking:
-- If `enableWebGPU()` not called (or no TSL factory registered via `registerTSLMaterialFactory()`), the library uses GLSL shaders (existing WebGL path)
-- If `simulationBackend: 'GPU'` but the renderer lacks compute support, it silently falls back to CPU
-- The same `ParticleSystemConfig` works identically on both backends — no config changes needed
+- If `enableWebGPU()` not called (or no TSL factory registered via `registerTSLMaterialFactory()`), the library uses GLSL shaders (existing WebGL path) and CPU simulation
+- If `enableWebGPU(renderer)` is called with a renderer that lacks compute support, registration is skipped with a console warning and everything stays on the CPU/GLSL path
+- The same `ParticleSystemConfig` produces the same visuals on both backends. GPU limitation: modifier flags and lifetime curves (sizeOverLifetime, opacityOverLifetime, colorOverLifetime, rotationOverLifetime, velocityOverLifetime, noise.isActive) are baked into the compute kernel at creation — `updateConfig()` cannot change them live (a console warning is logged); recreate the system instead. On the CPU backend these update live.
 - Renderer detection is duck-typed (checks for `.compute()` and `.hasFeature()` methods), not class-based
 
 ### WebGPU with React Three Fiber

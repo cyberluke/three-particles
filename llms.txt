@@ -51,6 +51,7 @@ function animate() {
 - `dispose()` — Clean up and free resources
 - `update(cycleData)` — Update this specific system only
 - `updateConfig(config)` — Update configuration at runtime without recreating the system
+- `getActiveParticleCount()` — Number of currently alive particles (O(1))
 
 ## Key Configuration Properties
 
@@ -252,11 +253,16 @@ For fine-grained control, you can also use `registerTSLMaterialFactory()` to sel
 
 ### SimulationBackend
 
-| Value | WebGPU Renderer | WebGL Renderer |
-|-------|----------------|----------------|
+| Value | WebGPU path registered (`enableWebGPU()`) | Not registered |
+|-------|------------------------------------------|----------------|
 | `AUTO` (default) | GPU compute | CPU (JavaScript) |
 | `CPU` | CPU (JavaScript) | CPU (JavaScript) |
-| `GPU` | GPU compute | CPU (fallback) |
+| `GPU` | GPU compute | CPU (JavaScript) |
+
+Note: the library never inspects the renderer on its own — the decision is
+based on whether `enableWebGPU()` registered the WebGPU path. Call
+`enableWebGPU(renderer)` (returns boolean) to skip registration automatically
+when the renderer cannot dispatch compute shaders (e.g. `WebGLRenderer`).
 
 ### What runs on GPU
 
@@ -270,7 +276,12 @@ For fine-grained control, you can also use `registerTSLMaterialFactory()` to sel
 
 - Emission (particle activation, burst scheduling, rate-over-distance)
 - Sub-emitter spawning (birth/death triggers; sub-emitters are forced to CPU backend)
-- Configuration changes (`updateConfig`)
+- Configuration changes (`updateConfig`) — note: on the GPU backend, modifier
+  flags and lifetime curves (sizeOverLifetime, opacityOverLifetime,
+  colorOverLifetime, rotationOverLifetime, velocityOverLifetime,
+  noise.isActive) are baked into the compute kernel at creation and cannot be
+  changed live (a console warning is logged); recreate the system instead.
+  On the CPU backend all of these update live.
 - Trail renderer (`RendererType.TRAIL` always uses CPU simulation)
 
 ### Compute dispatch
@@ -285,9 +296,9 @@ if (system.computeNode) {
 
 ### Fallback behavior
 
-- If `enableWebGPU()` not called (or no TSL factory registered): uses GLSL shaders (WebGL path)
-- If `GPU` requested but renderer lacks compute: silently falls back to CPU
-- Same `ParticleSystemConfig` works on both backends — no config changes needed
+- If `enableWebGPU()` not called (or no TSL factory registered): uses GLSL shaders (WebGL path) and CPU simulation
+- If `enableWebGPU(renderer)` is called with a renderer that lacks compute support: registration is skipped with a console warning; everything stays on the CPU/GLSL path
+- Same `ParticleSystemConfig` works on both backends — but see the `updateConfig` GPU limitation above
 
 ## Usage with React Three Fiber
 

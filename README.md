@@ -26,7 +26,7 @@ Particle system for ThreeJS.
 *   Trail / Ribbon renderer (`RendererType.TRAIL`) — continuous ribbon trails behind particles with configurable width, opacity, and color tapering.
 *   Mesh particle renderer (`RendererType.MESH`) — render each particle as a 3D mesh (debris, gems, coins) using GPU instancing with full 3D rotation and simple directional lighting.
 *   Soft particles — depth-based alpha fade near opaque geometry, eliminating hard intersection lines.
-*   **WebGPU compute support** — GPU compute shaders for particle simulation (gravity, velocity, modifiers, force fields, noise) via Three.js TSL. Enables 50K-350K+ particles at full framerate. Automatic fallback to CPU when WebGPU is unavailable.
+*   **WebGPU compute support** — GPU compute shaders for particle simulation (gravity, velocity, modifiers, force fields, noise) via Three.js TSL. Enables 50K-350K+ particles at full framerate. Pass your renderer to `enableWebGPU(renderer)` for automatic CPU fallback when WebGPU is unavailable.
 *   TypeDoc API documentation available.
 
 # Live Demo & Examples
@@ -169,14 +169,17 @@ Optional GPU-accelerated particle simulation via Three.js WebGPU renderer and TS
 ## Setup
 
 ```typescript
-// 1. Enable WebGPU support (once, before creating any particle system)
-import { enableWebGPU } from "@newkrok/three-particles/webgpu";
-enableWebGPU();
-
-// 2. Create a WebGPU renderer
+// 1. Create a WebGPU renderer
 import * as THREE from "three/webgpu";
 const renderer = new THREE.WebGPURenderer({ antialias: true });
 await renderer.init();
+
+// 2. Enable WebGPU support (once, before creating any particle system).
+// Passing the renderer enables capability detection: with a renderer that
+// cannot run compute shaders (e.g. WebGLRenderer) registration is skipped
+// with a warning and the library keeps using the CPU/GLSL path.
+import { enableWebGPU } from "@newkrok/three-particles/webgpu";
+const gpuEnabled = enableWebGPU(renderer); // returns boolean
 // No special outputColorSpace handling needed — the library follows the
 // standard three.js linear workflow (user colors sRGB, shader math linear,
 // renderer converts on output). Leave outputColorSpace at its default
@@ -209,9 +212,14 @@ For fine-grained control, you can also use `registerTSLMaterialFactory()` to sel
 
 | Value | Behavior |
 |-------|----------|
-| `AUTO` (default) | GPU compute if WebGPU renderer detected, else CPU |
+| `AUTO` (default) | GPU compute when the WebGPU path is registered (`enableWebGPU()`), else CPU |
 | `CPU` | Always JavaScript update loop (works with any renderer) |
-| `GPU` | Request GPU compute; falls back to CPU if renderer lacks compute support |
+| `GPU` | Same as `AUTO` — GPU compute requires the registered WebGPU path |
+
+> **Note:** the library never inspects your renderer on its own — the backend
+> decision is based on whether `enableWebGPU()` registered the WebGPU path.
+> Pass your renderer to `enableWebGPU(renderer)` so registration is skipped
+> automatically when the renderer cannot dispatch compute shaders.
 
 ## What Runs on GPU
 
@@ -230,9 +238,9 @@ For fine-grained control, you can also use `registerTSLMaterialFactory()` to sel
 ## Fallback Behavior
 
 WebGPU is fully opt-in and non-breaking:
-- If `enableWebGPU()` not called (or no TSL factory registered), the library uses GLSL shaders (WebGL path)
-- If `simulationBackend: 'GPU'` but WebGPU is unavailable, it silently falls back to CPU
-- The same particle config works identically on both backends
+- If `enableWebGPU()` is not called (or no TSL factory registered), the library uses GLSL shaders (WebGL path) and CPU simulation
+- If `enableWebGPU(renderer)` is called with a renderer that lacks compute support, registration is skipped with a console warning and everything stays on the CPU/GLSL path
+- The same particle config produces the same visuals on both backends. One difference: on the GPU backend, modifier flags and lifetime curves (`sizeOverLifetime`, `colorOverLifetime`, etc.) are baked into the compute kernel at creation, so `updateConfig()` cannot change them live (a warning is logged) — recreate the system instead. On the CPU backend these update live.
 
 # Documentation
 
