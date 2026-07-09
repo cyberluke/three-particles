@@ -737,6 +737,7 @@ export const createParticleSystem = (
     orbitalVelocityData: undefined,
     lifetimeValues: {},
     creationTimes: [],
+    cpuDirtyParticleWatermark: -1,
     noise: {
       isActive: false,
       strength: 0,
@@ -1451,8 +1452,8 @@ export const createParticleSystem = (
         particleIndex
       );
     } else {
-      // Partial-upload hint: only this particle's scalar slice changed.
-      scalarInterleavedBuffer.addUpdateRange(base, SCALAR_STRIDE);
+      if (particleIndex > generalData.cpuDirtyParticleWatermark)
+        generalData.cpuDirtyParticleWatermark = particleIndex;
       scalarInterleavedBuffer.needsUpdate = true;
     }
     freeList.push(particleIndex);
@@ -1622,7 +1623,8 @@ export const createParticleSystem = (
         aPosition.array[positionIndex + 2] = position.z + oz;
       }
       if (!useGPUCompute) {
-        (aPosition as THREE.BufferAttribute).addUpdateRange(positionIndex, 3);
+        if (particleIndex > generalData.cpuDirtyParticleWatermark)
+          generalData.cpuDirtyParticleWatermark = particleIndex;
         aPosition.needsUpdate = true;
       }
     }
@@ -1743,7 +1745,8 @@ export const createParticleSystem = (
       );
       // Modifiers run on GPU — no CPU applyModifiers needed
     } else {
-      scalarInterleavedBuffer.addUpdateRange(base, SCALAR_STRIDE);
+      if (particleIndex > generalData.cpuDirtyParticleWatermark)
+        generalData.cpuDirtyParticleWatermark = particleIndex;
       scalarInterleavedBuffer.needsUpdate = true;
 
       applyModifiers({
@@ -2943,9 +2946,8 @@ const updateParticleSystemInstance = (
 
     let positionNeedsUpdate = false;
     let scalarNeedsUpdate = false;
-    // Highest particle index written this frame. Particles fill from low
-    // indices (the free list pops ascending), so [0, maxTouched] is a
-    // superset of every write — used as a partial-upload hint below.
+    // Highest particle index written this frame — merged into the monotonic
+    // generalData.cpuDirtyParticleWatermark used by the partial-upload flush.
     let maxTouchedIndex = -1;
 
     _modifierUpdateFlags.position = false;
@@ -3033,22 +3035,10 @@ const updateParticleSystemInstance = (
     if (_modifierUpdateFlags.position) positionNeedsUpdate = true;
     if (_modifierUpdateFlags.quat && ma.quat) ma.quat.needsUpdate = true;
 
-    if (positionNeedsUpdate) {
-      if (maxTouchedIndex >= 0)
-        (ma.position as THREE.BufferAttribute).addUpdateRange(
-          0,
-          (maxTouchedIndex + 1) * 3
-        );
-      ma.position.needsUpdate = true;
-    }
-    if (scalarNeedsUpdate) {
-      if (maxTouchedIndex >= 0)
-        props.scalarInterleavedBuffer.addUpdateRange(
-          0,
-          (maxTouchedIndex + 1) * SCALAR_STRIDE
-        );
-      props.scalarInterleavedBuffer.needsUpdate = true;
-    }
+    if (maxTouchedIndex > generalData.cpuDirtyParticleWatermark)
+      generalData.cpuDirtyParticleWatermark = maxTouchedIndex;
+    if (positionNeedsUpdate) ma.position.needsUpdate = true;
+    if (scalarNeedsUpdate) props.scalarInterleavedBuffer.needsUpdate = true;
   } // end of CPU/GPU compute branch
 
   if (isEnabled && (looping || lifetime < duration * 1000)) {
@@ -3063,9 +3053,13 @@ const updateParticleSystemInstance = (
       // Time-based emission uses a fractional accumulator: flooring the
       // per-frame amount would systematically drop the remainder (e.g. a
       // rate of 100/s at 60 FPS is ~1.66 particles per frame — flooring
-      // emits only 60/s). The fraction below 1 carries over; the integer
-      // part is consumed immediately, so a starved system never dumps a
-      // backlog burst either.
+      // emits only 60/s). The fraction below 1 carries over. The integer
+      // part is consumed immediately even when the pool is exhausted, so
+      // overflow emissions are dropped (Unity semantics) and a saturated
+      // system refills freed slots at rate speed instead of instantly.
+      // Note: pauseEmitter/resumeEmitter can still produce one pool-bounded
+      // burst on resume because lastEmissionTime goes stale while disabled
+      // (pre-existing behavior).
       if (emission.rateOverTime) {
         props.emissionAccumulator +=
           calculateValue(
@@ -3220,6 +3214,27 @@ const updateParticleSystemInstance = (
     onComplete({
       particleSystem,
     });
+
+  // Partial-upload hint (CPU path): replace any pending ranges with a single
+  // range covering [0, watermark]. The watermark is the monotonic maximum of
+  // every particle index ever written, so this one range is a covering
+  // superset of all writes since the last GPU upload no matter when the
+  // renderer actually consumes it — and clearing first keeps the pending
+  // range list at a constant size even when the system is updated while
+  // hidden or frustum-culled (never rendered → three.js never clears it).
+  if (!useGPUCompute) {
+    const watermark = generalData.cpuDirtyParticleWatermark;
+    if (watermark >= 0) {
+      const posAttr = ma.position as THREE.BufferAttribute;
+      posAttr.clearUpdateRanges();
+      posAttr.addUpdateRange(0, (watermark + 1) * 3);
+      props.scalarInterleavedBuffer.clearUpdateRanges();
+      props.scalarInterleavedBuffer.addUpdateRange(
+        0,
+        (watermark + 1) * SCALAR_STRIDE
+      );
+    }
+  }
 
   // Trail geometry update: record position history and rebuild ribbon
   if (props.trailMesh) {

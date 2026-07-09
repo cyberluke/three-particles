@@ -240,6 +240,28 @@ describe('CPU buffer upload hints', () => {
     expect(scalarBuffer.updateRanges.length).toBeGreaterThan(0);
     ps.dispose();
   });
+
+  test('pending update ranges stay bounded without a render consuming them', () => {
+    // Systems updated while hidden/culled are never drawn, so three.js never
+    // clears updateRanges — the flush must keep the list at a constant size.
+    const { ps, step } = createTestSystem({ emission: { rateOverTime: 100 } });
+    for (let i = 1; i <= 200; i++) step(i * 16);
+    const points = ps.instance as THREE.Points;
+    const posAttr = points.geometry.attributes
+      .position as THREE.BufferAttribute;
+    const scalarBuffer = (
+      points.geometry.attributes.isActive as THREE.InterleavedBufferAttribute
+    ).data;
+
+    expect(posAttr.updateRanges.length).toBe(1);
+    expect(scalarBuffer.updateRanges.length).toBe(1);
+    // The single range must cover every active particle's slice.
+    const activeCount = ps.getActiveParticleCount!();
+    expect(posAttr.updateRanges[0].count).toBeGreaterThanOrEqual(
+      activeCount * 3
+    );
+    ps.dispose();
+  });
 });
 
 describe('applyModifiers updateFlags aggregation', () => {

@@ -1735,6 +1735,14 @@ export type GeneralData = {
   trailPrevFilledCount?: Uint16Array;
 
   /**
+   * Highest particle index ever written on the CPU path (monotonic).
+   * The per-frame buffer flush uploads `[0, watermark]` as a single update
+   * range — a provably covering superset of every write since the last GPU
+   * upload, independent of render timing. -1 = nothing written yet.
+   */
+  cpuDirtyParticleWatermark: number;
+
+  /**
    * Pre-resolved lifetime-curve functions for the size / opacity / color
    * modifiers (scale already applied). Resolved once at system creation and
    * re-resolved by `updateConfig` — evaluating these per particle per frame
