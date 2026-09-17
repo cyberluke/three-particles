@@ -1945,8 +1945,8 @@ export type ParticleSystem = {
    * from the internal free list, no buffer scan.
    */
   getActiveParticleCount?: () => number;
-  /** GPU compute node for WebGPU dispatch. Call `renderer.compute(computeNode)` before `renderer.render()`. Null when CPU simulation. */
-  computeNode: unknown | null;
+  /** Ordered WebGPU compute nodes, dispatched in order. `renderer.compute(...)` accepts a single `Node` or an array; the GPU-only engine returns the [emitNode, simNode] pair. */
+  computeNode: unknown | unknown[] | null;
   /**
    * Updates the particle system configuration at runtime without recreating the system.
    *

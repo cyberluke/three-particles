@@ -1056,7 +1056,7 @@ export const createParticleSystem = (
     update,
     updateConfig,
     getActiveParticleCount: () => maxParticles,
-    computeNode: pipeline.computeNodes ? pipeline.computeNodes[1] ?? pipeline.computeNode : pipeline.computeNode,
+    computeNode: pipeline.computeNodes ?? pipeline.computeNode,
   } as ParticleSystem;
 };
 
