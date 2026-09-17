@@ -109,7 +109,7 @@ export {
 let _particleSystemId = 0;
 let createdParticleSystems: Array<ParticleSystemInstance> = [];
 
-// ─── GPU Compute Uniform Helpers ────────────────────────────────────────────
+// ????????? GPU Compute Uniform Helpers ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 // Centralise the `as unknown as` casts for setting TSL uniform values.
 // The TSL uniform nodes expose `.value` at runtime but their TypeScript
 // type (`ShaderNodeObject<Node>`) does not declare it.
@@ -126,7 +126,7 @@ const setUniformVec3 = (u: unknown, x: number, y: number, z: number): void => {
   ).value.set(x, y, z);
 };
 
-// ─── WebGPU TSL Material Support (opt-in via registerTSLMaterialFactory) ─────
+// ????????? WebGPU TSL Material Support (opt-in via registerTSLMaterialFactory) ???????????????
 
 type TSLMaterialFactory = {
   createTSLParticleMaterial: (
@@ -149,7 +149,7 @@ type TSLMaterialFactory = {
       depthWrite: boolean;
     }
   ) => THREE.Material;
-  // GPU compute functions — use opaque types to avoid pulling WebGPU/TSL
+  // GPU compute functions ??? use opaque types to avoid pulling WebGPU/TSL
   // types into the DTS output.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   createComputePipeline?: (...args: any[]) => any;
@@ -173,7 +173,7 @@ let _tslMaterialFactory: TSLMaterialFactory | null = null;
  * Registers the TSL (Three Shading Language) material factory for WebGPU support.
  *
  * Call this **once** before creating any particle systems that use WebGPU rendering.
- * The factory functions are imported from the `@newkrok/three-particles/webgpu` sub-module.
+ * The factory functions are imported from the `@cyberluke/three-particles/webgpu` sub-module.
  *
  * When registered, all particle systems will use TSL-based `NodeMaterial` (compiles to WGSL)
  * instead of GLSL `ShaderMaterial`. If the factory also includes the GPU compute functions
@@ -184,7 +184,7 @@ let _tslMaterialFactory: TSLMaterialFactory | null = null;
  *
  * @example
  * ```typescript
- * import { registerTSLMaterialFactory } from '@newkrok/three-particles';
+ * import { registerTSLMaterialFactory } from '@cyberluke/three-particles';
  * import {
  *   createTSLParticleMaterial,
  *   createTSLTrailMaterial,
@@ -194,7 +194,7 @@ let _tslMaterialFactory: TSLMaterialFactory | null = null;
  *   flushEmitQueue,
  *   registerCurveDataLength,
  *   encodeForceFieldsForGPU,
- * } from '@newkrok/three-particles/webgpu';
+ * } from '@cyberluke/three-particles/webgpu';
  *
  * registerTSLMaterialFactory({
  *   createTSLParticleMaterial,
@@ -223,7 +223,7 @@ export const registerTSLMaterialFactory = (
   ) {
     // eslint-disable-next-line no-console
     console.warn(
-      'three-particles: registerTSLMaterialFactory skipped — the provided ' +
+      'three-particles: registerTSLMaterialFactory skipped ??? the provided ' +
         'renderer does not support compute dispatches (expected ' +
         'THREE.WebGPURenderer). Particle systems will use the CPU/GLSL path.'
     );
@@ -272,7 +272,7 @@ const _trailPerp = new THREE.Vector3();
 const _trailToCam = new THREE.Vector3();
 const _distanceStep = { x: 0, y: 0, z: 0 };
 const _tempPosition = { x: 0, y: 0, z: 0 };
-// Aggregated needsUpdate flags filled by applyModifiers — the attribute
+// Aggregated needsUpdate flags filled by applyModifiers ??? the attribute
 // version counter is bumped once per frame instead of once per particle.
 const _modifierUpdateFlags = { position: false, quat: false };
 const _modifierParams = {
@@ -310,7 +310,7 @@ const _collisionParams = {
 // allocation every rendered frame).
 const _viewportSize = new THREE.Vector2();
 // Timestamp of the frame currently being processed by
-// updateParticleSystemInstance — read by the per-system killParticle
+// updateParticleSystemInstance ??? read by the per-system killParticle
 // callbacks so they don't need a per-frame closure.
 let _frameNow = 0;
 
@@ -362,7 +362,7 @@ const normalizeCollisionPlanes = (
  *
  * @example
  * ```typescript
- * import { blendingMap } from '@newkrok/three-particles';
+ * import { blendingMap } from '@cyberluke/three-particles';
  *
  * // Convert string to Three.js constant
  * const blending = blendingMap['THREE.AdditiveBlending'];
@@ -387,7 +387,7 @@ export const blendingMap = {
  *
  * @example
  * ```typescript
- * import { getDefaultParticleSystemConfig, createParticleSystem } from '@newkrok/three-particles';
+ * import { getDefaultParticleSystemConfig, createParticleSystem } from '@cyberluke/three-particles';
  *
  * // Get default config and modify it
  * const config = getDefaultParticleSystemConfig();
@@ -676,7 +676,7 @@ const destroyParticleSystem = (particleSystem: THREE.Points | THREE.Mesh) => {
  *
  * @example
  * ```typescript
- * import { createParticleSystem, updateParticleSystems } from '@newkrok/three-particles';
+ * import { createParticleSystem, updateParticleSystems } from '@cyberluke/three-particles';
  *
  * // Create a basic particle system with default settings
  * const { instance, dispose } = createParticleSystem();
@@ -804,7 +804,7 @@ export const createParticleSystem = (
     renderer.blending = blendingMap[renderer.blending];
 
   // Pre-resolve lifetime-curve functions once. applyModifiers evaluates
-  // size/opacity/color multipliers per particle per frame — resolving the
+  // size/opacity/color multipliers per particle per frame ??? resolving the
   // curve function there (bezier cache scan + closure allocations) dominated
   // the CPU-path modifier cost. Non-curve values (constants, random ranges)
   // stay undefined and fall back to calculateValue in applyModifiers.
@@ -1172,7 +1172,7 @@ export const createParticleSystem = (
   };
 
   // Determine whether to use TSL materials (WebGPU path).
-  // TSL is used whenever the factory is registered — regardless of simulationBackend.
+  // TSL is used whenever the factory is registered ??? regardless of simulationBackend.
   // This ensures WebGPURenderer always gets NodeMaterial (not GLSL ShaderMaterial).
   const useTSL = _tslMaterialFactory !== null;
 
@@ -1283,7 +1283,7 @@ export const createParticleSystem = (
 
   // Create interleaved buffer for all scalar per-particle attributes.
   // In GPU compute mode this is kept for CPU death detection reads only
-  // (not set as geometry attributes — storage buffers are used instead).
+  // (not set as geometry attributes ??? storage buffers are used instead).
   const scalarArray = new Float32Array(maxParticles * SCALAR_STRIDE);
 
   // Pre-fill initial values
@@ -1303,7 +1303,7 @@ export const createParticleSystem = (
     scalarArray[base + S_SIZE] = generalData.startValues.startSize[i];
     scalarArray[base + S_ROTATION] = 0;
     // User color inputs are sRGB; the buffer stores linear so that shader
-    // math, texture modulation, and the renderer's linear→sRGB output pass
+    // math, texture modulation, and the renderer's linear???sRGB output pass
     // all agree. See docs/color-pipeline-standardization-plan.md.
     const colorRandomRatio = Math.random();
     scalarArray[base + S_COLOR_R] = sRGBToLinear(
@@ -1326,12 +1326,12 @@ export const createParticleSystem = (
   const scalarInterleavedBuffer = useInstancedAttributes
     ? new THREE.InstancedInterleavedBuffer(scalarArray, SCALAR_STRIDE)
     : new THREE.InterleavedBuffer(scalarArray, SCALAR_STRIDE);
-  // The scalar buffer is rewritten every frame on the CPU path — tell the
+  // The scalar buffer is rewritten every frame on the CPU path ??? tell the
   // driver so it allocates the GL buffer accordingly.
   scalarInterleavedBuffer.setUsage(THREE.DynamicDrawUsage);
 
   if (useGPUCompute && gpuPipeline) {
-    // ── GPU Compute Path: use storage buffers as geometry attributes ──
+    // ?????? GPU Compute Path: use storage buffers as geometry attributes ??????
     // StorageBufferAttribute extends BufferAttribute, so these work as
     // geometry attributes read by the TSL material.
     // GPU path: 5 geometry attributes total (under 8 vertex buffer limit)
@@ -1346,7 +1346,7 @@ export const createParticleSystem = (
     geometry.setAttribute(attr('particleState'), gpuBuf.particleState);
     geometry.setAttribute(attr('startValues'), gpuBuf.startValues);
   } else {
-    // ── CPU Path: position + interleaved scalar attributes ──
+    // ?????? CPU Path: position + interleaved scalar attributes ??????
     const positionArray = new Float32Array(maxParticles * 3);
     for (let i = 0; i < maxParticles; i++) {
       positionArray[i * 3] = startPositions[i].x;
@@ -1356,7 +1356,7 @@ export const createParticleSystem = (
     const positionAttribute = useInstancedAttributes
       ? new THREE.InstancedBufferAttribute(positionArray, 3)
       : new THREE.BufferAttribute(positionArray, 3);
-    // Positions are integrated every frame — dynamic usage hint for the driver.
+    // Positions are integrated every frame ??? dynamic usage hint for the driver.
     positionAttribute.setUsage(THREE.DynamicDrawUsage);
     geometry.setAttribute(posAttr, positionAttribute);
 
@@ -1405,7 +1405,7 @@ export const createParticleSystem = (
       )
     );
     // Packed RGBA color as single vec4 (R/G/B/A are contiguous in the
-    // interleaved buffer at offsets 6,7,8,9 — read as a vec4 from offset 6)
+    // interleaved buffer at offsets 6,7,8,9 ??? read as a vec4 from offset 6)
     geometry.setAttribute(
       attr('color'),
       new THREE.InterleavedBufferAttribute(
@@ -1417,7 +1417,7 @@ export const createParticleSystem = (
   }
 
   // Packed quaternion vec4 attribute for 3D mesh rotation (only for MESH renderer,
-  // CPU path only — GPU compute derives quaternion from particleState.z in the shader)
+  // CPU path only ??? GPU compute derives quaternion from particleState.z in the shader)
   if (useMesh && !useGPUCompute) {
     const quatArray = new Float32Array(maxParticles * 4);
     // Initialize to identity quaternion (0, 0, 0, 1)
@@ -1497,7 +1497,7 @@ export const createParticleSystem = (
     if (generalData.noise.offsets)
       generalData.noise.offsets[particleIndex] = Math.random() * 100;
 
-    // sRGB → linear on emit; buffer + startValues mirrors both store linear.
+    // sRGB ??? linear on emit; buffer + startValues mirrors both store linear.
     // See docs/color-pipeline-standardization-plan.md.
     const colorRandomRatio = Math.random();
     const cfgStartColor = normalizedConfig.startColor;
@@ -1589,8 +1589,8 @@ export const createParticleSystem = (
       velocities[particleIndex]
     );
     // GPU compute: position is set via the emit scatter in the compute shader
-    // (writeParticleToModifierBuffers queues it). Do NOT set needsUpdate —
-    // that triggers a full CPU→GPU upload that overwrites GPU-computed
+    // (writeParticleToModifierBuffers queues it). Do NOT set needsUpdate ???
+    // that triggers a full CPU???GPU upload that overwrites GPU-computed
     // positions for all particles.
     // However, we still write the CPU-side array so death sub-emitters can
     // read the particle's approximate position without GPU readback.
@@ -1743,7 +1743,7 @@ export const createParticleSystem = (
           },
         }
       );
-      // Modifiers run on GPU — no CPU applyModifiers needed
+      // Modifiers run on GPU ??? no CPU applyModifiers needed
     } else {
       if (particleIndex > generalData.cpuDirtyParticleWatermark)
         generalData.cpuDirtyParticleWatermark = particleIndex;
@@ -1783,7 +1783,7 @@ export const createParticleSystem = (
       const sub = instances[i];
       let hasActive: boolean;
       if (sub.getActiveParticleCount) {
-        // O(1) via the free list — avoids scanning every particle of every
+        // O(1) via the free list ??? avoids scanning every particle of every
         // instance each time the instance cap is hit.
         hasActive = sub.getActiveParticleCount() > 0;
       } else {
@@ -1972,7 +1972,7 @@ export const createParticleSystem = (
       map: { value: particleMap },
       useMap: { value: !!particleMap },
       discardBackgroundColor: { value: renderer.discardBackgroundColor },
-      // sRGB → linear so the trail fragment comparison matches the
+      // sRGB ??? linear so the trail fragment comparison matches the
       // (now linear) texture sample and vertex color.
       backgroundColor: { value: rgbSRGBToLinear(renderer.backgroundColor) },
       backgroundColorTolerance: { value: renderer.backgroundColorTolerance },
@@ -2145,7 +2145,7 @@ export const createParticleSystem = (
         );
         // Convert local particle position to world space so the sub-emitter
         // spawns at the correct scene position regardless of transform offset.
-        // updateMatrixWorld() guarantees the transform is fresh — otherwise a
+        // updateMatrixWorld() guarantees the transform is fresh ??? otherwise a
         // parent moved after the last scene traversal would place the spawn
         // at a stale position.
         if (simulationSpace === SimulationSpace.LOCAL) {
@@ -2176,7 +2176,7 @@ export const createParticleSystem = (
         );
         // Convert local particle position to world space so the sub-emitter
         // spawns at the correct scene position regardless of transform offset.
-        // updateMatrixWorld() guarantees the transform is fresh — otherwise a
+        // updateMatrixWorld() guarantees the transform is fresh ??? otherwise a
         // parent moved after the last scene traversal would place the spawn
         // at a stale position.
         if (simulationSpace === SimulationSpace.LOCAL) {
@@ -2303,7 +2303,7 @@ export const createParticleSystem = (
       instanceData.simulationSpace !== cfg.simulationSpace
     ) {
       // Switching simulation space live. The existing buffer of active
-      // particles is in the _old_ frame — rather than walk the buffer and
+      // particles is in the _old_ frame ??? rather than walk the buffer and
       // convert every position (which still wouldn't reproduce the visual
       // continuity the old frame had), we deactivate the live particles
       // so the system re-emits from the new frame's origin cleanly. New
@@ -2371,7 +2371,7 @@ export const createParticleSystem = (
       };
     }
 
-    // Re-resolve pre-baked modifier curve functions — the CPU update loop
+    // Re-resolve pre-baked modifier curve functions ??? the CPU update loop
     // reads these instead of re-resolving curves per particle per frame.
     if (
       partialConfig.sizeOverLifetime !== undefined ||
@@ -2391,7 +2391,7 @@ export const createParticleSystem = (
     }
 
     // GPU compute bakes modifier activation flags and lifetime curves into
-    // the compute kernel at creation — these cannot change live.
+    // the compute kernel at creation ??? these cannot change live.
     if (instanceData.useGPUCompute) {
       const gpuBakedKeys = [
         'sizeOverLifetime',
@@ -2405,7 +2405,7 @@ export const createParticleSystem = (
           // eslint-disable-next-line no-console
           console.warn(
             `three-particles: updateConfig('${key}') has no effect on the ` +
-              'GPU compute backend — modifier curves are baked into the ' +
+              'GPU compute backend ??? modifier curves are baked into the ' +
               'compute kernel at creation. Recreate the system to change it.'
           );
         }
@@ -2414,7 +2414,7 @@ export const createParticleSystem = (
         // eslint-disable-next-line no-console
         console.warn(
           "three-particles: updateConfig('noise.isActive') has no effect on " +
-            'the GPU compute backend — the noise toggle is baked into the ' +
+            'the GPU compute backend ??? the noise toggle is baked into the ' +
             'compute kernel at creation. Recreate the system to change it.'
         );
       }
@@ -2466,7 +2466,7 @@ export const createParticleSystem = (
  *
  * @example
  * ```typescript
- * import { createParticleSystem, updateParticleSystems } from '@newkrok/three-particles';
+ * import { createParticleSystem, updateParticleSystems } from '@cyberluke/three-particles';
  *
  * const { instance } = createParticleSystem({
  *   // your config
@@ -2501,7 +2501,7 @@ export const createParticleSystem = (
  * ```typescript
  * // Using Three.js Clock for timing
  * import * as THREE from 'three';
- * import { updateParticleSystems } from '@newkrok/three-particles';
+ * import { updateParticleSystems } from '@cyberluke/three-particles';
  *
  * const clock = new THREE.Clock();
  *
@@ -2587,13 +2587,13 @@ const updateParticleSystemInstance = (
 
   // Emitter pose for this frame.
   //
-  // WORLD: build sourceWorldMatrix explicitly (parent.matrixWorld × local).
+  // WORLD: build sourceWorldMatrix explicitly (parent.matrixWorld ?? local).
   //   The particle buffer stores world coordinates, so particleSystem's own
   //   matrixWorld is held at identity (see matrixWorldAutoUpdate=false in
   //   createParticleSystem). sourceWorldMatrix is used to place new
   //   particles and orient the emission shape.
   //
-  // LOCAL: standard Three.js — matrixWorld is fully parent-composed at
+  // LOCAL: standard Three.js ??? matrixWorld is fully parent-composed at
   //   render time, particles live in the local frame, and emissions use
   //   the identity quaternion (no rotation of the shape offset).
   if (simulationSpace === SimulationSpace.WORLD) {
@@ -2642,8 +2642,8 @@ const updateParticleSystemInstance = (
   //
   // In LOCAL simulation the buffer is in the emitter's local frame, so
   // gravity is rotated by the inverse of the emitter's world rotation AND
-  // divided by the emitter's world scale — this way the rendered fall
-  // matches -g m/s² in world units, independent of how the emitter is
+  // divided by the emitter's world scale ??? this way the rendered fall
+  // matches -g m/s?? in world units, independent of how the emitter is
   // rotated or scaled by its parent chain.
   if (simulationSpace === SimulationSpace.WORLD) {
     gravityVelocity.set(0, gravity, 0);
@@ -2661,7 +2661,7 @@ const updateParticleSystemInstance = (
 
   // Force field positions/directions are user-authored in world space.
   //
-  // WORLD simulation: buffer is already in world space — copy through.
+  // WORLD simulation: buffer is already in world space ??? copy through.
   // LOCAL simulation: transform into the emitter's local frame so field
   //   positions and directions match the particle buffer's frame.
   if (hasForceFields) {
@@ -2707,7 +2707,7 @@ const updateParticleSystemInstance = (
     }
   }
 
-  // Collision plane positions/normals — same policy as force fields.
+  // Collision plane positions/normals ??? same policy as force fields.
   if (hasCollisionPlanes) {
     if (simulationSpace === SimulationSpace.LOCAL && !hasForceFields) {
       _inverseQuat.copy(worldQuaternion).invert();
@@ -2754,7 +2754,7 @@ const updateParticleSystemInstance = (
   const positionArr = ma.position.array;
   const creationTimesLength = creationTimes.length;
 
-  // ── GPU Compute Path ──────────────────────────────────────────────────
+  // ?????? GPU Compute Path ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
   // When GPU compute is active, all per-particle physics AND modifiers
   // (gravity, velocity, position, lifetime, size/opacity/color/rotation
   // over lifetime, noise, orbital velocity, force fields) run on the GPU
@@ -2811,7 +2811,7 @@ const updateParticleSystemInstance = (
       );
       const curveArr = cp.buffers.curveData.array as Float32Array;
       const offset = cp.forceFieldInfo.offset;
-      // Only re-upload when the encoded data actually changed — static
+      // Only re-upload when the encoded data actually changed ??? static
       // force fields would otherwise be uploaded every frame.
       if (!arraySlicesEqual(curveArr, offset, encodedFF, 0, encodedFF.length)) {
         curveArr.set(encodedFF, offset);
@@ -2846,7 +2846,7 @@ const updateParticleSystemInstance = (
       );
     }
 
-    // Flush emit queue — uploads queued particle data to GPU and sets the
+    // Flush emit queue ??? uploads queued particle data to GPU and sets the
     // emit count uniform so the compute shader's scatter pass can initialise
     // newly emitted particles without overwriting existing GPU state.
     if (_tslMaterialFactory?.flushEmitQueue) {
@@ -2860,7 +2860,7 @@ const updateParticleSystemInstance = (
     // When death sub-emitters exist we also run a lightweight CPU shadow
     // simulation (velocity integration, gravity, orbital velocity, force
     // fields) so that positionArr contains an approximate current position
-    // instead of the stale emission-time value — the GPU buffer is not
+    // instead of the stale emission-time value ??? the GPU buffer is not
     // readable from the CPU without an async readback.
     if (hasForceFields) {
       _forceFieldParams.particleSystemId = generalData.particleSystemId;
@@ -2888,7 +2888,7 @@ const updateParticleSystemInstance = (
           // Shadow simulation: keep CPU-side position in sync for sub-emitters.
           // We intentionally avoid calling applyModifiers() here because it
           // sets attributes.position.needsUpdate = true, which triggers a full
-          // CPU→GPU upload that overwrites GPU-computed positions for ALL
+          // CPU???GPU upload that overwrites GPU-computed positions for ALL
           // particles.  Instead we do the minimal physics inline without
           // touching needsUpdate.
           const velocity = velocities[index];
@@ -2930,7 +2930,7 @@ const updateParticleSystemInstance = (
             positionArr[positionIndex + 2] += positionOffset.z;
           }
 
-          // Collision planes (shadow sim — for KILL death detection only)
+          // Collision planes (shadow sim ??? for KILL death detection only)
           if (hasCollisionPlanes) {
             _collisionParams.velocity = velocity;
             _collisionParams.positionIndex = positionIndex;
@@ -2942,11 +2942,11 @@ const updateParticleSystemInstance = (
       }
     }
   } else {
-    // ── CPU Path ────────────────────────────────────────────────────────
+    // ?????? CPU Path ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
     let positionNeedsUpdate = false;
     let scalarNeedsUpdate = false;
-    // Highest particle index written this frame — merged into the monotonic
+    // Highest particle index written this frame ??? merged into the monotonic
     // generalData.cpuDirtyParticleWatermark used by the partial-upload flush.
     let maxTouchedIndex = -1;
 
@@ -3008,7 +3008,7 @@ const updateParticleSystemInstance = (
             positionNeedsUpdate = true;
           }
 
-          // Collision planes — after position update, before modifiers
+          // Collision planes ??? after position update, before modifiers
           if (hasCollisionPlanes) {
             _collisionParams.velocity = velocity;
             _collisionParams.positionIndex = index * 3;
@@ -3043,7 +3043,7 @@ const updateParticleSystemInstance = (
 
   if (isEnabled && (looping || lifetime < duration * 1000)) {
     // lastEmissionTime starts at creationTime (which includes startDelay and
-    // may be in the future) — a non-positive delta means emission hasn't
+    // may be in the future) ??? a non-positive delta means emission hasn't
     // started yet, so leave lastEmissionTime untouched until it has.
     const emissionDelta = now - lastEmissionTime;
     let neededParticlesByTime = 0;
@@ -3052,7 +3052,7 @@ const updateParticleSystemInstance = (
 
       // Time-based emission uses a fractional accumulator: flooring the
       // per-frame amount would systematically drop the remainder (e.g. a
-      // rate of 100/s at 60 FPS is ~1.66 particles per frame — flooring
+      // rate of 100/s at 60 FPS is ~1.66 particles per frame ??? flooring
       // emits only 60/s). The fraction below 1 carries over. The integer
       // part is consumed immediately even when the pool is exhausted, so
       // overflow emissions are dropped (Unity semantics) and a saturated
@@ -3219,9 +3219,9 @@ const updateParticleSystemInstance = (
   // range covering [0, watermark]. The watermark is the monotonic maximum of
   // every particle index ever written, so this one range is a covering
   // superset of all writes since the last GPU upload no matter when the
-  // renderer actually consumes it — and clearing first keeps the pending
+  // renderer actually consumes it ??? and clearing first keeps the pending
   // range list at a constant size even when the system is updated while
-  // hidden or frustum-culled (never rendered → three.js never clears it).
+  // hidden or frustum-culled (never rendered ??? three.js never clears it).
   if (!useGPUCompute) {
     const watermark = generalData.cpuDirtyParticleWatermark;
     if (watermark >= 0) {
@@ -3461,9 +3461,9 @@ const updateTrailGeometry = (props: ParticleSystemInstance, now: number) => {
 
   const trailScalarArr = props.scalarArray;
   const positionArr = ma.position.array;
-  // Vertex-buffer fill counts from the previous frame — cleared slots stay
+  // Vertex-buffer fill counts from the previous frame ??? cleared slots stay
   // cleared (zero alpha/half-width), so re-clearing them every frame is
-  // redundant work proportional to maxParticles × trailLength.
+  // redundant work proportional to maxParticles ?? trailLength.
   const prevFilled = generalData.trailPrevFilledCount;
 
   const trailPosArr = trailPositionAttr.array as Float32Array;
@@ -3703,7 +3703,7 @@ const updateTrailGeometry = (props: ParticleSystemInstance, now: number) => {
           const dy = finalPts[ci + 1] - finalPts[pi + 1];
           const dz = finalPts[ci + 2] - finalPts[pi + 2];
           if (dx * dx + dy * dy + dz * dz < MIN_SEG_DIST_SQ) {
-            // Snap to previous point — the shader will get a near-zero tangent
+            // Snap to previous point ??? the shader will get a near-zero tangent
             // but the vertex pair collapses to the same position, hiding it
             finalPts[ci] = finalPts[pi];
             finalPts[ci + 1] = finalPts[pi + 1];
@@ -3752,7 +3752,7 @@ const updateTrailGeometry = (props: ParticleSystemInstance, now: number) => {
         // bends instead of snapping per-segment.
         let nx: number, ny: number, nz: number;
         if (s > 0 && s < finalCount - 1) {
-          // Interior: average of (prev→current) and (current→next)
+          // Interior: average of (prev???current) and (current???next)
           const px2 = finalPts[(s - 1) * 3];
           const py2 = finalPts[(s - 1) * 3 + 1];
           const pz2 = finalPts[(s - 1) * 3 + 2];
@@ -3906,7 +3906,7 @@ const updateTrailGeometry = (props: ParticleSystemInstance, now: number) => {
             cnz /= cnLen;
           }
 
-          // Check dot product with previous normal — if negative, flip
+          // Check dot product with previous normal ??? if negative, flip
           const prevNx = prevNormal[nIdx];
           const prevNy = prevNormal[nIdx + 1];
           const prevNz = prevNormal[nIdx + 2];
@@ -3938,7 +3938,7 @@ const updateTrailGeometry = (props: ParticleSystemInstance, now: number) => {
       historyCount[index] > 0 ||
       (prevFilled && prevFilled[index] > 0)
     ) {
-      // Particle just became inactive — collapse ribbon and clear history once
+      // Particle just became inactive ??? collapse ribbon and clear history once
       hasUpdates = true;
       historyCount[index] = 0;
       historyIndex[index] = 0;
@@ -4241,7 +4241,7 @@ const updateTrailGeometry = (props: ParticleSystemInstance, now: number) => {
     }
 
     // Clear non-leader ribbon particles' trail vertices (only the slots that
-    // were actually filled — already-cleared buffers are skipped entirely)
+    // were actually filled ??? already-cleared buffers are skipped entirely)
     for (let ri = 1; ri < _ribbonCount; ri++) {
       const pIdx = _ribbonIndices[ri];
       const pVertBase = pIdx * verticesPerParticle;

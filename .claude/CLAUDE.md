@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**Package:** `@newkrok/three-particles`
+**Package:** `@cyberluke/three-particles`
 **Description:** Three.js-based high-performance particle system library for game developers and 3D applications.
 **Repository:** https://github.com/NewKrok/three-particles
 **License:** MIT
@@ -13,32 +13,32 @@
 
 ```
 src/js/effects/three-particles/
-├── index.ts                          # Public API re-exports
-├── three-particles.ts                # Core: lifecycle, emission, update loop
-├── three-particles-modifiers.ts      # Per-particle property animation
-├── three-particles-curves.ts         # 30 easing functions
-├── three-particles-bezier.ts         # Custom Bezier curve evaluation + caching
-├── three-particles-utils.ts          # Shape generators, value resolution, texture
-├── three-particles-enums.ts          # SimulationSpace, Shape, EmitFrom, etc.
-├── three-particles-forces.ts         # Force fields and attractors
-├── three-particles-collision.ts      # CPU collision plane logic
-├── three-particles-renderer-detect.ts # WebGPU renderer detection
-├── three-particles-serialization.ts  # Config save/load serialization
-├── types.ts                          # Complete TypeScript type definitions
-├── shaders/                          # GLSL shaders (points, instanced, trail, mesh)
-└── webgpu/                           # WebGPU compute + TSL materials
-    ├── tsl-materials.ts              # TSL material factory
-    ├── tsl-shared.ts                 # Shared TSL nodes (texture animation, soft particles)
-    ├── tsl-point-sprite-material.ts  # POINTS renderer TSL material
-    ├── tsl-instanced-billboard-material.ts # INSTANCED renderer TSL material
-    ├── tsl-mesh-particle-material.ts # MESH renderer TSL material
-    ├── tsl-trail-ribbon-material.ts  # TRAIL renderer TSL material
-    ├── compute-particle-update.ts    # Core physics compute shader
-    ├── compute-modifiers.ts          # All 7 modifiers compute shader
-    ├── compute-force-fields.ts       # Force field GPU compute
-    ├── compute-collision-planes.ts   # Collision plane GPU compute
-    ├── curve-bake.ts                 # Curve baking (bezier/easing → Float32Array)
-    └── tsl-noise.ts                  # 3D simplex noise in TSL
+????????? index.ts                          # Public API re-exports
+????????? three-particles.ts                # Core: lifecycle, emission, update loop
+????????? three-particles-modifiers.ts      # Per-particle property animation
+????????? three-particles-curves.ts         # 30 easing functions
+????????? three-particles-bezier.ts         # Custom Bezier curve evaluation + caching
+????????? three-particles-utils.ts          # Shape generators, value resolution, texture
+????????? three-particles-enums.ts          # SimulationSpace, Shape, EmitFrom, etc.
+????????? three-particles-forces.ts         # Force fields and attractors
+????????? three-particles-collision.ts      # CPU collision plane logic
+????????? three-particles-renderer-detect.ts # WebGPU renderer detection
+????????? three-particles-serialization.ts  # Config save/load serialization
+????????? types.ts                          # Complete TypeScript type definitions
+????????? shaders/                          # GLSL shaders (points, instanced, trail, mesh)
+????????? webgpu/                           # WebGPU compute + TSL materials
+    ????????? tsl-materials.ts              # TSL material factory
+    ????????? tsl-shared.ts                 # Shared TSL nodes (texture animation, soft particles)
+    ????????? tsl-point-sprite-material.ts  # POINTS renderer TSL material
+    ????????? tsl-instanced-billboard-material.ts # INSTANCED renderer TSL material
+    ????????? tsl-mesh-particle-material.ts # MESH renderer TSL material
+    ????????? tsl-trail-ribbon-material.ts  # TRAIL renderer TSL material
+    ????????? compute-particle-update.ts    # Core physics compute shader
+    ????????? compute-modifiers.ts          # All 7 modifiers compute shader
+    ????????? compute-force-fields.ts       # Force field GPU compute
+    ????????? compute-collision-planes.ts   # Collision plane GPU compute
+    ????????? curve-bake.ts                 # Curve baking (bezier/easing ??? Float32Array)
+    ????????? tsl-noise.ts                  # 3D simplex noise in TSL
 ```
 
 **Tests:** `src/__tests__/*.test.ts`
@@ -51,18 +51,18 @@ src/js/effects/three-particles/
 ## Development Guidelines
 
 ### Code Style
-- **Strict TypeScript typing** — avoid `any`
+- **Strict TypeScript typing** ??? avoid `any`
 - Follow **ESLint** and **Prettier** configurations
 - Add JSDoc comments for public APIs
-- **Performance** — avoid unnecessary allocations in update loops (hot paths)
+- **Performance** ??? avoid unnecessary allocations in update loops (hot paths)
 
 ### Commands
 
 ```bash
-npm test              # Jest — all tests must pass
+npm test              # Jest ??? all tests must pass
 npm run test:watch    # Watch mode
 npm run lint          # ESLint
-npm run build         # tsup — ESM + minified + DTS
+npm run build         # tsup ??? ESM + minified + DTS
 npx madge --circular src  # Circular dependency check
 ```
 
@@ -102,23 +102,23 @@ Pushing to `master` triggers fully automated: CI checks -> version bump -> npm p
 
 **These rules MUST be followed for every task:**
 
-1. **Every change needs tests** — No exceptions. Write tests before or alongside implementation.
-2. **Pre-commit checks must pass** — Run `npm run lint`, `npm test`, `npm run build` before every commit. Do NOT commit if any fail.
-3. **Agent orchestration** — Delegate work to sub-agents to keep the main context clean. See [Development Workflow](doc/workflow.md) for the orchestrator pattern.
-4. **Code review agent** — After completing implementation, spawn a review agent to check code quality, type safety, test coverage, performance, and security.
-5. **Keep docs up to date** — After every task, update relevant docs:
-   - `CLAUDE.md` — if new patterns, features, or structural changes
-   - `README.md` — if user-facing API changes
-   - `ROADMAP.md` — if feature status changes
-   - `llms.txt` / `llms-full.txt` — if public API changes
+1. **Every change needs tests** ??? No exceptions. Write tests before or alongside implementation.
+2. **Pre-commit checks must pass** ??? Run `npm run lint`, `npm test`, `npm run build` before every commit. Do NOT commit if any fail.
+3. **Agent orchestration** ??? Delegate work to sub-agents to keep the main context clean. See [Development Workflow](doc/workflow.md) for the orchestrator pattern.
+4. **Code review agent** ??? After completing implementation, spawn a review agent to check code quality, type safety, test coverage, performance, and security.
+5. **Keep docs up to date** ??? After every task, update relevant docs:
+   - `CLAUDE.md` ??? if new patterns, features, or structural changes
+   - `README.md` ??? if user-facing API changes
+   - `ROADMAP.md` ??? if feature status changes
+   - `llms.txt` / `llms-full.txt` ??? if public API changes
    - Remove outdated information from CLAUDE.md that is just noise in the context
-6. **Conventional commits** — Always use conventional commit format with Co-Authored-By.
+6. **Conventional commits** ??? Always use conventional commit format with Co-Authored-By.
 
 See [Development Workflow](doc/workflow.md) for the full step-by-step guide.
 
 ---
 
-## WebGPU Compute — Development Guide
+## WebGPU Compute ??? Development Guide
 
 The library supports a **dual-path architecture**: WebGL (CPU simulation + GLSL) and WebGPU (GPU compute simulation + TSL materials). See [Architecture](doc/architecture.md) for the full technical deep-dive.
 
@@ -126,26 +126,26 @@ The library supports a **dual-path architecture**: WebGL (CPU simulation + GLSL)
 
 - **Additive, non-breaking:** All WebGPU code is in `webgpu/` and the separate `src/webgpu.ts` entry point. The WebGL path is never modified.
 - **Opt-in registration:** Users call `registerTSLMaterialFactory()` to enable WebGPU. If not called, only GLSL shaders are used.
-- **Duck-typed detection:** `isComputeCapableRenderer()` checks for `.compute()` and `.hasFeature()` methods — no hard dependency on `THREE.WebGPURenderer`.
+- **Duck-typed detection:** `isComputeCapableRenderer()` checks for `.compute()` and `.hasFeature()` methods ??? no hard dependency on `THREE.WebGPURenderer`.
 - **Single compute dispatch:** All modifiers run in one GPU compute pass (compile-time branching via TSL, not runtime branching).
-- **Collision planes on GPU:** Collision planes use the same dual-path pattern as force fields — CPU logic in `three-particles-collision.ts`, GPU compute in `webgpu/compute-collision-planes.ts`. Plane data is encoded into a packed Float32Array and uploaded as a uniform buffer.
+- **Collision planes on GPU:** Collision planes use the same dual-path pattern as force fields ??? CPU logic in `three-particles-collision.ts`, GPU compute in `webgpu/compute-collision-planes.ts`. Plane data is encoded into a packed Float32Array and uploaded as a uniform buffer.
 - **Curve baking:** Lifetime curves are pre-baked to 256-sample Float32Arrays at system creation, stored in the `curveData` buffer.
 - **Sub-emitters forced to CPU:** Sub-emitters always use `SimulationBackend.CPU` because they need CPU-side death detection callbacks.
 - **Trail always CPU:** `RendererType.TRAIL` uses CPU simulation regardless of backend setting.
 
 ### When Working on WebGPU Code
 
-- **TSL materials** (`webgpu/tsl-*.ts`): Each renderer type has its own TSL material. They detect GPU compute via the `gpuCompute` flag — when true, data comes from packed vec4 storage buffers; when false, from individual float attributes.
+- **TSL materials** (`webgpu/tsl-*.ts`): Each renderer type has its own TSL material. They detect GPU compute via the `gpuCompute` flag ??? when true, data comes from packed vec4 storage buffers; when false, from individual float attributes.
 - **Compute shaders** (`webgpu/compute-*.ts`): Written in TSL (compiles to WGSL). Core physics, all 7 modifiers, and force fields run in a single dispatch.
 - **Storage buffers:** 8 vec4 bindings per system. Layout documented in [Architecture](doc/architecture.md#storage-buffer-layout).
 - **Testing:** WebGPU-specific tests are in `src/__tests__/three-particles-webgpu-integration.test.ts`. Use mock factories (no real WebGPU context in Jest).
-- **Imports:** `three/tsl` and `three/webgpu` are external — never imported from the main entry point. They're only used inside `webgpu/` files.
+- **Imports:** `three/tsl` and `three/webgpu` are external ??? never imported from the main entry point. They're only used inside `webgpu/` files.
 
 ---
 
 ## Detailed Documentation
 
-Detailed guides are in `.claude/doc/` — read these on-demand, not loaded into every conversation:
+Detailed guides are in `.claude/doc/` ??? read these on-demand, not loaded into every conversation:
 
 | Document | When to read |
 |----------|-------------|
@@ -153,7 +153,7 @@ Detailed guides are in `.claude/doc/` — read these on-demand, not loaded into 
 | [CI/CD Pipeline](doc/ci-cd.md) | Release process, workflow troubleshooting, version bump logic |
 | [Development Workflow](doc/workflow.md) | Step-by-step workflow, agent orchestration pattern, pre-commit checks |
 | [Testing Guide](doc/testing.md) | Mocking patterns, test helpers, coverage targets, writing effective tests |
-| [WebGPU Compute Plan](doc/webgpu-compute-plan.md) | Original implementation plan (all 6 phases completed) — useful as historical reference for design decisions |
+| [WebGPU Compute Plan](doc/webgpu-compute-plan.md) | Original implementation plan (all 6 phases completed) ??? useful as historical reference for design decisions |
 
 ---
 

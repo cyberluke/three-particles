@@ -27,7 +27,7 @@ const SERIALIZATION_VERSION = 1;
 type BlendingKey = keyof typeof blendingMap;
 type RawObject = Record<string, unknown>;
 
-// Reverse blending map: THREE.Blending number → string key
+// Reverse blending map: THREE.Blending number ??? string key
 const reverseBlendingMap = new Map<number, BlendingKey>(
   (Object.entries(blendingMap) as [BlendingKey, number][]).map(([k, v]) => [
     v,
@@ -35,7 +35,7 @@ const reverseBlendingMap = new Map<number, BlendingKey>(
   ])
 );
 
-// Reverse curve function map: function reference → CurveFunctionId string
+// Reverse curve function map: function reference ??? CurveFunctionId string
 const reverseCurveFunctionMap = new Map<CurveFunction, string>();
 for (const [id, fn] of Object.entries(curveFunctionIdMap) as [
   string,
@@ -44,7 +44,7 @@ for (const [id, fn] of Object.entries(curveFunctionIdMap) as [
   if (fn) reverseCurveFunctionMap.set(fn, id);
 }
 
-// ─── SERIALIZATION ───────────────────────────────────────────────────────────
+// ????????? SERIALIZATION ?????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 function serializeAny(value: unknown, key?: string): unknown {
   if (value === null || value === undefined) return value;
@@ -109,7 +109,7 @@ function serializeAny(value: unknown, key?: string): unknown {
  *
  * @example
  * ```typescript
- * import { serializeParticleSystem } from '@newkrok/three-particles';
+ * import { serializeParticleSystem } from '@cyberluke/three-particles';
  *
  * const json = serializeParticleSystem(config);
  * localStorage.setItem('myEffect', json);
@@ -120,12 +120,12 @@ export function serializeParticleSystem(config: ParticleSystemConfig): string {
   return JSON.stringify({ _version: SERIALIZATION_VERSION, ...serialized });
 }
 
-// ─── DESERIALIZATION ──────────────────────────────────────────────────────────
+// ????????? DESERIALIZATION ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 /**
  * Reconstructs a `LifetimeCurve` from its serialized form.
  * Handles:
- *  - Legacy editor format: `{ bezierPoints: [...] }` (no `type` field → treated as BEZIER)
+ *  - Legacy editor format: `{ bezierPoints: [...] }` (no `type` field ??? treated as BEZIER)
  *  - Normal BEZIER: `{ type: "BEZIER", bezierPoints: [...] }`
  *  - Serialized EASING: `{ type: "EASING", curveFunctionId: "..." }`
  */
@@ -226,7 +226,7 @@ function deserializeConfig(raw: RawObject): ParticleSystemConfig {
       (config as RawObject)[field] = deserializeCurveOrValue(raw[field]);
   }
 
-  // startColor (plain MinMaxColor — no reconstruction needed)
+  // startColor (plain MinMaxColor ??? no reconstruction needed)
   if ('startColor' in raw)
     config.startColor = raw['startColor'] as ParticleSystemConfig['startColor'];
 
@@ -248,11 +248,11 @@ function deserializeConfig(raw: RawObject): ParticleSystemConfig {
     };
   }
 
-  // shape (plain object with enum string values — no reconstruction needed)
+  // shape (plain object with enum string values ??? no reconstruction needed)
   if ('shape' in raw)
     config.shape = raw['shape'] as ParticleSystemConfig['shape'];
 
-  // renderer: convert blending string → THREE.Blending number
+  // renderer: convert blending string ??? THREE.Blending number
   if (raw['renderer'] && typeof raw['renderer'] === 'object') {
     const r = raw['renderer'] as RawObject;
     const blending =
@@ -290,7 +290,7 @@ function deserializeConfig(raw: RawObject): ParticleSystemConfig {
     };
   }
 
-  // sizeOverLifetime / opacityOverLifetime — both have isActive + lifetimeCurve
+  // sizeOverLifetime / opacityOverLifetime ??? both have isActive + lifetimeCurve
   for (const field of ['sizeOverLifetime', 'opacityOverLifetime'] as const) {
     if (raw[field] && typeof raw[field] === 'object') {
       const m = raw[field] as RawObject;
@@ -301,7 +301,7 @@ function deserializeConfig(raw: RawObject): ParticleSystemConfig {
     }
   }
 
-  // colorOverLifetime — r/g/b are LifetimeCurves; isActive defaults to true when present
+  // colorOverLifetime ??? r/g/b are LifetimeCurves; isActive defaults to true when present
   if (
     raw['colorOverLifetime'] &&
     typeof raw['colorOverLifetime'] === 'object'
@@ -315,7 +315,7 @@ function deserializeConfig(raw: RawObject): ParticleSystemConfig {
     };
   }
 
-  // rotationOverLifetime (isActive + RandomBetweenTwoConstants — no curves)
+  // rotationOverLifetime (isActive + RandomBetweenTwoConstants ??? no curves)
   if (
     raw['rotationOverLifetime'] &&
     typeof raw['rotationOverLifetime'] === 'object'
@@ -325,12 +325,12 @@ function deserializeConfig(raw: RawObject): ParticleSystemConfig {
     ] as ParticleSystemConfig['rotationOverLifetime'];
   }
 
-  // noise (NoiseConfig is plain data — no reconstruction needed)
+  // noise (NoiseConfig is plain data ??? no reconstruction needed)
   if (raw['noise'] && typeof raw['noise'] === 'object') {
     config.noise = raw['noise'] as ParticleSystemConfig['noise'];
   }
 
-  // textureSheetAnimation — reconstruct tiles Vector2, deserialize startFrame
+  // textureSheetAnimation ??? reconstruct tiles Vector2, deserialize startFrame
   if (
     raw['textureSheetAnimation'] &&
     typeof raw['textureSheetAnimation'] === 'object'
@@ -345,7 +345,7 @@ function deserializeConfig(raw: RawObject): ParticleSystemConfig {
     };
   }
 
-  // subEmitters — recursively deserialize nested configs
+  // subEmitters ??? recursively deserialize nested configs
   if (Array.isArray(raw['subEmitters'])) {
     config.subEmitters = (raw['subEmitters'] as RawObject[]).map((se) => ({
       ...(se as NonNullable<ParticleSystemConfig['subEmitters']>[number]),
@@ -353,7 +353,7 @@ function deserializeConfig(raw: RawObject): ParticleSystemConfig {
     }));
   }
 
-  // forceFields — array of ForceFieldConfig objects
+  // forceFields ??? array of ForceFieldConfig objects
   if (Array.isArray(raw['forceFields'])) {
     config.forceFields = (raw['forceFields'] as RawObject[]).map((ff) => {
       const result: ForceFieldConfig = {};
@@ -374,7 +374,7 @@ function deserializeConfig(raw: RawObject): ParticleSystemConfig {
     });
   }
 
-  // collisionPlanes — array of CollisionPlaneConfig objects
+  // collisionPlanes ??? array of CollisionPlaneConfig objects
   if (Array.isArray(raw['collisionPlanes'])) {
     config.collisionPlanes = (raw['collisionPlanes'] as RawObject[]).map(
       (cp) => {
@@ -392,7 +392,7 @@ function deserializeConfig(raw: RawObject): ParticleSystemConfig {
     );
   }
 
-  // _editorData and any other unknown fields — preserve as-is
+  // _editorData and any other unknown fields ??? preserve as-is
   for (const key of Object.keys(raw)) {
     if (!(key in config) && key !== '_version' && raw[key] !== null) {
       (config as RawObject)[key] = raw[key];
@@ -410,7 +410,7 @@ function deserializeConfig(raw: RawObject): ParticleSystemConfig {
  *   `THREE.Blending` constants.
  * - `{x, y, z}` objects under `transform` are reconstructed as `THREE.Vector3`.
  * - `{x, y}` objects under `textureSheetAnimation.tiles` are reconstructed as `THREE.Vector2`.
- * - Legacy Bézier curves without a `type` field (editor format) are normalized.
+ * - Legacy B??zier curves without a `type` field (editor format) are normalized.
  * - Easing curves stored as `{ type: "EASING", curveFunctionId }` have their
  *   `curveFunction` resolved from the predefined map.
  * - `_editorData` and other unknown fields are preserved.
@@ -420,7 +420,7 @@ function deserializeConfig(raw: RawObject): ParticleSystemConfig {
  *
  * @example
  * ```typescript
- * import { deserializeParticleSystem } from '@newkrok/three-particles';
+ * import { deserializeParticleSystem } from '@cyberluke/three-particles';
  *
  * const config = deserializeParticleSystem(localStorage.getItem('myEffect')!);
  * createParticleSystem(config);

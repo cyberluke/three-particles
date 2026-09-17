@@ -3,11 +3,11 @@
 </p>
 
 # THREE Particles
-[![npm](https://img.shields.io/npm/v/@newkrok/three-particles.svg)](https://www.npmjs.com/package/@newkrok/three-particles)
-[![downloads](https://img.shields.io/npm/dm/@newkrok/three-particles.svg)](https://www.npmjs.com/package/@newkrok/three-particles)
+[![npm](https://img.shields.io/npm/v/@cyberluke/three-particles.svg)](https://www.npmjs.com/package/@cyberluke/three-particles)
+[![downloads](https://img.shields.io/npm/dm/@cyberluke/three-particles.svg)](https://www.npmjs.com/package/@cyberluke/three-particles)
 [![CI](https://github.com/NewKrok/three-particles/actions/workflows/ci.yml/badge.svg)](https://github.com/NewKrok/three-particles/actions/workflows/ci.yml)
-[![gzip](https://img.shields.io/bundlephobia/minzip/@newkrok/three-particles)](https://bundlephobia.com/package/@newkrok/three-particles)
-[![license](https://img.shields.io/npm/l/@newkrok/three-particles.svg)](https://github.com/NewKrok/three-particles/blob/master/LICENSE)
+[![gzip](https://img.shields.io/bundlephobia/minzip/@cyberluke/three-particles)](https://bundlephobia.com/package/@cyberluke/three-particles)
+[![license](https://img.shields.io/npm/l/@cyberluke/three-particles.svg)](https://github.com/NewKrok/three-particles/blob/master/LICENSE)
 [![docs](https://img.shields.io/badge/docs-online-blue)](https://newkrok.github.io/three-particles/api/)
 
 Particle system for ThreeJS.
@@ -19,14 +19,14 @@ Particle system for ThreeJS.
 *   Highly customizable particle properties (position, velocity, size, color, alpha, rotation, etc.).
 *   Support for various emitter shapes and parameters.
 *   Force fields and attractors for dynamic particle behavior (point attraction/repulsion, directional wind).
-*   Collision planes — kill, clamp, or bounce particles off infinite planes (e.g., water surfaces, floors, walls). Works on both CPU and GPU compute paths.
+*   Collision planes ??? kill, clamp, or bounce particles off infinite planes (e.g., water surfaces, floors, walls). Works on both CPU and GPU compute paths.
 *   Sub-emitters triggered on particle birth or death events.
 *   Serialization support for saving and loading particle system configs.
-*   GPU instancing renderer (`RendererType.INSTANCED`) — removes `gl_PointSize` hardware limit, ideal for large particles or high particle counts.
-*   Trail / Ribbon renderer (`RendererType.TRAIL`) — continuous ribbon trails behind particles with configurable width, opacity, and color tapering.
-*   Mesh particle renderer (`RendererType.MESH`) — render each particle as a 3D mesh (debris, gems, coins) using GPU instancing with full 3D rotation and simple directional lighting.
-*   Soft particles — depth-based alpha fade near opaque geometry, eliminating hard intersection lines.
-*   **WebGPU compute support** — GPU compute shaders for particle simulation (gravity, velocity, modifiers, force fields, noise) via Three.js TSL. Enables 50K-350K+ particles at full framerate. Pass your renderer to `enableWebGPU(renderer)` for automatic CPU fallback when WebGPU is unavailable.
+*   GPU instancing renderer (`RendererType.INSTANCED`) ??? removes `gl_PointSize` hardware limit, ideal for large particles or high particle counts.
+*   Trail / Ribbon renderer (`RendererType.TRAIL`) ??? continuous ribbon trails behind particles with configurable width, opacity, and color tapering.
+*   Mesh particle renderer (`RendererType.MESH`) ??? render each particle as a 3D mesh (debris, gems, coins) using GPU instancing with full 3D rotation and simple directional lighting.
+*   Soft particles ??? depth-based alpha fade near opaque geometry, eliminating hard intersection lines.
+*   **WebGPU compute support** ??? GPU compute shaders for particle simulation (gravity, velocity, modifiers, force fields, noise) via Three.js TSL. Enables 50K-350K+ particles at full framerate. Pass your renderer to `enableWebGPU(renderer)` for automatic CPU fallback when WebGPU is unavailable.
 *   TypeDoc API documentation available.
 
 # Live Demo & Examples
@@ -43,7 +43,7 @@ Particle system for ThreeJS.
 ## NPM
 
 ```bash
-npm install @newkrok/three-particles
+npm install @cyberluke/three-particles
 ```
 
 ## CDN (Browser)
@@ -51,9 +51,9 @@ npm install @newkrok/three-particles
 Include the script directly in your HTML:
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@newkrok/three-particles@latest/dist/three-particles.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@cyberluke/three-particles@latest/dist/three-particles.min.js"></script>
 <!-- or -->
-<script src="https://unpkg.com/@newkrok/three-particles@latest/dist/three-particles.min.js"></script>
+<script src="https://unpkg.com/@cyberluke/three-particles@latest/dist/three-particles.min.js"></script>
 ```
 
 # Usage
@@ -77,7 +77,7 @@ updateParticleSystems({now, delta, elapsed});
 system.updateConfig({
   gravity: -9.8,
   forceFields: [{ type: 'DIRECTIONAL', direction: { x: 1, y: 0, z: 0 }, strength: 5 }],
-  // Collision planes — kill, clamp, or bounce particles off surfaces
+  // Collision planes ??? kill, clamp, or bounce particles off surfaces
   collisionPlanes: [
     { position: { x: 0, y: 5, z: 0 }, normal: { x: 0, y: -1, z: 0 }, mode: 'KILL' },
   ],
@@ -86,7 +86,7 @@ system.updateConfig({
 
 # Usage with React Three Fiber
 
-The library works seamlessly with [React Three Fiber](https://github.com/pmndrs/react-three-fiber). No additional wrapper package is needed — use `createParticleSystem` directly with React hooks:
+The library works seamlessly with [React Three Fiber](https://github.com/pmndrs/react-three-fiber). No additional wrapper package is needed ??? use `createParticleSystem` directly with React hooks:
 
 ```tsx
 import { useRef, useEffect } from "react";
@@ -95,7 +95,7 @@ import {
   createParticleSystem,
   Shape,
   type ParticleSystem,
-} from "@newkrok/three-particles";
+} from "@cyberluke/three-particles";
 import * as THREE from "three";
 
 function FireEffect({ config }: { config?: Record<string, unknown> }) {
@@ -164,7 +164,7 @@ Optional GPU-accelerated particle simulation via Three.js WebGPU renderer and TS
 
 - Three.js **r182+** with the WebGPU build (`three/webgpu`)
 - A browser with [WebGPU support](https://caniuse.com/webgpu) (Chrome 113+, Edge 113+, Firefox Nightly)
-- No breaking changes — all existing WebGL code works unchanged
+- No breaking changes ??? all existing WebGL code works unchanged
 
 ## Setup
 
@@ -178,15 +178,15 @@ await renderer.init();
 // Passing the renderer enables capability detection: with a renderer that
 // cannot run compute shaders (e.g. WebGLRenderer) registration is skipped
 // with a warning and the library keeps using the CPU/GLSL path.
-import { enableWebGPU } from "@newkrok/three-particles/webgpu";
+import { enableWebGPU } from "@cyberluke/three-particles/webgpu";
 const gpuEnabled = enableWebGPU(renderer); // returns boolean
-// No special outputColorSpace handling needed — the library follows the
+// No special outputColorSpace handling needed ??? the library follows the
 // standard three.js linear workflow (user colors sRGB, shader math linear,
 // renderer converts on output). Leave outputColorSpace at its default
 // (SRGBColorSpace).
 
 // 3. Create a GPU-accelerated particle system
-import { createParticleSystem, SimulationBackend } from "@newkrok/three-particles";
+import { createParticleSystem, SimulationBackend } from "@cyberluke/three-particles";
 const system = createParticleSystem({
   simulationBackend: SimulationBackend.AUTO, // GPU if WebGPU available, else CPU
   maxParticles: 100000,
@@ -195,7 +195,7 @@ const system = createParticleSystem({
 
 scene.add(system.instance);
 
-// 4. In your render loop — dispatch compute before rendering
+// 4. In your render loop ??? dispatch compute before rendering
 function animate() {
   system.update({ now: performance.now(), delta, elapsed });
 
@@ -206,7 +206,7 @@ function animate() {
 }
 ```
 
-For fine-grained control, you can also use `registerTSLMaterialFactory()` to selectively register individual WebGPU functions — see the full API reference.
+For fine-grained control, you can also use `registerTSLMaterialFactory()` to selectively register individual WebGPU functions ??? see the full API reference.
 
 ## SimulationBackend
 
@@ -214,9 +214,9 @@ For fine-grained control, you can also use `registerTSLMaterialFactory()` to sel
 |-------|----------|
 | `AUTO` (default) | GPU compute when the WebGPU path is registered (`enableWebGPU()`), else CPU |
 | `CPU` | Always JavaScript update loop (works with any renderer) |
-| `GPU` | Same as `AUTO` — GPU compute requires the registered WebGPU path |
+| `GPU` | Same as `AUTO` ??? GPU compute requires the registered WebGPU path |
 
-> **Note:** the library never inspects your renderer on its own — the backend
+> **Note:** the library never inspects your renderer on its own ??? the backend
 > decision is based on whether `enableWebGPU()` registered the WebGPU path.
 > Pass your renderer to `enableWebGPU(renderer)` so registration is skipped
 > automatically when the renderer cannot dispatch compute shaders.
@@ -230,17 +230,17 @@ For fine-grained control, you can also use `registerTSLMaterialFactory()` to sel
 
 ## What Stays on CPU
 
-- **Emission** — particle activation, burst scheduling, rate-over-distance
-- **Sub-emitters** — birth/death trigger spawning
-- **Configuration changes** — `updateConfig()` applies on the next frame
-- **Trail renderer** — TRAIL type always uses CPU simulation (other renderer types work with GPU)
+- **Emission** ??? particle activation, burst scheduling, rate-over-distance
+- **Sub-emitters** ??? birth/death trigger spawning
+- **Configuration changes** ??? `updateConfig()` applies on the next frame
+- **Trail renderer** ??? TRAIL type always uses CPU simulation (other renderer types work with GPU)
 
 ## Fallback Behavior
 
 WebGPU is fully opt-in and non-breaking:
 - If `enableWebGPU()` is not called (or no TSL factory registered), the library uses GLSL shaders (WebGL path) and CPU simulation
 - If `enableWebGPU(renderer)` is called with a renderer that lacks compute support, registration is skipped with a console warning and everything stays on the CPU/GLSL path
-- The same particle config produces the same visuals on both backends. One difference: on the GPU backend, modifier flags and lifetime curves (`sizeOverLifetime`, `colorOverLifetime`, etc.) are baked into the compute kernel at creation, so `updateConfig()` cannot change them live (a warning is logged) — recreate the system instead. On the CPU backend these update live.
+- The same particle config produces the same visuals on both backends. One difference: on the GPU backend, modifier flags and lifetime curves (`sizeOverLifetime`, `colorOverLifetime`, etc.) are baked into the compute kernel at creation, so `updateConfig()` cannot change them live (a warning is logged) ??? recreate the system instead. On the CPU backend these update live.
 
 # Documentation
 
@@ -251,7 +251,7 @@ Automatically generated TypeDoc: [https://newkrok.github.io/three-particles/api/
 ### Color Conventions
 
 All RGB values in particle configs (`startColor`, `backgroundColor`) are
-**sRGB** — the same convention used everywhere else in three.js. Pass the
+**sRGB** ??? the same convention used everywhere else in three.js. Pass the
 value a color picker gives you (e.g. `{ r: 1, g: 0, b: 0 }` for pure red)
 and the renderer will display it correctly.
 
@@ -261,7 +261,7 @@ to the framebuffer. No special `outputColorSpace` setup is required; the
 three.js default (`SRGBColorSpace`) works.
 
 User-supplied color map textures should also be tagged as sRGB
-(`texture.colorSpace = THREE.SRGBColorSpace`) — this is also the
+(`texture.colorSpace = THREE.SRGBColorSpace`) ??? this is also the
 three.js default for color textures loaded via `TextureLoader`.
 
 ### Color Over Lifetime
@@ -270,7 +270,7 @@ The `colorOverLifetime` feature uses a **multiplier-based approach** (similar to
 
 **Formula:** `finalColor = startColor * colorOverLifetime`
 
-**⚠️ Important:** To achieve full color transitions, set `startColor` to white `{ r: 1, g: 1, b: 1 }`. If any channel in `startColor` is set to 0, that channel cannot be modified by `colorOverLifetime`.
+**?????? Important:** To achieve full color transitions, set `startColor` to white `{ r: 1, g: 1, b: 1 }`. If any channel in `startColor` is set to 0, that channel cannot be modified by `colorOverLifetime`.
 
 **Example - Rainbow effect:**
 ```javascript
@@ -281,7 +281,7 @@ The `colorOverLifetime` feature uses a **multiplier-based approach** (similar to
   },
   colorOverLifetime: {
     isActive: true,
-    r: {  // Red: full → half → off
+    r: {  // Red: full ??? half ??? off
       type: 'BEZIER',
       scale: 1,
       bezierPoints: [
@@ -290,7 +290,7 @@ The `colorOverLifetime` feature uses a **multiplier-based approach** (similar to
         { x: 1, y: 0, percentage: 1 }
       ]
     },
-    g: {  // Green: off → full → off
+    g: {  // Green: off ??? full ??? off
       type: 'BEZIER',
       scale: 1,
       bezierPoints: [
@@ -299,7 +299,7 @@ The `colorOverLifetime` feature uses a **multiplier-based approach** (similar to
         { x: 1, y: 0, percentage: 1 }
       ]
     },
-    b: {  // Blue: off → half → full
+    b: {  // Blue: off ??? half ??? full
       type: 'BEZIER',
       scale: 1,
       bezierPoints: [

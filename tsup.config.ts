@@ -39,10 +39,10 @@ export default defineConfig([
   // DTS is hand-written (webgpu.d.ts) because TSL node types resolve to
   // `unknown` which breaks automatic declaration generation.
   //
-  // '@newkrok/three-particles' (self-reference) MUST be external so that
+  // '@cyberluke/three-particles' (self-reference) MUST be external so that
   // `registerTSLMaterialFactory` resolves to the same module instance as the
   // main entry point at runtime. Without this, the webgpu bundle gets its own
-  // copy of `_tslMaterialFactory` — writes from `enableWebGPU()` would never
+  // copy of `_tslMaterialFactory` ??? writes from `enableWebGPU()` would never
   // be visible to `createParticleSystem` in the main bundle, AND Rollup
   // treeshake correctly removes the body as dead code within the isolated bundle.
   {
@@ -51,11 +51,11 @@ export default defineConfig([
     dts: false,
     sourcemap: true,
     outDir: 'dist',
-    external: [...libraryExternal, '@newkrok/three-particles'],
+    external: [...libraryExternal, '@cyberluke/three-particles'],
     treeshake: true,
     define: defineConstants,
   },
-  // Minified browser bundle — all deps except "three" are inlined so the
+  // Minified browser bundle ??? all deps except "three" are inlined so the
   // bundle works when loaded directly from a CDN without a bundler.
   {
     entry: { 'three-particles.min': 'src/index.ts' },
@@ -69,8 +69,8 @@ export default defineConfig([
     esbuildPlugins: [
       {
         // Handle three.js externals for the browser bundle:
-        // - "three" core and Gyroscope (actually used) → external
-        // - Unused loaders/helpers from @newkrok/three-utils → stubbed
+        // - "three" core and Gyroscope (actually used) ??? external
+        // - Unused loaders/helpers from @newkrok/three-utils ??? stubbed
         name: 'three-browser-externals',
         setup(build) {
           const stub = path.resolve(__dirname, 'scripts/stubs/three-loaders.js');
@@ -91,7 +91,7 @@ export default defineConfig([
             if (kept.has(args.path)) {
               return { path: args.path, external: true };
             }
-            // Any other three/* import — keep external
+            // Any other three/* import ??? keep external
             return { path: args.path, external: true };
           });
         },

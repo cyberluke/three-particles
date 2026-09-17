@@ -13,7 +13,7 @@
     "skipLibCheck": true,
     "baseUrl": "./",
     "paths": {
-      "@newkrok/three-particles": ["./src/index.ts"],
+      "@cyberluke/three-particles": ["./src/index.ts"],
       "three/tsl": ["./node_modules/@types/three/build/three.tsl.d.ts"],
       "three/webgpu": ["./node_modules/@types/three/build/three.webgpu.d.ts"]
     },

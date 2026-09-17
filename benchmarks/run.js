@@ -1,5 +1,5 @@
 /**
- * Performance benchmark suite for @newkrok/three-particles
+ * Performance benchmark suite for @cyberluke/three-particles
  *
  * Measures:
  * 1. Particle system creation time
@@ -41,7 +41,7 @@ function measure(name, fn, iterations = 100) {
 }
 
 function formatMs(ms) {
-  if (ms < 1) return `${(ms * 1000).toFixed(0)}µs`;
+  if (ms < 1) return `${(ms * 1000).toFixed(0)}??s`;
   return `${ms.toFixed(2)}ms`;
 }
 
@@ -129,7 +129,7 @@ function benchUpdateMultipleSystems() {
   }
 
   const result = measure(
-    'update loop (10 systems × 100 particles)',
+    'update loop (10 systems ?? 100 particles)',
     () => {
       now += 16;
       const cycleData = { now, delta: 0.016, elapsed: (now - 1000) / 1000 };
@@ -303,7 +303,7 @@ if (compareIdx !== -1 && args[compareIdx + 1]) {
       const diff = (current.median_ms - base.median_ms) / base.median_ms;
       const diffPct = (diff * 100).toFixed(1);
       const status =
-        diff > THRESHOLD ? '❌ REGRESSION' : diff < -THRESHOLD ? '✅ FASTER' : '✅ OK';
+        diff > THRESHOLD ? '??? REGRESSION' : diff < -THRESHOLD ? '??? FASTER' : '??? OK';
 
       if (diff > THRESHOLD) hasRegression = true;
 
@@ -313,10 +313,10 @@ if (compareIdx !== -1 && args[compareIdx + 1]) {
     }
 
     if (hasRegression) {
-      console.log('\n⚠️  Performance regression detected (>10% slower)');
+      console.log('\n??????  Performance regression detected (>10% slower)');
       process.exit(1);
     } else {
-      console.log('\n✅ All benchmarks within threshold');
+      console.log('\n??? All benchmarks within threshold');
     }
   } catch (e) {
     console.error(`Could not read baseline: ${e.message}`);

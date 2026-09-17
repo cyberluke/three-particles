@@ -1,5 +1,5 @@
 /**
- * The semver version of `@newkrok/three-particles`, injected at build time
+ * The semver version of `@cyberluke/three-particles`, injected at build time
  * from `package.json` via `tsup`'s `define` option (see `tsup.config.ts`).
  *
  * Exposed for runtime introspection (debugging, bug reports). Mirrors the
@@ -21,7 +21,7 @@ if (typeof globalThis !== 'undefined') {
   if (g.__THREE_PARTICLES__ && g.__THREE_PARTICLES__ !== REVISION) {
     // eslint-disable-next-line no-console
     console.warn(
-      'WARNING: Multiple instances of @newkrok/three-particles being imported.'
+      'WARNING: Multiple instances of @cyberluke/three-particles being imported.'
     );
   } else {
     g.__THREE_PARTICLES__ = REVISION;

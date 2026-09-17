@@ -22,32 +22,32 @@ export const enum CurveFunctionId {
   /** Linear interpolation with constant rate of change */
   LINEAR = 'LINEAR',
 
-  /** Quadratic (t²) easing - gentle acceleration */
+  /** Quadratic (t??) easing - gentle acceleration */
   QUADRATIC_IN = 'QUADRATIC_IN',
-  /** Quadratic (t²) easing - gentle deceleration */
+  /** Quadratic (t??) easing - gentle deceleration */
   QUADRATIC_OUT = 'QUADRATIC_OUT',
-  /** Quadratic (t²) easing - gentle acceleration then deceleration */
+  /** Quadratic (t??) easing - gentle acceleration then deceleration */
   QUADRATIC_IN_OUT = 'QUADRATIC_IN_OUT',
 
-  /** Cubic (t³) easing - moderate acceleration */
+  /** Cubic (t??) easing - moderate acceleration */
   CUBIC_IN = 'CUBIC_IN',
-  /** Cubic (t³) easing - moderate deceleration */
+  /** Cubic (t??) easing - moderate deceleration */
   CUBIC_OUT = 'CUBIC_OUT',
-  /** Cubic (t³) easing - moderate acceleration then deceleration */
+  /** Cubic (t??) easing - moderate acceleration then deceleration */
   CUBIC_IN_OUT = 'CUBIC_IN_OUT',
 
-  /** Quartic (t⁴) easing - strong acceleration */
+  /** Quartic (t???) easing - strong acceleration */
   QUARTIC_IN = 'QUARTIC_IN',
-  /** Quartic (t⁴) easing - strong deceleration */
+  /** Quartic (t???) easing - strong deceleration */
   QUARTIC_OUT = 'QUARTIC_OUT',
-  /** Quartic (t⁴) easing - strong acceleration then deceleration */
+  /** Quartic (t???) easing - strong acceleration then deceleration */
   QUARTIC_IN_OUT = 'QUARTIC_IN_OUT',
 
-  /** Quintic (t⁵) easing - very strong acceleration */
+  /** Quintic (t???) easing - very strong acceleration */
   QUINTIC_IN = 'QUINTIC_IN',
-  /** Quintic (t⁵) easing - very strong deceleration */
+  /** Quintic (t???) easing - very strong deceleration */
   QUINTIC_OUT = 'QUINTIC_OUT',
-  /** Quintic (t⁵) easing - very strong acceleration then deceleration */
+  /** Quintic (t???) easing - very strong acceleration then deceleration */
   QUINTIC_IN_OUT = 'QUINTIC_IN_OUT',
 
   /** Sinusoidal easing - smooth, natural acceleration */
@@ -142,7 +142,7 @@ export const curveFunctionIdMap: Partial<
  *
  * @example
  * ```typescript
- * import { getCurveFunction, CurveFunctionId } from '@newkrok/three-particles';
+ * import { getCurveFunction, CurveFunctionId } from '@cyberluke/three-particles';
  *
  * // Using a predefined easing function
  * const easingFunc = getCurveFunction(CurveFunctionId.CUBIC_OUT);

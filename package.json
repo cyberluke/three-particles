@@ -1,6 +1,6 @@
 {
-  "name": "@newkrok/three-particles",
-  "version": "3.0.0",
+  "name": "@cyberluke/three-particles",
+  "version": "4.0.0",
   "type": "module",
   "description": "Three.js-based high-performance particle system library designed for creating visually stunning particle effects with ease. Perfect for game developers and 3D applications.",
   "main": "./dist/index.js",
@@ -28,7 +28,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/NewKrok/three-particles.git"
+    "url": "https://github.com/cyberluke/three-particles.git"
   },
   "keywords": [
     "three",
@@ -47,11 +47,11 @@
     "threejs effects"
   ],
   "author": "Istvan Krisztian Somoracz",
-  "license": "MIT",
+  "license": "MIT",  "publishConfig": {    "access": "public"  },
   "bugs": {
-    "url": "https://github.com/NewKrok/three-particles/issues"
+    "url": "https://github.com/cyberluke/three-particles/issues"
   },
-  "homepage": "https://github.com/NewKrok/three-particles#readme",
+  "homepage": "https://github.com/cyberluke/three-particles#readme",
   "engines": {
     "node": ">=18.0.0"
   },
@@ -75,7 +75,7 @@
     "three-noise": "1.1.2"
   },
   "peerDependencies": {
-    "three": "^0.182.0"
+    "three": "^0.186.0"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.29.2",
@@ -106,3 +106,4 @@
     "webpack-cli": "^7.0.2"
   }
 }
+

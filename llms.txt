@@ -1,16 +1,16 @@
-# @newkrok/three-particles
+# @cyberluke/three-particles
 
 > Three.js-based high-performance particle system library for creating visually stunning particle effects. Perfect for game developers and 3D applications.
 
 ## Quick Start
 
 ```bash
-npm install @newkrok/three-particles three
+npm install @cyberluke/three-particles three
 ```
 
 ```typescript
 import * as THREE from "three";
-import { createParticleSystem, updateParticleSystems } from "@newkrok/three-particles";
+import { createParticleSystem, updateParticleSystems } from "@cyberluke/three-particles";
 
 const scene = new THREE.Scene();
 
@@ -40,18 +40,18 @@ function animate() {
 
 ## Main API
 
-- `createParticleSystem(config: ParticleSystemConfig): ParticleSystem` — Create a particle system
-- `updateParticleSystems(cycleData: CycleData)` — Update all active particle systems
+- `createParticleSystem(config: ParticleSystemConfig): ParticleSystem` ??? Create a particle system
+- `updateParticleSystems(cycleData: CycleData)` ??? Update all active particle systems
 
 ### ParticleSystem Methods
 
-- `instance` — The Three.js Points or Mesh object (add to scene)
-- `pauseEmitter()` — Pause particle emission
-- `resumeEmitter()` — Resume particle emission
-- `dispose()` — Clean up and free resources
-- `update(cycleData)` — Update this specific system only
-- `updateConfig(config)` — Update configuration at runtime without recreating the system
-- `getActiveParticleCount()` — Number of currently alive particles (O(1))
+- `instance` ??? The Three.js Points or Mesh object (add to scene)
+- `pauseEmitter()` ??? Pause particle emission
+- `resumeEmitter()` ??? Resume particle emission
+- `dispose()` ??? Clean up and free resources
+- `update(cycleData)` ??? Update this specific system only
+- `updateConfig(config)` ??? Update configuration at runtime without recreating the system
+- `getActiveParticleCount()` ??? Number of currently alive particles (O(1))
 
 ## Key Configuration Properties
 
@@ -70,16 +70,16 @@ function animate() {
 | simulationSpace | LOCAL / WORLD | LOCAL | Coordinate space |
 | simulationBackend | AUTO / CPU / GPU | AUTO | Simulation backend (AUTO: GPU if WebGPU, else CPU) |
 | emission | Emission | rateOverTime: 10 | Emission config |
-| shape | ShapeConfig | — | Emitter shape |
+| shape | ShapeConfig | ??? | Emitter shape |
 | map | THREE.Texture | undefined | Particle texture |
-| renderer | Renderer | — | Renderer settings (blending, rendererType, etc.) |
+| renderer | Renderer | ??? | Renderer settings (blending, rendererType, etc.) |
 
 ## Renderer Types
 
-- `RendererType.POINTS` (default) — Classic point sprites via `THREE.Points`
-- `RendererType.INSTANCED` — Camera-facing quads via `InstancedBufferGeometry`, removes `gl_PointSize` hardware limit
-- `RendererType.TRAIL` — Ribbon trails behind particles with configurable width, opacity, and color tapering
-- `RendererType.MESH` — Render each particle as a 3D mesh (cubes, spheres, custom geometry) via GPU instancing with quaternion-based 3D rotation and directional lighting. Uses solid white default texture (not circle) to preserve mesh shape. Sub-emitters do not inherit MESH or TRAIL rendererType from parent
+- `RendererType.POINTS` (default) ??? Classic point sprites via `THREE.Points`
+- `RendererType.INSTANCED` ??? Camera-facing quads via `InstancedBufferGeometry`, removes `gl_PointSize` hardware limit
+- `RendererType.TRAIL` ??? Ribbon trails behind particles with configurable width, opacity, and color tapering
+- `RendererType.MESH` ??? Render each particle as a 3D mesh (cubes, spheres, custom geometry) via GPU instancing with quaternion-based 3D rotation and directional lighting. Uses solid white default texture (not circle) to preserve mesh shape. Sub-emitters do not inherit MESH or TRAIL rendererType from parent
 
 ## Mesh Particle Renderer
 
@@ -128,20 +128,20 @@ Trails use GPU billboard rendering (vertex shader). Supports optional textures a
 
 ## Emitter Shapes
 
-- `Shape.SPHERE` — Spherical emission (radius, arc, radiusThickness)
-- `Shape.CONE` — Conical emission (angle, radius, arc)
-- `Shape.CIRCLE` — Circular flat emission (radius, arc)
-- `Shape.RECTANGLE` — Rectangular flat emission (scale, rotation)
-- `Shape.BOX` — Box volume emission (scale, emitFrom: VOLUME/SHELL/EDGE)
+- `Shape.SPHERE` ??? Spherical emission (radius, arc, radiusThickness)
+- `Shape.CONE` ??? Conical emission (angle, radius, arc)
+- `Shape.CIRCLE` ??? Circular flat emission (radius, arc)
+- `Shape.RECTANGLE` ??? Rectangular flat emission (scale, rotation)
+- `Shape.BOX` ??? Box volume emission (scale, emitFrom: VOLUME/SHELL/EDGE)
 
 ## Lifetime Modifiers
 
-- `velocityOverLifetime` — Linear & orbital velocity changes
-- `sizeOverLifetime` — Size curve over lifetime
-- `opacityOverLifetime` — Opacity curve over lifetime
-- `colorOverLifetime` — RGB curves (multipliers on startColor)
-- `rotationOverLifetime` — Rotation speed range
-- `noise` — FBM noise affecting position, rotation, size
+- `velocityOverLifetime` ??? Linear & orbital velocity changes
+- `sizeOverLifetime` ??? Size curve over lifetime
+- `opacityOverLifetime` ??? Opacity curve over lifetime
+- `colorOverLifetime` ??? RGB curves (multipliers on startColor)
+- `rotationOverLifetime` ??? Rotation speed range
+- `noise` ??? FBM noise affecting position, rotation, size
 
 ## Burst Emission
 
@@ -215,24 +215,24 @@ collisionPlanes: [
 
 Optional GPU-accelerated particle simulation via Three.js WebGPU renderer and TSL (Three Shading Language). Enables **50K-350K+ particles** with full physics on the GPU.
 
-**Requirements:** Three.js r182+ with WebGPU build (`three/webgpu`), browser with WebGPU support (Chrome 113+, Edge 113+). No breaking changes — all existing WebGL code works unchanged.
+**Requirements:** Three.js r182+ with WebGPU build (`three/webgpu`), browser with WebGPU support (Chrome 113+, Edge 113+). No breaking changes ??? all existing WebGL code works unchanged.
 
 ### Setup
 
 ```typescript
 // 1. Enable WebGPU support (once, before creating any particle system)
-import { enableWebGPU } from "@newkrok/three-particles/webgpu";
+import { enableWebGPU } from "@cyberluke/three-particles/webgpu";
 enableWebGPU();
 
 // 2. Create a WebGPU renderer
 import * as THREE from "three/webgpu";
 const renderer = new THREE.WebGPURenderer({ antialias: true });
 await renderer.init();
-// No outputColorSpace override needed — the library uses the standard
+// No outputColorSpace override needed ??? the library uses the standard
 // three.js linear workflow and works with the default (SRGBColorSpace).
 
 // 3. Create a GPU-accelerated particle system
-import { createParticleSystem, SimulationBackend } from "@newkrok/three-particles";
+import { createParticleSystem, SimulationBackend } from "@cyberluke/three-particles";
 const system = createParticleSystem({
   simulationBackend: SimulationBackend.AUTO, // GPU if WebGPU available, else CPU
   maxParticles: 100000,
@@ -241,7 +241,7 @@ const system = createParticleSystem({
 
 scene.add(system.instance);
 
-// 4. In your render loop — dispatch compute before rendering
+// 4. In your render loop ??? dispatch compute before rendering
 system.update({ now: performance.now(), delta, elapsed });
 if (system.computeNode) {
   renderer.compute(system.computeNode);
@@ -249,7 +249,7 @@ if (system.computeNode) {
 renderer.render(scene, camera);
 ```
 
-For fine-grained control, you can also use `registerTSLMaterialFactory()` to selectively register individual WebGPU functions — see the full API reference.
+For fine-grained control, you can also use `registerTSLMaterialFactory()` to selectively register individual WebGPU functions ??? see the full API reference.
 
 ### SimulationBackend
 
@@ -259,7 +259,7 @@ For fine-grained control, you can also use `registerTSLMaterialFactory()` to sel
 | `CPU` | CPU (JavaScript) | CPU (JavaScript) |
 | `GPU` | GPU compute | CPU (JavaScript) |
 
-Note: the library never inspects the renderer on its own — the decision is
+Note: the library never inspects the renderer on its own ??? the decision is
 based on whether `enableWebGPU()` registered the WebGPU path. Call
 `enableWebGPU(renderer)` (returns boolean) to skip registration automatically
 when the renderer cannot dispatch compute shaders (e.g. `WebGLRenderer`).
@@ -276,7 +276,7 @@ when the renderer cannot dispatch compute shaders (e.g. `WebGLRenderer`).
 
 - Emission (particle activation, burst scheduling, rate-over-distance)
 - Sub-emitter spawning (birth/death triggers; sub-emitters are forced to CPU backend)
-- Configuration changes (`updateConfig`) — note: on the GPU backend, modifier
+- Configuration changes (`updateConfig`) ??? note: on the GPU backend, modifier
   flags and lifetime curves (sizeOverLifetime, opacityOverLifetime,
   colorOverLifetime, rotationOverLifetime, velocityOverLifetime,
   noise.isActive) are baked into the compute kernel at creation and cannot be
@@ -298,16 +298,16 @@ if (system.computeNode) {
 
 - If `enableWebGPU()` not called (or no TSL factory registered): uses GLSL shaders (WebGL path) and CPU simulation
 - If `enableWebGPU(renderer)` is called with a renderer that lacks compute support: registration is skipped with a console warning; everything stays on the CPU/GLSL path
-- Same `ParticleSystemConfig` works on both backends — but see the `updateConfig` GPU limitation above
+- Same `ParticleSystemConfig` works on both backends ??? but see the `updateConfig` GPU limitation above
 
 ## Usage with React Three Fiber
 
-No wrapper package needed — use hooks directly:
+No wrapper package needed ??? use hooks directly:
 
 ```tsx
 import { useRef, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
-import { createParticleSystem, type ParticleSystem } from "@newkrok/three-particles";
+import { createParticleSystem, type ParticleSystem } from "@cyberluke/three-particles";
 
 function ParticleEffect({ config }) {
   const groupRef = useRef(null);

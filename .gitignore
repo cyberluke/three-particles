@@ -27,3 +27,4 @@ tmp/
 # Local tool configs
 .claude/settings.local.json
 .serena/
+*.tgz

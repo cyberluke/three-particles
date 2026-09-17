@@ -1,11 +1,11 @@
 /**
- * WebGPU entry point type declarations for @newkrok/three-particles/webgpu.
+ * WebGPU entry point type declarations for @cyberluke/three-particles/webgpu.
  *
  * Hand-written because automatic DTS generation fails on TSL node types
  * (Three.js TSL Fn return types resolve to `unknown` in the type system).
  */
 import type { Material, Blending } from 'three';
-import type { RendererType } from '@newkrok/three-particles';
+import type { RendererType } from '@cyberluke/three-particles';
 
 /** Renderer configuration for material creation. */
 export interface RendererConfig {
@@ -90,7 +90,7 @@ export declare function encodeCollisionPlanesForGPU(
  *
  * @example
  * ```typescript
- * import { enableWebGPU } from '@newkrok/three-particles/webgpu';
+ * import { enableWebGPU } from '@cyberluke/three-particles/webgpu';
  * const renderer = new THREE.WebGPURenderer();
  * const gpuEnabled = enableWebGPU(renderer);
  * ```

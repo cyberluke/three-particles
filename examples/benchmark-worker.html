@@ -144,7 +144,7 @@ async function run() {
   // Load particle library
   let particleModule;
   try {
-    const cdnUrl = `https://cdn.jsdelivr.net/npm/@newkrok/three-particles@${version}/dist/three-particles.min.js`;
+    const cdnUrl = `https://cdn.jsdelivr.net/npm/@cyberluke/three-particles@${version}/dist/three-particles.min.js`;
     particleModule = await import(cdnUrl);
   } catch (e) {
     parent.postMessage({ type: "error", error: `Failed to load v${version}: ${e.message}` }, "*");

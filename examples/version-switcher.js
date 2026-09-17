@@ -1,8 +1,8 @@
 const CDN_BASE =
-  "https://cdn.jsdelivr.net/npm/@newkrok/three-particles@";
+  "https://cdn.jsdelivr.net/npm/@cyberluke/three-particles@";
 const BUNDLE_PATH = "/dist/three-particles.min.js";
 const NPM_API =
-  "https://registry.npmjs.org/@newkrok/three-particles";
+  "https://registry.npmjs.org/@cyberluke/three-particles";
 const LOCAL_VERSION = "local";
 const MAX_VERSIONS = 10;
 const VERSION_KEY = "three-particles-version";
