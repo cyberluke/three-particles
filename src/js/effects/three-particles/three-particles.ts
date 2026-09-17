@@ -877,6 +877,14 @@ export const createParticleSystem = (
     startColor: { value: new THREE.Color(1, 1, 1) },
     lifetime: { value: 0 },
     color: { value: new THREE.Color(1, 1, 1) },
+    // Sprite-sheet animation fields consumed by tsl-shared.createParticleUniforms.
+    fps: { value: normalizedConfig.textureSheetAnimation?.fps || 30.0 },
+    useFPSForFrameIndex: {
+      value: normalizedConfig.textureSheetAnimation?.timeMode === TimeMode.FPS,
+    },
+    tiles: {
+      value: normalizedConfig.textureSheetAnimation?.tiles ?? new THREE.Vector2(1.0, 1.0),
+    },
   };
   const bgCol = normalizedConfig.renderer.backgroundColor as unknown as { r?: number; g?: number; b?: number };
   (sharedUniforms.backgroundColor.value as THREE.Color).setRGB(bgCol.r ?? 1, bgCol.g ?? 1, bgCol.b ?? 1);

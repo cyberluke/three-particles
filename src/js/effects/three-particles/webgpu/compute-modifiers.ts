@@ -48,7 +48,6 @@ import {
   atomicSub,
   instanceIndex,
   uniform,
-  numWorkgroups,
   If,
   Else,
   compute,
@@ -439,7 +438,7 @@ export function createModifierComputeUpdate(
 
       sCol.element(slotIdx).assign(vec4(clR, clG, clB, opac));
       // lifetime=0, size, rotation, startFrame
-      const startFrame = tslFloor(mix(uFrMin, uFrMax, r1)).toVar();
+      const startFrame = floor(mix(uFrMin, uFrMax, r1)).toVar();
       sPS.element(slotIdx).assign(vec4(float(0.0), ssize, srot, startFrame));
 
       // startValues = (startLife, size, opacity, colorR)
@@ -454,7 +453,7 @@ export function createModifierComputeUpdate(
     });
   });
 
-  const emitNode = compute(emitKernel(), numWorkgroups(uEmitCount));
+  const emitNode = compute(emitKernel(), maxParticles);
 
   // ????? Simulation kernel (identical physics to the previous engine) ?????
   const simKernel = Fn(() => {
@@ -614,8 +613,8 @@ export function createModifierComputeUpdate(
 
 // Small `select` helpers so all three kinds fit inside a single `Fn`.
 function select01(kind: ShaderNodeObject<Node>, cone: ShaderNodeObject<Node>, sphere: ShaderNodeObject<Node>, planeVal: ShaderNodeObject<Node>) {
-  const isCone = tslFloor(kind).equals(float(0.0));
-  const isSph  = tslFloor(kind).equals(float(1.0));
+  const isCone = floor(kind).equals(float(0.0));
+  const isSph  = floor(kind).equals(float(1.0));
   const tmp = mix(cone, sphere, 0.0);
   const r0 = isCone.toVar(); (r0 as any);
   const r = mix(planeVal, tmp, abs(isCone.sub(float(1.0))).min(abs(isSph.sub(float(1.0)))));
@@ -683,9 +682,4 @@ function fbm3(x0: ShaderNodeObject<Node>, y0: ShaderNodeObject<Node>, z0: Shader
   return v;
 }
 
-function floor(v: ShaderNodeObject<Node>): ShaderNodeObject<Node> {
-  return tslFloor(v);
-}
 
-// Expose 32-bit floor as a shorter import alias for the previous kernel.
-declare function tslFloor(v: ShaderNodeObject<Node>): ShaderNodeObject<Node>;
