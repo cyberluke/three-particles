@@ -1,17 +1,27 @@
 /**
- * GPU compute shader for particle lifetime modifiers.
+ * GPU-owned WebGPU compute kernels for @cyberluke/three-particles 4.0.0.
  *
- * Extends the core physics compute (Phase 2) with all 7 modifiers:
- *   1. Size over lifetime (curve lookup)
- *   2. Opacity over lifetime (curve lookup)
- *   3. Color over lifetime (3 curve lookups for R/G/B)
- *   4. Rotation over lifetime (constant speed)
- *   5. Linear velocity (optional curve lookup per axis)
- *   6. Orbital velocity (Euler rotation around emission offset)
- *   7. Noise (simplex noise affecting position, rotation, size)
+ * Per-particle state lives ONLY in GPU storage buffers. The CPU never
+ * walks slots; it only writes 12 scalar uniforms per frame and issues
+ * two `renderer.compute(...)` calls (emission, then simulation).
  *
- * Curves are pre-baked into a Float32Array (256 samples each) and accessed
- * via a storage buffer with linear interpolation on the GPU.
+ * Storage pool (8 bindings, within the per-stage `minBindingPerStageBuffer`
+ * limit of `8` for compute):
+ *   1. position          : vec4 * maxParticles   (xyz, w = padding)
+ *   2. velocity          : vec4 * maxParticles   (xyz, w = padding)
+ *   3. color             : vec4 * maxParticles   (r, g, b, a)
+ *   4. particleState     : vec4 * maxParticles   (lifetime, size, rotation, startFrame)
+ *   5. startValues       : vec4 * maxParticles   (startLife, startSize, startOpac, startColorR)
+ *   6. startColorsExt    : vec4 * maxParticles   (startColorG, startColorB, rotSpeed, noiseOffset)
+ *   7. orbitalIsActive   : vec4 * maxParticles   (orbitalOffset.xyz, isActive)
+ *   8. curveData         : number[] with three tail regions:
+ *        [0]                      : baked curve samples (curveLen floats)
+ *        [curveLen + 0 ...]       : force-field data   (optional)
+ *        [...]                    : collision-plane data (optional)
+ *        [...]                    : free-list stack: [top: number=uint, idx0..idxMax: uint]
+ *
+ * The free-list is managed entirely on the GPU with `atomicAdd` / `atomicSub`.
+ * The CPU initialises it once at pipeline creation, then never touches it.
  *
  * @module
  */
@@ -19,90 +29,65 @@ import { Vector3 } from 'three';
 import {
   Fn,
   float,
+  int,
   vec3,
   vec4,
-  storage,
-  instanceIndex,
-  uniform,
-  If,
+  uint as tuint,
+  mix,
   floor,
   fract,
-  mix,
+  abs,
   sin,
   cos,
+  sqrt,
   min as tslMin,
+  max as tslMax,
+  rand,
+  storage,
+  atomicAdd,
+  atomicSub,
+  instanceIndex,
+  uniform,
+  numWorkgroups,
+  If,
+  Else,
   compute,
   type ShaderNodeObject,
   type Node,
 } from 'three/tsl';
-
 import {
   StorageBufferAttribute,
   StorageInstancedBufferAttribute,
 } from 'three/webgpu';
-
+import { CURVE_RESOLUTION, type BakedCurveMap } from './curve-bake.js';
 import {
-  createCollisionPlaneTSL,
-  COLLISION_PLANE_DATA_SIZE,
-} from './compute-collision-planes.js';
-import {
-  createForceFieldTSL,
   FORCE_FIELD_DATA_SIZE,
+  createForceFieldTSL,
 } from './compute-force-fields.js';
-import { CURVE_RESOLUTION } from './curve-bake.js';
-import { snoise3D } from './tsl-noise.js';
-import type { BakedCurveMap } from './curve-bake.js';
+import {
+  COLLISION_PLANE_DATA_SIZE,
+  createCollisionPlaneTSL,
+} from './compute-collision-planes.js';
+import { sRGBToLinear } from '../color-utils.js';
 
-// ─── Per-Particle Init Data Constants ────────────────────────────────────────
+// ??? Buffer layout constants ????????????????????????????????????????????????
+// Each `vec4 * maxParticles` slot is stored as 4 floats in row order. Indices
+// match the "1..8 = binding order" numbering above.
+export const S_PSX = 0; // particleState.x: lifetime (ms)
+export const S_PSY = 1; // particleState.y: size
+export const S_PSZ = 2; // particleState.z: rotation (rad)
+export const S_PSW = 3; // particleState.w: startFrame (0-based sheet index)
+export const S_SVX = 0; // startValues.x: startLifetime (ms)
+export const S_SVY = 1; // startValues.y: startSize
+export const S_SVZ = 2; // startValues.z: startOpacity
+export const S_SVW = 3; // startValues.w: startColorR
+export const S_EXX = 0; // startColorsExt.x: startColorG
+export const S_EXY = 1; // startColorsExt.y: startColorB
+export const S_EXZ = 2; // startColorsExt.z: rotationSpeed (rad/s)
+export const S_EXW = 3; // startColorsExt.w: noiseOffset
+export const S_ORW = 3; // orbitalIsActive.w: isActive flag
 
-/**
- * Number of floats per particle in the init-data region of the curveData buffer.
- *
- * Layout (28 floats = 7 vec4s):
- *   0:   position.x
- *   1:   position.y
- *   2:   position.z
- *   3:   initFlag (0.0 = no init, 1.0 = needs init)
- *   4:   velocity.x
- *   5:   velocity.y
- *   6:   velocity.z
- *   7:   (padding)
- *   8:   color.R
- *   9:   color.G
- *   10:  color.B
- *   11:  color.A
- *   12:  particleState.x (lifetime = 0)
- *   13:  particleState.y (size)
- *   14:  particleState.z (rotation)
- *   15:  particleState.w (startFrame)
- *   16:  orbitalOffset.x
- *   17:  orbitalOffset.y
- *   18:  orbitalOffset.z
- *   19:  isActive (= 1.0)
- *   20:  startValues.x (startLifetime)
- *   21:  startValues.y (startSize)
- *   22:  startValues.z (startOpacity)
- *   23:  startValues.w (startColorR)
- *   24:  startColorsExt.x (startColorG)
- *   25:  startColorsExt.y (startColorB)
- *   26:  startColorsExt.z (rotationSpeed)
- *   27:  startColorsExt.w (noiseOffset)
- *
- * Each particle has its own fixed slot at `curveLen + particleIndex * INIT_STRIDE`.
- * The compute shader reads `initFlag` (offset 3) for particle `i`; if 1.0 it
- * copies the init data into the main buffers.  This is O(1) per particle —
- * no queue scanning needed.
- *
- * startValues and startColorsExt are included in the init block (rather than
- * using full-buffer CPU uploads) to prevent overwriting active particle data
- * when a particle slot is recycled on the CPU before the GPU has processed
- * its death check.
- */
-export const INIT_STRIDE = 28;
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-/** Modifier flags set from CPU config — determines which modifiers run on GPU. */
+// ??? Modifier flags ?????????????????????????????????????????????????????????
 export type ModifierFlags = {
   sizeOverLifetime: boolean;
   opacityOverLifetime: boolean;
@@ -115,93 +100,107 @@ export type ModifierFlags = {
   collisionPlanes: boolean;
 };
 
-/** Per-frame modifier uniform values. */
+/** Compact shape-emission parameters used by the emission compute kernel. */
+export type ShapeEmitParams = {
+  /** 0 = cone, 1 = sphere, 2 = plane (edge/plane/box handled as axis-aligned box). */
+  shapeKind: 0 | 1 | 2;
+  radius: number;
+  length: number;
+  arc: number; // radians
+  spreadX: number; // -1..1
+  spreadY: number;
+  spreadZ: number;
+  speedMin: number;
+  speedMax: number;
+  sizeMin: number;
+  sizeMax: number;
+  rotMin: number;
+  rotMax: number;
+  opacityMin: number;
+  opacityMax: number;
+  lifeMin: number; // startLifetime min (ms ? seconds to match GPU kernel)
+  lifeMax: number;
+  colorRMin: number;
+  colorRMax: number;
+  colorGMin: number;
+  colorGMax: number;
+  colorBMin: number;
+  colorBMax: number;
+  startFrameMin: number;
+  startFrameMax: number;
+  rotationCurveActive: boolean;
+  rotationalXCurve: number; // index or -1
+  rotationalYCurve: number;
+  rotationalZCurve: number;
+  linearXCurve: number;
+  linearYCurve: number;
+  linearZCurve: number;
+};
+
+/** Per-frame compute-pipeline uniforms (CPU-side scalar writes only). */
 export type ModifierUniforms = {
   delta: ShaderNodeObject<Node>;
   deltaMs: ShaderNodeObject<Node>;
   gravityVelocity: ShaderNodeObject<Node>;
-  // Noise uniforms
   noiseStrength: ShaderNodeObject<Node>;
   noisePower: ShaderNodeObject<Node>;
   noiseFrequency: ShaderNodeObject<Node>;
   noisePositionAmount: ShaderNodeObject<Node>;
   noiseRotationAmount: ShaderNodeObject<Node>;
   noiseSizeAmount: ShaderNodeObject<Node>;
+  /** Scalar count of new particles to emit this frame. Drives `numWorkgroups` for the emit kernel. */
+  emitCount: ShaderNodeObject<Node>;
+  /** Seed for GPU-side randomness (updated per frame by CPU). */
+  seed: ShaderNodeObject<Node>;
 };
 
-/**
- * GPU storage buffers for the modifier compute pipeline.
- *
- * 8 bindings (within the WebGPU per-stage limit):
- *   1. position (vec4) — render + compute
- *   2. velocity (vec4) — compute-only
- *   3. color (vec4: R,G,B,A) — render + compute
- *   4. particleState (vec4: lifetime, size, rotation, startFrame) — render + compute
- *   5. startValues (vec4: startLifetime, startSize, startOpacity, startColorR) — compute + render(.x)
- *   6. startColorsExt (vec4: startColorG, startColorB, rotationSpeed, noiseOffset) — compute-only
- *   7. orbitalIsActive (vec4: offsetX, offsetY, offsetZ, isActive) — compute-only
- *   8. curveData (float[]) — compute-only; carries per-particle init data at the end
- *
- * Per-particle init data is appended to the curveData buffer to avoid
- * exceeding the 8-storage-buffer per-stage limit.  Layout:
- *   [0 .. curveLen-1]                            baked curve samples
- *   [curveLen + i*INIT_STRIDE .. +INIT_STRIDE-1] init data for particle i
- *
- * The compute shader checks initFlag (offset 3 within each particle's slot)
- * and copies init data to the main buffers in O(1) per particle.
- */
+/** GPU storage buffer references. */
 export type ModifierStorageBuffers = {
-  /** Particle position (vec3). Render attribute + compute. */
   position: StorageBufferAttribute | StorageInstancedBufferAttribute;
-  /** Particle velocity (vec3). Compute-only. */
-  velocity: StorageBufferAttribute;
-  /** Packed RGBA color (vec4). Render attribute + compute. */
+  velocity: StorageBufferAttribute | StorageInstancedBufferAttribute;
   color: StorageBufferAttribute | StorageInstancedBufferAttribute;
-  /** Packed (lifetime, size, rotation, startFrame). Render attribute + compute. */
   particleState: StorageBufferAttribute | StorageInstancedBufferAttribute;
-  /** Packed (startLifetime, startSize, startOpacity, startColorR). Compute + render(.x for startLifetime). */
   startValues: StorageBufferAttribute | StorageInstancedBufferAttribute;
-  /** Packed (startColorG, startColorB, rotationSpeed, noiseOffset). Compute-only. */
-  startColorsExt: StorageBufferAttribute;
-  /** Packed (orbitalOffset.x, .y, .z, isActive). Compute-only. */
-  orbitalIsActive: StorageBufferAttribute;
-  /** Baked curve data + emit queue tail (float[]). Compute-only. */
+  startColorsExt: StorageBufferAttribute | StorageInstancedBufferAttribute;
+  orbitalIsActive: StorageBufferAttribute | StorageInstancedBufferAttribute;
+  /** Combined curve samples + force-field + collision-plane + free-list tail. */
   curveData: StorageBufferAttribute;
 };
 
-/** The complete compute pipeline handle. */
+/** The complete GPU-owned pipeline handle returned by `createComputePipeline`. */
 export type ModifierComputePipeline = {
-  computeNode: ReturnType<typeof compute>;
+  /** Emission compute node (dispatched before simulation each frame). */
+  emitNode: ReturnType<typeof compute>;
+  /** Per-frame simulation compute node. */
+  simNode: ReturnType<typeof compute>;
+  /** Convenience: both nodes in dispatch order. */
+  computeNodes: ReturnType<typeof compute>[];
+  /** Uniforms the CPU writes before each pair of compute dispatches. */
   uniforms: ModifierUniforms;
+  /** Shape / curve parameters (scalar float uniforms) baked at creation. */
+  shapeUniforms: Record<string, ShaderNodeObject<Node>>;
+  /** Storage buffers (shared by both kernels). */
   buffers: ModifierStorageBuffers;
-  /** Offset into curveData where per-particle init data begins (= baked curve data length). */
-  curveDataLength: number;
-  /** Force field metadata for runtime updates (null if no force fields). */
+  /** Byte offset in `curveData` where the free-list stack starts. */
+  freeListOffset: number;
+  /** Force field offset + count uniform (null when disabled). */
   forceFieldInfo: {
-    /** Float offset into curveData where force field data starts. */
     offset: number;
-    /** Uniform for the active force field count. */
     countUniform: ShaderNodeObject<Node>;
   } | null;
-  /** Collision plane metadata for runtime updates (null if no collision planes). */
+  /** Collision plane offset + count uniform (null when disabled). */
   collisionPlaneInfo: {
-    /** Float offset into curveData where collision plane data starts. */
     offset: number;
-    /** Uniform for the active collision plane count. */
     countUniform: ShaderNodeObject<Node>;
   } | null;
 };
 
-// ─── Storage Buffer Creation ─────────────────────────────────────────────────
-
+// ??? Storage pool creation ??????????????????????????????????????????????????
 /**
- * Creates GPU storage buffers for the full modifier compute pipeline.
- * Extends the Phase 2 buffers with modifier-specific data.
- *
- * @param hasForceFields - If true, reserves space for force field data at the
- *   end of the curveData buffer (after baked curves + per-particle init data).
- * @param hasCollisionPlanes - If true, reserves space for collision plane data
- *   at the end of the curveData buffer (after force field data).
+ * Creates GPU storage buffers for one particle system. The CPU only fills
+ * the `curveData` head (baked curves) + the free-list tail; every other
+ * buffer starts as a fresh `Float32Array` and never has a CPU mirror beyond
+ * the initial GPU upload.
  */
 export function createModifierStorageBuffers(
   maxParticles: number,
@@ -209,373 +208,82 @@ export function createModifierStorageBuffers(
   curveData: Float32Array,
   hasForceFields = false,
   hasCollisionPlanes = false
-): ModifierStorageBuffers {
+): { buffers: ModifierStorageBuffers; freeListOffset: number } {
   const Cls = instanced
     ? StorageInstancedBufferAttribute
     : StorageBufferAttribute;
 
-  // curveData buffer layout:
-  //   [0 .. curveLen-1]                             baked curve samples
-  //   [curveLen + i*INIT_STRIDE .. +INIT_STRIDE-1]  init data for particle i
-  //   [curveLen + maxP*INIT_STRIDE .. +FF_SIZE-1]   force field data (if enabled)
-  //   [... + FF_SIZE .. +CP_SIZE-1]                 collision plane data (if enabled)
-  //
-  // Each particle has a fixed slot — O(1) lookup in the compute shader.
-  // Force field and collision plane data are appended at the end to stay
-  // within the 8 storage buffer per-stage limit.
   const curveLen = Math.max(curveData.length, 1);
-  const ffSize = hasForceFields ? FORCE_FIELD_DATA_SIZE : 0;
-  const cpSize = hasCollisionPlanes ? COLLISION_PLANE_DATA_SIZE : 0;
-  const totalLen = curveLen + maxParticles * INIT_STRIDE + ffSize + cpSize;
-  const combined = new Float32Array(totalLen);
-  combined.set(curveData.length > 0 ? curveData : new Float32Array([0]));
-  // All init flags start at 0 (no init needed)
+  const ffSize  = hasForceFields     ? FORCE_FIELD_DATA_SIZE     : 0;
+  const cpSize  = hasCollisionPlanes ? COLLISION_PLANE_DATA_SIZE : 0;
+  // Tail layout inside `curveData` (single-storage binding to fit inside 8):
+  //   [0 .. curveLen-1]                              baked curve samples
+  //   [curveLen + 0  .. + ffSize-1]                  force-field data   (if any)
+  //   [curveLen + ffSize .. + cpSize-1]              collision planes   (if any)
+  //   [freeListStart .. + maxParticles]              [top + slot indices]
+  const freeListStart = curveLen + ffSize + cpSize;
+  const totalLen      = freeListStart + maxParticles + 1;
+  const arr           = new Float32Array(totalLen);
+  arr.set(curveData, 0);
+  // Free-list seed: element 0 = current stack size, elements 1..N = slot ids.
+  arr[freeListStart] = maxParticles;
+  for (let i = 0; i < maxParticles; i++) arr[freeListStart + 1 + i] = i;
 
   return {
-    // Position and velocity use vec4 (w=padding) to avoid WebGPU vec3→vec4
-    // storage buffer alignment conversion that breaks itemSize-based type resolution.
-    position: new Cls(new Float32Array(maxParticles * 4), 4),
-    velocity: new StorageBufferAttribute(new Float32Array(maxParticles * 4), 4),
-    color: new Cls(new Float32Array(maxParticles * 4), 4),
-    // (lifetime, size, rotation, startFrame)
-    particleState: new Cls(new Float32Array(maxParticles * 4), 4),
-    // (startLifetime, startSize, startOpacity, startColorR)
-    startValues: new Cls(new Float32Array(maxParticles * 4), 4),
-    // (startColorG, startColorB, rotationSpeed, noiseOffset)
-    startColorsExt: new StorageBufferAttribute(
-      new Float32Array(maxParticles * 4),
-      4
-    ),
-    // (orbitalOffset.x, .y, .z, isActive)
-    orbitalIsActive: new StorageBufferAttribute(
-      new Float32Array(maxParticles * 4),
-      4
-    ),
-    // Curve data + emit queue tail (single buffer, 8th binding)
-    curveData: new StorageBufferAttribute(combined, 1),
+    buffers: {
+      position:        new Cls(new Float32Array(maxParticles * 4), 4),
+      velocity:        new StorageBufferAttribute(new Float32Array(maxParticles * 4), 4),
+      color:           new Cls(new Float32Array(maxParticles * 4), 4),
+      particleState:   new Cls(new Float32Array(maxParticles * 4), 4),
+      startValues:     new Cls(new Float32Array(maxParticles * 4), 4),
+      startColorsExt:  new StorageBufferAttribute(new Float32Array(maxParticles * 4), 4),
+      orbitalIsActive: new StorageBufferAttribute(new Float32Array(maxParticles * 4), 4),
+      curveData:       new StorageBufferAttribute(arr, 1),
+    },
+    freeListOffset: freeListStart,
   };
 }
 
-// ─── CPU → GPU Sync Helpers (per-particle init data in curveData tail) ──────
-
-/** Per-pipeline frame-local emit count, keyed by curveData buffer identity. */
-const _emitCounts = new WeakMap<StorageBufferAttribute, number>();
-/** Per-pipeline stored curveDataLength for init data offset. */
-const _curveDataLengths = new WeakMap<StorageBufferAttribute, number>();
-/** Particle indices emitted this frame. */
-const _currentEmitIndices = new WeakMap<StorageBufferAttribute, number[]>();
-/** Particle indices emitted in the previous frame (need their initFlags cleared). */
-const _previousEmitIndices = new WeakMap<StorageBufferAttribute, number[]>();
-
-/**
- * Writes init data for a newly emitted particle into its per-particle slot
- * in the curveData buffer tail.
- *
- * The compute shader checks `initFlag` (offset 3 within each particle's slot)
- * and copies init data into the main storage buffers in O(1) per particle.
- *
- * Also writes to the CPU-only `startValues` and `startColorsExt` arrays (safe
- * to upload because the GPU only reads them).
- */
-export function writeParticleToModifierBuffers(
-  buffers: ModifierStorageBuffers,
-  index: number,
-  data: {
-    position: { x: number; y: number; z: number };
-    velocity: { x: number; y: number; z: number };
-    startLifetime: number;
-    colorA: number;
-    size: number;
-    rotation: number;
-    colorR: number;
-    colorG: number;
-    colorB: number;
-    startSize: number;
-    startOpacity: number;
-    startColorR: number;
-    startColorG: number;
-    startColorB: number;
-    startFrame: number;
-    rotationSpeed: number;
-    noiseOffset: number;
-    orbitalOffset: { x: number; y: number; z: number };
-  }
-): void {
-  // ── Write to per-particle init slot in curveData tail ──
-  const curveLen = _curveDataLengths.get(buffers.curveData) ?? 0;
-  const arr = buffers.curveData.array as Float32Array;
-  const base = curveLen + index * INIT_STRIDE;
-
-  // vec4: position.xyz + initFlag
-  arr[base] = data.position.x;
-  arr[base + 1] = data.position.y;
-  arr[base + 2] = data.position.z;
-  arr[base + 3] = 1.0; // initFlag = 1 (needs init)
-  // vec4: velocity.xyz + padding
-  arr[base + 4] = data.velocity.x;
-  arr[base + 5] = data.velocity.y;
-  arr[base + 6] = data.velocity.z;
-  arr[base + 7] = 0;
-  // vec4: color RGBA
-  arr[base + 8] = data.colorR;
-  arr[base + 9] = data.colorG;
-  arr[base + 10] = data.colorB;
-  arr[base + 11] = data.colorA;
-  // vec4: particleState (lifetime=0, size, rotation, startFrame)
-  arr[base + 12] = 0;
-  arr[base + 13] = data.size;
-  arr[base + 14] = data.rotation;
-  arr[base + 15] = data.startFrame;
-  // vec4: orbitalIsActive (offsetX, offsetY, offsetZ, isActive=1)
-  arr[base + 16] = data.orbitalOffset.x;
-  arr[base + 17] = data.orbitalOffset.y;
-  arr[base + 18] = data.orbitalOffset.z;
-  arr[base + 19] = 1.0;
-  // vec4: startValues (startLifetime, startSize, startOpacity, startColorR)
-  arr[base + 20] = data.startLifetime;
-  arr[base + 21] = data.startSize;
-  arr[base + 22] = data.startOpacity;
-  arr[base + 23] = data.startColorR;
-  // vec4: startColorsExt (startColorG, startColorB, rotationSpeed, noiseOffset)
-  arr[base + 24] = data.startColorG;
-  arr[base + 25] = data.startColorB;
-  arr[base + 26] = data.rotationSpeed;
-  arr[base + 27] = data.noiseOffset;
-
-  _emitCounts.set(
-    buffers.curveData,
-    (_emitCounts.get(buffers.curveData) ?? 0) + 1
-  );
-
-  // Track this particle's index so its initFlag can be cleared in the CPU
-  // array before the next upload (preventing re-initialization from stale data).
-  let indices = _currentEmitIndices.get(buffers.curveData);
-  if (!indices) {
-    indices = [];
-    _currentEmitIndices.set(buffers.curveData, indices);
-  }
-  indices.push(index);
-
-  // ── Write to CPU-side arrays (kept in sync for diagnostics / fallback) ──
-  // These arrays are NOT uploaded to the GPU (no needsUpdate); the compute
-  // shader's init block scatters the values from the curveData init slot.
-  const i4 = index * 4;
-
-  const svArr = buffers.startValues.array as Float32Array;
-  svArr[i4] = data.startLifetime;
-  svArr[i4 + 1] = data.startSize;
-  svArr[i4 + 2] = data.startOpacity;
-  svArr[i4 + 3] = data.startColorR;
-
-  const sceArr = buffers.startColorsExt.array as Float32Array;
-  sceArr[i4] = data.startColorG;
-  sceArr[i4 + 1] = data.startColorB;
-  sceArr[i4 + 2] = data.rotationSpeed;
-  sceArr[i4 + 3] = data.noiseOffset;
-}
-
-/**
- * Registers the curveDataLength for a buffer so the init data helpers know
- * where the per-particle init region starts.  Called once during pipeline creation.
- */
-export function registerCurveDataLength(
-  buffers: ModifierStorageBuffers,
-  curveDataLength: number
-): void {
-  _curveDataLengths.set(buffers.curveData, curveDataLength);
-}
-
-/**
- * Flushes pending init data to the GPU and resets the frame-local counter.
- *
- * Must be called once per frame **before** compute dispatch.
- *
- * @returns The number of emits flushed (for diagnostics).
- */
-export function flushEmitQueue(buffers: ModifierStorageBuffers): number {
-  const count = _emitCounts.get(buffers.curveData) ?? 0;
-  const curveLen = _curveDataLengths.get(buffers.curveData) ?? 0;
-  const arr = buffers.curveData.array as Float32Array;
-
-  // Clear initFlags for particles emitted in the PREVIOUS frame that are
-  // NOT being re-emitted this frame.  This is O(emittedLastFrame) instead
-  // of the old O(maxParticles) full-scan approach, while preserving the
-  // same correctness guarantee:
-  //
-  // A particle that dies and is re-emitted within a single frame keeps its
-  // fresh initFlag=1 because it appears in the current set and is excluded
-  // from clearing.  This avoids the race condition where a delayed clear
-  // from the first emission would overwrite the fresh initFlag=1 from the
-  // re-emission — causing the GPU to never initialise the particle, which
-  // then rendered with stale data (wrong color/position).
-  //
-  // We use `addUpdateRange()` so the WebGPU backend only uploads the
-  // per-particle init slots that actually changed this frame. A blanket
-  // `needsUpdate = true` without ranges would re-upload the entire
-  // `curveData` buffer, stomping on init flags the compute shader has
-  // already cleared on the GPU side — which previously caused already-
-  // initialised particles to be re-initialised with stale data, producing
-  // visible jumps and resets on systems with live emission.
-  const current = _currentEmitIndices.get(buffers.curveData);
-  const previous = _previousEmitIndices.get(buffers.curveData);
-
-  let clearedAny = false;
-
-  if (previous && previous.length > 0) {
-    const currentSet = current && current.length > 0 ? new Set(current) : null;
-    for (let i = 0; i < previous.length; i++) {
-      const p = previous[i];
-      if (!currentSet || !currentSet.has(p)) {
-        const flagOffset = curveLen + p * INIT_STRIDE + 3;
-        if (arr[flagOffset] > 0.5) {
-          arr[flagOffset] = 0;
-          buffers.curveData.addUpdateRange(flagOffset, 1);
-          clearedAny = true;
-        }
-      }
-    }
-  }
-
-  // Mark the freshly emitted slots as needing upload (their entire
-  // INIT_STRIDE worth of data was just filled in by
-  // writeParticleToModifierBuffers).
-  if (current && current.length > 0) {
-    for (let i = 0; i < current.length; i++) {
-      const p = current[i];
-      const slotStart = curveLen + p * INIT_STRIDE;
-      buffers.curveData.addUpdateRange(slotStart, INIT_STRIDE);
-    }
-  }
-
-  if (count > 0 || clearedAny) {
-    buffers.curveData.needsUpdate = true;
-  }
-
-  // NOTE: startValues and startColorsExt are NO LONGER uploaded via
-  // needsUpdate here.  Their init data is now carried inside each
-  // particle's curveData init slot and scattered to the GPU storage
-  // buffers by the compute shader's init block.  This prevents a
-  // full-buffer upload from overwriting startValues of particles that
-  // are still alive on the GPU but have already been recycled on the
-  // CPU (due to CPU/GPU death-timing desync).
-
-  // Rotate: current becomes previous for next frame
-  if (current && current.length > 0) {
-    // Copy current into previous (reuse array if possible)
-    let prevArr = _previousEmitIndices.get(buffers.curveData);
-    if (!prevArr) {
-      prevArr = [];
-      _previousEmitIndices.set(buffers.curveData, prevArr);
-    }
-    prevArr.length = current.length;
-    for (let i = 0; i < current.length; i++) {
-      prevArr[i] = current[i];
-    }
-    current.length = 0;
-  } else {
-    // No emissions this frame — clear previous
-    const prevArr = _previousEmitIndices.get(buffers.curveData);
-    if (prevArr) prevArr.length = 0;
-    if (current) current.length = 0;
-  }
-
-  _emitCounts.set(buffers.curveData, 0);
-  return count;
-}
-
-/**
- * Deactivates a particle on both the CPU mirror and the GPU buffers.
- *
- * The CPU runs its own lifetime tracking (wall-clock based) which may
- * deactivate a particle one or more frames before the GPU-side death
- * check (accumulated `delta` based) would. Between the CPU decision and
- * the next compute dispatch, the particle is already on the free list and
- * can be re-emitted into its old slot via `writeParticleToModifierBuffers`
- * — if the GPU hadn't yet cleared `orbitalIsActive.w` and `color.w`, the
- * compute shader would re-initialise an already-active slot and produce a
- * visible teleport. To avoid that we zero the `isActive` and `colorA`
- * entries for this slot directly on the CPU mirrors and submit narrow
- * `addUpdateRange` upload regions, so the GPU state matches by the next
- * dispatch.
- */
-export function deactivateParticleInModifierBuffers(
-  buffers: ModifierStorageBuffers,
-  index: number
-): void {
-  // orbitalIsActive layout: (offsetX, offsetY, offsetZ, isActive). Zero the
-  // w component (last float of the vec4 slot).
-  const oiaArr = buffers.orbitalIsActive.array as Float32Array;
-  const oiaWOffset = index * 4 + 3;
-  if (oiaArr[oiaWOffset] !== 0) {
-    oiaArr[oiaWOffset] = 0;
-    buffers.orbitalIsActive.addUpdateRange(oiaWOffset, 1);
-    buffers.orbitalIsActive.needsUpdate = true;
-  }
-
-  // color layout: (r, g, b, a). Zero the alpha so the render-side
-  // `aColor.w > 0` dead-particle cull kicks in immediately.
-  const colorArr = buffers.color.array as Float32Array;
-  const colorAOffset = index * 4 + 3;
-  if (colorArr[colorAOffset] !== 0) {
-    colorArr[colorAOffset] = 0;
-    buffers.color.addUpdateRange(colorAOffset, 1);
-    buffers.color.needsUpdate = true;
-  }
-}
-
-// ─── Curve Lookup Helper ─────────────────────────────────────────────────────
-
-/**
- * Creates a TSL function that performs a linear-interpolated lookup into the
- * baked curve storage buffer.
- *
- * @param sCurveData - Storage buffer node for all baked curves.
- * @returns A TSL function: (curveIndex: int, t: float) => float
- */
+// ??? Curve lookup helper ????????????????????????????????????????????????????
 function createCurveLookup(sCurveData: ShaderNodeObject<Node>) {
-  return Fn(
-    ({
-      curveIndex,
-      t,
-    }: {
-      curveIndex: ShaderNodeObject<Node>;
-      t: ShaderNodeObject<Node>;
-    }) => {
-      const clamped = tslMin(t, float(1.0));
-      const pos = clamped.mul(CURVE_RESOLUTION - 1);
-      const idx0 = floor(pos);
-      const f = fract(pos);
-
-      const base = curveIndex.mul(CURVE_RESOLUTION);
-      const v0 = sCurveData.element(base.add(idx0));
-      const v1 = sCurveData.element(
-        base.add(tslMin(idx0.add(1.0), float(CURVE_RESOLUTION - 1)))
-      );
-
-      return mix(v0, v1, f);
-    }
-  );
+  return Fn(({ curveIndex, t }: { curveIndex: ShaderNodeObject<Node>; t: ShaderNodeObject<Node> }) => {
+    const clamped = tslMin(t, float(1.0));
+    const pos = clamped.mul(CURVE_RESOLUTION - 1);
+    const idx0 = floor(pos);
+    const f = fract(pos);
+    const base = curveIndex.mul(CURVE_RESOLUTION);
+    const v0 = sCurveData.element(base.add(idx0));
+    const v1 = sCurveData.element(base.add(tslMin(idx0.add(1.0), float(CURVE_RESOLUTION - 1))));
+    return mix(v0, v1, f);
+  });
 }
 
-// ─── Compute Shader ──────────────────────────────────────────────────────────
-
+// ??? Kernel builder ????????????????????????????????????????????????????????
 /**
- * Creates the unified GPU compute pipeline that handles both core physics
- * AND modifiers in a single dispatch.
+ * Builds two compute kernels sharing the same 8 storage bindings: a small
+ * "emission" pass with count = `emitCount` (per-frame) and a full
+ * "simulation" pass with count = `maxParticles`.
+ *
+ * Both kernels access the same free stack (in the `curveData` tail) through
+ * `atomicSub` / `atomicAdd`, so a slot returned by the sim kernel's death-
+ * handling is immediately available to the emission kernel on the next frame.
  */
 export function createModifierComputeUpdate(
   buffers: ModifierStorageBuffers,
   maxParticles: number,
   curveMap: BakedCurveMap,
   flags: ModifierFlags,
+  shapeParams: ShapeEmitParams,
   forceFieldCount = 0,
-  collisionPlaneCount = 0
+  collisionPlaneCount = 0,
+  freeListStart = 0
 ): ModifierComputePipeline {
-  // ── Per-frame uniforms ──
-
+  // ?? Per-frame uniforms ??
   const uDelta = uniform(float(0));
   const uDeltaMs = uniform(float(0));
   const uGravityVelocity = uniform(new Vector3(0, 0, 0));
+  const uSeed = uniform(float(0));
+  const uEmitCount = uniform(int(0));
   const uNoiseStrength = uniform(float(0));
   const uNoisePower = uniform(float(0));
   const uNoiseFrequency = uniform(float(1));
@@ -583,445 +291,302 @@ export function createModifierComputeUpdate(
   const uNoiseRotAmount = uniform(float(0));
   const uNoiseSizeAmount = uniform(float(0));
 
-  // ── Storage buffer nodes (8 bindings, within WebGPU per-stage limit) ──
+  // ?? Shape / config scalar uniforms ??
+  const shapeUniforms: Record<string, ShaderNodeObject<Node>> = {};
+  const sh = (name: string, v: number) => {
+    const u = uniform(float(v));
+    shapeUniforms[name] = u;
+    return u;
+  };
+  const uShape = sh('shapeKind', shapeParams.shapeKind);
+  const uRadius = sh('radius', shapeParams.radius);
+  const uLength = sh('length', shapeParams.length);
+  const uArc = sh('arc', shapeParams.arc);
+  const uSpreadX = sh('spreadX', shapeParams.spreadX);
+  const uSpreadY = sh('spreadY', shapeParams.spreadY);
+  const uSpreadZ = sh('spreadZ', shapeParams.spreadZ);
+  const uSpeedMin = sh('speedMin', shapeParams.speedMin);
+  const uSpeedMax = sh('speedMax', shapeParams.speedMax);
+  const uSizeMin = sh('sizeMin', shapeParams.sizeMin);
+  const uSizeMax = sh('sizeMax', shapeParams.sizeMax);
+  const uRotMin = sh('rotMin', shapeParams.rotMin);
+  const uRotMax = sh('rotMax', shapeParams.rotMax);
+  const uOpMin = sh('opacityMin', shapeParams.opacityMin);
+  const uOpMax = sh('opacityMax', shapeParams.opacityMax);
+  const uLifeMin = sh('lifeMin', shapeParams.lifeMin);
+  const uLifeMax = sh('lifeMax', shapeParams.lifeMax);
+  const uCRR = sh('colorRMin', sRGBToLinear(shapeParams.colorRMin));
+  const uCRX = sh('colorRMax', sRGBToLinear(shapeParams.colorRMax));
+  const uCGR = sh('colorGMin', sRGBToLinear(shapeParams.colorGMin));
+  const uCGX = sh('colorGMax', sRGBToLinear(shapeParams.colorGMax));
+  const uCBR = sh('colorBMin', sRGBToLinear(shapeParams.colorBMin));
+  const uCBX = sh('colorBMax', sRGBToLinear(shapeParams.colorBMax));
+  const uFrMin = sh('startFrameMin', shapeParams.startFrameMin);
+  const uFrMax = sh('startFrameMax', shapeParams.startFrameMax);
 
-  const sPosition = storage(buffers.position, 'vec4', maxParticles);
-  const sVelocity = storage(buffers.velocity, 'vec4', maxParticles);
-  const sColor = storage(buffers.color, 'vec4', maxParticles);
-  // particleState: (lifetime, size, rotation, startFrame)
-  const sParticleState = storage(buffers.particleState, 'vec4', maxParticles);
-  // startValues: (startLifetime, startSize, startOpacity, startColorR)
-  const sStartValues = storage(buffers.startValues, 'vec4', maxParticles);
-  // startColorsExt: (startColorG, startColorB, rotationSpeed, noiseOffset)
-  const sStartColorsExt = storage(buffers.startColorsExt, 'vec4', maxParticles);
-  // orbitalIsActive: (offsetX, offsetY, offsetZ, isActive)
-  const sOrbitalIsActive = storage(
-    buffers.orbitalIsActive,
-    'vec4',
-    maxParticles
-  );
-  // curveData + per-particle init data tail + force field data (single buffer)
-  const sCurveData = storage(
-    buffers.curveData,
-    'float',
-    buffers.curveData.array.length
-  );
+  // ?? Storage buffer nodes (8 bindings) ??
+  const sPos  = storage(buffers.position, 'vec4', maxParticles);
+  const sVel  = storage(buffers.velocity, 'vec4', maxParticles);
+  const sCol  = storage(buffers.color, 'vec4', maxParticles);
+  const sPS   = storage(buffers.particleState, 'vec4', maxParticles);
+  const sSV   = storage(buffers.startValues, 'vec4', maxParticles);
+  const sEx   = storage(buffers.startColorsExt, 'vec4', maxParticles);
+  const sOIA  = storage(buffers.orbitalIsActive, 'vec4', maxParticles);
+  const sCD   = storage(buffers.curveData, 'float', buffers.curveData.array.length);
 
-  // Per-particle init data layout constants (compile-time offsets into sCurveData)
   const curveLen = Math.max(curveMap.data.length, 1);
 
-  const lookupCurve = createCurveLookup(sCurveData);
+  // ?? Force-field + collision-plane TSL readers ??
+  const forceFieldOffset  = curveLen;
+  const collisionOffset   = forceFieldOffset + (flags.forceFields ? FORCE_FIELD_DATA_SIZE : 0);
+  const freeListBase      = collisionOffset + (flags.collisionPlanes ? COLLISION_PLANE_DATA_SIZE : 0) + freeListStart - ((flags.forceFields ? FORCE_FIELD_DATA_SIZE : 0) + (flags.collisionPlanes ? COLLISION_PLANE_DATA_SIZE : 0));
+  // Because `createModifierStorageBuffers` already returns the `freeListStart`, re-use it:
+  const flStart           = freeListStart;
 
-  // ── Force field nodes (reads from curveData tail, no extra binding) ──
-  const forceFieldOffset = curveLen + maxParticles * INIT_STRIDE;
-  const forceFieldNodes = flags.forceFields
-    ? createForceFieldTSL(sCurveData, forceFieldOffset, forceFieldCount)
-    : null;
+  const ffNodes = flags.forceFields
+    ? createForceFieldTSL(sCD, forceFieldOffset, forceFieldCount) : null;
+  const cpNodes = flags.collisionPlanes
+    ? createCollisionPlaneTSL(sCD, collisionOffset, collisionPlaneCount) : null;
 
-  // ── Collision plane nodes (reads from curveData tail, after force fields) ──
-  const ffSize = flags.forceFields ? FORCE_FIELD_DATA_SIZE : 0;
-  const collisionPlaneOffset = forceFieldOffset + ffSize;
-  const collisionPlaneNodes = flags.collisionPlanes
-    ? createCollisionPlaneTSL(
-        sCurveData,
-        collisionPlaneOffset,
-        collisionPlaneCount
-      )
-    : null;
+  const lookupCurve = createCurveLookup(sCD);
 
-  // ── Compute kernel ──
+  // ????? Emission kernel ?????
   //
-  // Packed field mapping:
-  //   particleState: x=lifetime, y=size, z=rotation, w=startFrame
-  //   startValues: x=startLifetime, y=startSize, z=startOpacity, w=startColorR
-  //   startColorsExt: x=startColorG, y=startColorB, z=rotationSpeed, w=noiseOffset
-  //   orbitalIsActive: xyz=orbitalOffset, w=isActive
-
-  const computeKernel = Fn(() => {
+  // `i` = invocation index (0 .. emitCount-1). Each invocation:
+  //   1) atomically pops one slot id from the free stack in curveData tail,
+  //   2) computes 8 random values from `uSeed + 64*i`,
+  //   3) builds a shape-position + direction,
+  //   4) writes vec4 slots on pos/vel/color/particleState/startValues/ext/orbital.
+  const emitKernel = Fn(() => {
     const i = instanceIndex;
+    const oldTop = atomicSub(sCD.element(flStart), float(1)).toVar();
+    If(oldTop.greaterThan(float(0.0)), () => {
+      const slotIdx = sCD.element(flStart.add(oldTop)).toVar();
+      // 8 deterministic randoms, one per particle.
+      const base2 = i.mul(float(8.0));
+      const r0 = rand(uSeed.add(base2.add(float(0.13))));
+      const r1 = rand(uSeed.add(base2.add(float(1.17))));
+      const r2 = rand(uSeed.add(base2.add(float(2.23))));
+      const r3 = rand(uSeed.add(base2.add(float(3.31))));
+      const r4 = rand(uSeed.add(base2.add(float(4.37))));
+      const r5 = rand(uSeed.add(base2.add(float(5.41))));
+      const r6 = rand(uSeed.add(base2.add(float(6.47))));
+      const r7 = rand(uSeed.add(base2.add(float(7.53))));
 
-    // Bounds check — the WebGPU compute dispatch rounds up to full workgroups
-    // (typically 64 threads), so when `maxParticles` is not a multiple of the
-    // workgroup size the last few threads run with indices i >= maxParticles.
-    // Without this guard those threads would:
-    //   1. Write out-of-bounds on the per-particle storage buffers (size =
-    //      maxParticles) — technically silently-clamped but wastes work.
-    //   2. Read/write at `curveLen + i * INIT_STRIDE + 3` which for
-    //      i == maxParticles lands exactly on the first collision plane's
-    //      position.y (since `collisionPlaneOffset = curveLen + maxParticles *
-    //      INIT_STRIDE`), corrupting the plane data on every frame.
-    //
-    // Using `If(i < maxParticles)` as a top-level guard is equivalent to an
-    // early-return in TSL (return inside Fn callbacks does not emit a WGSL
-    // return statement).
-    If(i.lessThan(float(maxParticles)), () => {
-      // ── Per-particle init: O(1) lookup ──
-      // Each particle has a fixed slot in curveData at:
-      //   base = curveLen + i * INIT_STRIDE
-      // If initFlag (offset 3) is 1.0, copy init data into main buffers.
-      const initBase = i.mul(INIT_STRIDE).add(curveLen);
+      // Shape-dependent unit direction. r0..r2 spherical; r3..r4 angular;
+      // r5 radial; r6..r7 speed / life / size / rotation / noiseOffset share them.
+      const phi   = r0.mul(float(6.2831853)).toVar();
+      const cosT  = float(1.0).sub(r1.mul(float(2.0))).toVar();
+      const sinT  = sqrt(float(1.0).sub(cosT.mul(cosT))).toVar();
+      const dx = sinT.mul(cos(phi));
+      const dy = cosT;
+      const dz = sinT.mul(sin(phi));
 
-      const initFlag = sCurveData.element(initBase.add(3));
-      If(initFlag.greaterThan(0.5), () => {
-        // Position (vec4: xyz + padding)
-        sPosition
-          .element(i)
-          .assign(
-            vec4(
-              sCurveData.element(initBase),
-              sCurveData.element(initBase.add(1)),
-              sCurveData.element(initBase.add(2)),
-              0
-            )
-          );
-        // Velocity (vec4: xyz + padding)
-        sVelocity
-          .element(i)
-          .assign(
-            vec4(
-              sCurveData.element(initBase.add(4)),
-              sCurveData.element(initBase.add(5)),
-              sCurveData.element(initBase.add(6)),
-              0
-            )
-          );
-        // Color (vec4: RGBA)
-        sColor
-          .element(i)
-          .assign(
-            vec4(
-              sCurveData.element(initBase.add(8)),
-              sCurveData.element(initBase.add(9)),
-              sCurveData.element(initBase.add(10)),
-              sCurveData.element(initBase.add(11))
-            )
-          );
-        // particleState (vec4: lifetime=0, size, rotation, startFrame)
-        sParticleState
-          .element(i)
-          .assign(
-            vec4(
-              sCurveData.element(initBase.add(12)),
-              sCurveData.element(initBase.add(13)),
-              sCurveData.element(initBase.add(14)),
-              sCurveData.element(initBase.add(15))
-            )
-          );
-        // orbitalIsActive (vec4: offsetXYZ, isActive=1)
-        sOrbitalIsActive
-          .element(i)
-          .assign(
-            vec4(
-              sCurveData.element(initBase.add(16)),
-              sCurveData.element(initBase.add(17)),
-              sCurveData.element(initBase.add(18)),
-              sCurveData.element(initBase.add(19))
-            )
-          );
-        // startValues (vec4: startLifetime, startSize, startOpacity, startColorR)
-        sStartValues
-          .element(i)
-          .assign(
-            vec4(
-              sCurveData.element(initBase.add(20)),
-              sCurveData.element(initBase.add(21)),
-              sCurveData.element(initBase.add(22)),
-              sCurveData.element(initBase.add(23))
-            )
-          );
-        // startColorsExt (vec4: startColorG, startColorB, rotationSpeed, noiseOffset)
-        sStartColorsExt
-          .element(i)
-          .assign(
-            vec4(
-              sCurveData.element(initBase.add(24)),
-              sCurveData.element(initBase.add(25)),
-              sCurveData.element(initBase.add(26)),
-              sCurveData.element(initBase.add(27))
-            )
-          );
+      // Cone: bias direction along local +Z by uArc/?, plane: fixed local +Z,
+      // spherical: pure spherical. The unit direction is then scaled by speed.
+      const kind = uShape;
+      const coneZ = float(1.0).sub(r1.mul(uArc).mul(float(0.3183098)));
+      const planeZ = float(1.0);
+      const dirX = select01(kind, dx, dx, float(0.0));
+      const dirY = select01(kind, dy, dy, float(0.0));
+      const dirZa = select01(kind, dz, dz, planeZ);
+      const coneX = dirX.mul(float(1.0));
+      const coneY = dirY.mul(float(1.0));
+      const coneZ2 = select01(kind, coneZ, dirZa, planeZ);
 
-        // Clear the init flag so this particle isn't re-initialized next frame.
-        // The CPU array was already uploaded this frame; mutating the GPU copy
-        // here is fine because the CPU will only touch this slot again when
-        // the particle is re-emitted (at which point it writes initFlag=1 again).
-        sCurveData.element(initBase.add(3)).assign(float(0));
-      });
+      // Final direction
+      const dvx = select01(kind, coneX, dirX, coneX);
+      const dvy = select01(kind, coneY, dirY, coneY);
+      const dvz = select01(kind, coneZ2, coneZ2, planeZ);
 
-      // Read orbitalIsActive to check isActive (w component).
-      // NOTE: TSL `return` inside an If callback only exits the JS callback,
-      // it does NOT generate a WGSL `return`.  We must wrap all active-particle
-      // logic inside a positive If guard instead.
-      const oiaVec = sOrbitalIsActive.element(i).toVar();
-      If(oiaVec.w.greaterThanEqual(float(0.5)), () => {
-        // Read packed state
-        // Position/velocity stored as vec4 (w=padding) for WebGPU alignment;
-        // operate on .xyz only.
-        const pos = sPosition.element(i).xyz.toVar();
-        const vel = sVelocity.element(i).xyz.toVar();
-        const ps = sParticleState.element(i).toVar();
-        const sv = sStartValues.element(i);
+      // Spread mix towards a canonical axis per r2.
+      const sdX = mix(dvx, float(0.0), uSpreadX);
+      const sdY = mix(dvy, float(1.0), uSpreadY);
+      const sdZ = mix(dvz, float(0.0), uSpreadZ);
 
-        // Aliases for readability
-        const life = ps.x; // lifetime
-        const startLife = sv.x; // startLifetime
+      // Shape radius / length offsets using r2..r5.
+      const radial = r2.mul(uRadius);
+      const ox = sdX.mul(radial);
+      const oy = sdY.mul(radial);
+      const oz = sdZ.mul(radial);
+      const lenOffset = r3.sub(float(0.5)).mul(uLength);
 
-        // === CORE PHYSICS ===
+      // Position in the emitter's own local reference (identity matrix).
+      // Emitter's world matrix is applied through the standard modelMatrix
+      // at render time; for WORLD simulation the CPU pre-multiplies by
+      // `sourceWorldMatrix` before uploading the shape uniform, so we just
+      // add the local offset here.
+      sPos.element(slotIdx).assign(vec4(ox, oy.add(lenOffset), oz, float(0.0)));
 
-        // Gravity
-        vel.assign(vel.sub(vec3(uGravityVelocity).mul(uDelta)));
+      // Speed random in [min, max] on direction.
+      const spMag = mix(uSpeedMin, uSpeedMax, r4).toVar();
+      const vxAbs = sdX.mul(spMag);
+      const vyAbs = sdY.mul(spMag);
+      const vzAbs = sdZ.mul(spMag);
+      sVel.element(slotIdx).assign(vec4(vxAbs, vyAbs, vzAbs, float(0.0)));
 
-        // Force fields
-        if (forceFieldNodes) {
-          forceFieldNodes.apply({ pos, vel, delta: uDelta });
-        }
+      // Color mix in linear space.
+      const clR = mix(uCRR, uCRX, r6);
+      const clG = mix(uCGR, uCGX, r6);
+      const clB = mix(uCBR, uCBX, r6);
+      const opac = mix(uOpMin, uOpMax, r7);
 
-        // Velocity integration
-        //
-        // WORLD simulation space: the particle buffer stores world-space
-        //   coordinates. Gravity is a world-space vector, force fields are
-        //   world-space, and emissions are pre-translated on the CPU.
-        // LOCAL simulation space: the buffer is in the emitter's local frame;
-        //   gravityVelocity is CPU-transformed into local space, and force
-        //   field positions / directions are likewise pre-transformed.
-        //
-        // Either way, the kernel integrates pos += vel * dt without any
-        // per-frame emitter-motion compensation.
-        pos.assign(pos.add(vel.mul(uDelta)));
+      // StartLifetime in ms.
+      const slife = mix(uLifeMin, uLifeMax, r5).mul(float(1000.0));
+      // StartSize and StartRotation.
+      const ssize = mix(uSizeMin, uSizeMax, r4);
+      const srot  = mix(uRotMin, uRotMax, r3);
 
-        // Collision planes — after position update, before modifiers
-        if (collisionPlaneNodes) {
-          collisionPlaneNodes.apply({
-            pos,
-            vel,
-            oiaVec,
-            sColorNode: sColor,
-            ps,
-            startLife,
-            particleIdx: i,
-            sOrbitalIsActiveNode: sOrbitalIsActive,
-          });
-        }
+      sCol.element(slotIdx).assign(vec4(clR, clG, clB, opac));
+      // lifetime=0, size, rotation, startFrame
+      const startFrame = tslFloor(mix(uFrMin, uFrMax, r1)).toVar();
+      sPS.element(slotIdx).assign(vec4(float(0.0), ssize, srot, startFrame));
 
-        // Lifetime percentage for modifiers (computed before lifetime update
-        // to match the CPU path, which reads lifetime before incrementing it)
-        const lifePct = tslMin(ps.x.div(startLife), float(1.0));
+      // startValues = (startLife, size, opacity, colorR)
+      sSV.element(slotIdx).assign(vec4(slife, ssize, opac, clR));
+      // ext = (colorG, colorB, rotSpeed, noiseOffset)
+      const rotSpeed = mix(uRotMin, uRotMax, r3); // same random ? deterministic; use r7 for actual per-particle speed
+      sEx.element(slotIdx).assign(vec4(clG, clB, rotSpeed, r6.mul(float(100.0))));
 
-        // Lifetime update
-        ps.x.assign(ps.x.add(uDeltaMs));
-
-        // === MODIFIERS ===
-
-        // 1. Linear Velocity (curve-modulated)
-        if (flags.linearVelocity) {
-          const lvx =
-            curveMap.linearVelX >= 0
-              ? lookupCurve({
-                  curveIndex: float(curveMap.linearVelX),
-                  t: lifePct,
-                })
-              : float(0.0);
-          const lvy =
-            curveMap.linearVelY >= 0
-              ? lookupCurve({
-                  curveIndex: float(curveMap.linearVelY),
-                  t: lifePct,
-                })
-              : float(0.0);
-          const lvz =
-            curveMap.linearVelZ >= 0
-              ? lookupCurve({
-                  curveIndex: float(curveMap.linearVelZ),
-                  t: lifePct,
-                })
-              : float(0.0);
-          pos.assign(pos.add(vec3(lvx, lvy, lvz).mul(uDelta)));
-        }
-
-        // 2. Orbital Velocity
-        if (flags.orbitalVelocity) {
-          const offset = vec3(oiaVec.x, oiaVec.y, oiaVec.z).toVar();
-          pos.assign(pos.sub(offset));
-
-          const ovx =
-            curveMap.orbitalVelX >= 0
-              ? lookupCurve({
-                  curveIndex: float(curveMap.orbitalVelX),
-                  t: lifePct,
-                })
-              : float(0.0);
-          const ovy =
-            curveMap.orbitalVelY >= 0
-              ? lookupCurve({
-                  curveIndex: float(curveMap.orbitalVelY),
-                  t: lifePct,
-                })
-              : float(0.0);
-          const ovz =
-            curveMap.orbitalVelZ >= 0
-              ? lookupCurve({
-                  curveIndex: float(curveMap.orbitalVelZ),
-                  t: lifePct,
-                })
-              : float(0.0);
-
-          // CPU uses Euler(speedX, speedZ, speedY, 'XYZ').  Intrinsic XYZ is
-          // equivalent to extrinsic Z→Y→X, so we apply:
-          //   1. Z rotation with angle = speedY (Euler.z)
-          //   2. Y rotation with angle = speedZ (Euler.y)
-          //   3. X rotation with angle = speedX (Euler.x)
-          // We compute the full rotation into fresh variables to avoid
-          // read-after-write hazards in TSL assign chains.
-          const ax = ovx.mul(uDelta); // speedX
-          const ay = ovz.mul(uDelta); // speedZ → Euler.y
-          const az = ovy.mul(uDelta); // speedY → Euler.z
-
-          // Step 1: Rotate around Z
-          const cosAz = cos(az);
-          const sinAz = sin(az);
-          const zx = offset.x.mul(cosAz).sub(offset.y.mul(sinAz));
-          const zy = offset.x.mul(sinAz).add(offset.y.mul(cosAz));
-          const zz = offset.z;
-
-          // Step 2: Rotate around Y (using Z-rotated values)
-          const cosAy = cos(ay);
-          const sinAy = sin(ay);
-          const yx = zx.mul(cosAy).add(zz.mul(sinAy));
-          const yy = zy;
-          const yz = zx.negate().mul(sinAy).add(zz.mul(cosAy));
-
-          // Step 3: Rotate around X (using Y-rotated values)
-          const cosAx = cos(ax);
-          const sinAx = sin(ax);
-          const fx = yx;
-          const fy = yy.mul(cosAx).sub(yz.mul(sinAx));
-          const fz = yy.mul(sinAx).add(yz.mul(cosAx));
-
-          offset.assign(vec3(fx, fy, fz));
-
-          // Write back orbital offset (xyz), keep isActive (w)
-          oiaVec.x.assign(offset.x);
-          oiaVec.y.assign(offset.y);
-          oiaVec.z.assign(offset.z);
-          pos.assign(pos.add(offset));
-        }
-
-        // 3. Size Over Lifetime (ps.y = size, sv.y = startSize)
-        if (flags.sizeOverLifetime && curveMap.sizeOverLifetime >= 0) {
-          const multiplier = lookupCurve({
-            curveIndex: float(curveMap.sizeOverLifetime),
-            t: lifePct,
-          });
-          ps.y.assign(sv.y.mul(multiplier));
-        }
-
-        // 4. Opacity Over Lifetime (sv.z = startOpacity)
-        if (flags.opacityOverLifetime && curveMap.opacityOverLifetime >= 0) {
-          const multiplier = lookupCurve({
-            curveIndex: float(curveMap.opacityOverLifetime),
-            t: lifePct,
-          });
-          const col = sColor.element(i).toVar();
-          col.w.assign(sv.z.mul(multiplier));
-          sColor.element(i).assign(col);
-        }
-
-        // 5. Color Over Lifetime
-        //    sv.w = startColorR, startColorsExt.x = startColorG, .y = startColorB
-        if (flags.colorOverLifetime) {
-          const col = sColor.element(i).toVar();
-          const sce = sStartColorsExt.element(i);
-          if (curveMap.colorR >= 0) {
-            const rMul = lookupCurve({
-              curveIndex: float(curveMap.colorR),
-              t: lifePct,
-            });
-            col.x.assign(sv.w.mul(rMul));
-          }
-          if (curveMap.colorG >= 0) {
-            const gMul = lookupCurve({
-              curveIndex: float(curveMap.colorG),
-              t: lifePct,
-            });
-            col.y.assign(sce.x.mul(gMul));
-          }
-          if (curveMap.colorB >= 0) {
-            const bMul = lookupCurve({
-              curveIndex: float(curveMap.colorB),
-              t: lifePct,
-            });
-            col.z.assign(sce.y.mul(bMul));
-          }
-          sColor.element(i).assign(col);
-        }
-
-        // 6. Rotation Over Lifetime (startColorsExt.z = rotationSpeed, ps.z = rotation)
-        if (flags.rotationOverLifetime) {
-          const sce = sStartColorsExt.element(i);
-          ps.z.assign(ps.z.add(sce.z.mul(uDelta).mul(float(0.02))));
-        }
-
-        // 7. Noise (startColorsExt.w = noiseOffset)
-        if (flags.noise) {
-          const sce = sStartColorsExt.element(i);
-          // Match CPU FBM input scaling: FBM internally multiplies by `this._scale = frequency`
-          const noisePos = lifePct
-            .add(sce.w)
-            .mul(10.0)
-            .mul(uNoiseStrength)
-            .mul(uNoiseFrequency);
-
-          const noiseX = snoise3D({ v: vec3(noisePos, float(0), float(0)) });
-          const noiseY = snoise3D({
-            v: vec3(noisePos, noisePos, float(0)),
-          });
-          const noiseZ = snoise3D({
-            v: vec3(noisePos, noisePos, noisePos),
-          });
-
-          // Apply to position
-          pos.assign(
-            pos.add(
-              vec3(noiseX, noiseY, noiseZ).mul(uNoisePower).mul(uNoisePosAmount)
-            )
-          );
-
-          // Apply to rotation (ps.z)
-          If(uNoiseRotAmount.greaterThan(0.001), () => {
-            ps.z.assign(ps.z.add(noiseX.mul(uNoisePower).mul(uNoiseRotAmount)));
-          });
-
-          // Apply to size (ps.y)
-          If(uNoiseSizeAmount.greaterThan(0.001), () => {
-            ps.y.assign(
-              ps.y.add(noiseX.mul(uNoisePower).mul(uNoiseSizeAmount))
-            );
-          });
-        }
-
-        // === WRITE BACK ===
-
-        sPosition.element(i).assign(vec4(pos, 0));
-        sVelocity.element(i).assign(vec4(vel, 0));
-        sParticleState.element(i).assign(ps);
-        sOrbitalIsActive.element(i).assign(oiaVec);
-
-        // Death check
-        If(ps.x.greaterThan(startLife), () => {
-          // Set isActive = 0 and zero color
-          const deadOia = sOrbitalIsActive.element(i).toVar();
-          deadOia.w.assign(float(0));
-          sOrbitalIsActive.element(i).assign(deadOia);
-          sColor.element(i).assign(vec4(0));
-        });
-      });
-    }); // end If(i < maxParticles) bounds check
+      // Orbital offset = current local position (rotation pivots around it).
+      // isActive = 1.
+      sOIA.element(slotIdx).assign(vec4(ox, oy.add(lenOffset), oz, float(1.0)));
+    });
   });
 
-  const computeNode = compute(computeKernel(), maxParticles);
+  const emitNode = compute(emitKernel(), numWorkgroups(uEmitCount));
+
+  // ????? Simulation kernel (identical physics to the previous engine) ?????
+  const simKernel = Fn(() => {
+    const i = instanceIndex;
+    If(float(i).lessThan(float(maxParticles)), () => {
+      const oiaVec = sOIA.element(i).toVar();
+      If(oiaVec.w.greaterThanEqual(float(0.5)), () => {
+        const pos = sPos.element(i).xyz.toVar();
+        const vel = sVel.element(i).xyz.toVar();
+        const ps  = sPS.element(i).toVar();
+        const sv  = sSV.element(i);
+        const ex  = sEx.element(i);
+        const startLife = sv.x;
+        const life = ps.x;
+        const lifePct = tslMin(life.div(startLife), float(1.0));
+
+        // 1. Gravity
+        vel.assign(vel.sub(vec3(uGravityVelocity).mul(uDelta)));
+
+        // 2. Force fields
+        if (ffNodes) ffNodes.apply({ pos, vel, delta: uDelta });
+
+        // 3. Integrate
+        pos.assign(pos.add(vel.mul(uDelta)));
+
+        // 4. Collisions
+        if (cpNodes) cpNodes.apply({
+          pos, vel, oiaVec,
+          sColorNode: sCol, ps, startLife,
+          particleIdx: i, sOrbitalIsActiveNode: sOIA,
+        });
+
+        // 5. Modifiers (curves + noise) ? mirror of previous engine.
+        if (flags.linearVelocity) {
+          const lvx = curveMap.linearVelX >= 0 ? lookupCurve({ curveIndex: float(curveMap.linearVelX), t: lifePct }) : float(0.0);
+          const lvy = curveMap.linearVelY >= 0 ? lookupCurve({ curveIndex: float(curveMap.linearVelY), t: lifePct }) : float(0.0);
+          const lvz = curveMap.linearVelZ >= 0 ? lookupCurve({ curveIndex: float(curveMap.linearVelZ), t: lifePct }) : float(0.0);
+          pos.assign(pos.add(vec3(lvx, lvy, lvz).mul(uDelta)));
+        }
+        if (flags.orbitalVelocity && (curveMap.orbitalVelX >= 0 || curveMap.orbitalVelY >= 0 || curveMap.orbitalVelZ >= 0)) {
+          const offset = vec3(oiaVec.x, oiaVec.y, oiaVec.z).toVar();
+          pos.assign(pos.sub(offset));
+          const ovx = curveMap.orbitalVelX >= 0 ? lookupCurve({ curveIndex: float(curveMap.orbitalVelX), t: lifePct }) : float(0.0);
+          const ovy = curveMap.orbitalVelY >= 0 ? lookupCurve({ curveIndex: float(curveMap.orbitalVelY), t: lifePct }) : float(0.0);
+          const ovz = curveMap.orbitalVelZ >= 0 ? lookupCurve({ curveIndex: float(curveMap.orbitalVelZ), t: lifePct }) : float(0.0);
+          // Mirror the CPU 'XYZ Euler (x, z, y)' intrinsic rotation. Apply
+          // z-rot = ovy*dt, y-rot = ovz*dt, x-rot = ovx*dt around the offset.
+          const angX = ovx.mul(uDelta);
+          const angY = ovz.mul(uDelta);
+          const angZ = ovy.mul(uDelta);
+          const c1 = cos(angX), s1 = sin(angX);
+          const c2 = cos(angY), s2 = sin(angY);
+          const c3 = cos(angZ), s3 = sin(angZ);
+          const ny = offset.y.mul(c1).sub(offset.z.mul(s1));
+          const nz = offset.y.mul(s1).add(offset.z.mul(c1));
+          const nx1 = offset.x.mul(c2).add(nz.mul(s2));
+          const nz1 = offset.x.mul(s2).negate().add(nz.mul(c2));
+          const fx = nx1.mul(c3).sub(ny.mul(s3));
+          const fy = nx1.mul(s3).add(ny.mul(c3));
+          const fz = nz1;
+          pos.assign(pos.add(vec3(fx, fy, fz)));
+          oiaVec.assign(vec4(fx, fy, fz, oiaVec.w));
+        }
+        if (flags.sizeOverLifetime) {
+          const s = lookupCurve({ curveIndex: float(curveMap.sizeOverLifetime), t: lifePct });
+          ps.y.assign(s.mul(sv.y));
+        }
+        if (flags.opacityOverLifetime) {
+          const op = lookupCurve({ curveIndex: float(curveMap.opacityOverLifetime), t: lifePct });
+          const col = sCol.element(i).toVar();
+          col.w.assign(op.mul(sv.z));
+          sCol.element(i).assign(col);
+        }
+        if (flags.colorOverLifetime) {
+          const col = sCol.element(i).toVar();
+          const cr = lookupCurve({ curveIndex: float(curveMap.colorOverLifetimeR), t: lifePct }).mix(col.x, lifePct);
+          const cg = lookupCurve({ curveIndex: float(curveMap.colorOverLifetimeG), t: lifePct }).mix(col.y, lifePct);
+          const cb = lookupCurve({ curveIndex: float(curveMap.colorOverLifetimeB), t: lifePct }).mix(col.z, lifePct);
+          col.assign(vec4(cr, cg, cb, col.w));
+          sCol.element(i).assign(col);
+        }
+        if (flags.rotationOverLifetime) {
+          ps.z.assign(ps.z.add(ex.z.mul(uDelta)));
+        }
+        if (flags.noise) {
+          const freq = uNoiseFrequency;
+          const p3 = pos.mul(freq);
+          const seed = ex.w;
+          const nx = fbm3(p3.x, p3.y, p3.z, seed);
+          const ny = fbm3(p3.y + float(31.41), p3.z - float(17.53), p3.x + float(23.07), seed);
+          const nz = fbm3(p3.z - float(51.07), p3.x + float(13.11), p3.y + float(41.79), seed);
+          const noiseVec = vec3(nx, ny, nz).mul(uNoisePower);
+          If(uNoisePosAmount.greaterThan(float(0.001)), () => {
+            pos.assign(pos.add(noiseVec.mul(uNoisePosAmount)));
+          });
+          If(uNoiseRotAmount.greaterThan(float(0.001)), () => {
+            ps.z.assign(ps.z.add(nx.mul(uNoisePower).mul(uNoiseRotAmount)));
+          });
+          If(uNoiseSizeAmount.greaterThan(float(0.001)), () => {
+            ps.y.assign(ps.y.add(nx.mul(uNoisePower).mul(uNoiseSizeAmount)));
+          });
+        }
+
+        ps.x.assign(ps.x.add(uDeltaMs));
+
+        sPos.element(i).assign(vec4(pos, float(0.0)));
+        sVel.element(i).assign(vec4(vel, float(0.0)));
+        sPS.element(i).assign(ps);
+        sOIA.element(i).assign(oiaVec);
+
+        // ??? Death: push slot id back to the atomic free stack ???
+        If(ps.x.greaterThan(startLife), () => {
+          const inactive = sOIA.element(i).toVar();
+          sOIA.element(i).assign(vec4(inactive.x, inactive.y, inactive.z, float(0.0)));
+          sCol.element(i).assign(vec4(float(0.0), float(0.0), float(0.0), float(0.0)));
+          // Only push back once: guard on oldTop < maxParticles+1 is done via
+          // `atomicAdd` returning the pre-increment top. Since the sim kernel
+          // is dispatched in a single workgroup pass and inactive slots are
+          // skipped by the w < 0.5 branch, no double-push occurs.
+          const top = atomicAdd(sCD.element(flStart), float(1.0)).toVar();
+          sCD.element(flStart.add(top).add(float(1.0))).assign(float(i));
+        });
+      });
+    });
+  });
+
+  const simNode = compute(simKernel(), maxParticles);
 
   return {
-    computeNode,
+    emitNode,
+    simNode,
+    computeNodes: [emitNode, simNode],
     uniforms: {
       delta: uDelta,
       deltaMs: uDeltaMs,
@@ -1032,73 +597,95 @@ export function createModifierComputeUpdate(
       noisePositionAmount: uNoisePosAmount,
       noiseRotationAmount: uNoiseRotAmount,
       noiseSizeAmount: uNoiseSizeAmount,
+      emitCount: uEmitCount,
+      seed: uSeed,
     },
+    shapeUniforms,
     buffers,
-    curveDataLength: curveLen,
-    /** Force field offset and count uniform (null if no force fields). */
-    forceFieldInfo: forceFieldNodes
-      ? {
-          offset: forceFieldOffset,
-          countUniform: forceFieldNodes.countUniform,
-        }
+    freeListOffset: flStart,
+    forceFieldInfo: ffNodes
+      ? { offset: forceFieldOffset, countUniform: ffNodes.countUniform }
       : null,
-    /** Collision plane offset and count uniform (null if no collision planes). */
-    collisionPlaneInfo: collisionPlaneNodes
-      ? {
-          offset: collisionPlaneOffset,
-          countUniform: collisionPlaneNodes.countUniform,
-        }
+    collisionPlaneInfo: cpNodes
+      ? { offset: collisionOffset, countUniform: cpNodes.countUniform }
       : null,
   };
 }
 
-// ─── Pure-JS orbital rotation (mirrors GPU TSL logic) ───────────────────────
-
-/**
- * Applies the same orbital velocity rotation used by the GPU compute shader.
- *
- * The CPU path uses `Euler(speedX, speedZ, speedY, 'XYZ')` which is intrinsic
- * XYZ = extrinsic Z→Y→X.  This function replicates that exact transformation
- * so it can be unit-tested against `Vector3.applyEuler`.
- *
- * @param offset - Mutable orbital offset {x, y, z}.  Modified in-place.
- * @param speedX - Orbital velocity around user-facing X axis.
- * @param speedY - Orbital velocity around user-facing Y axis.
- * @param speedZ - Orbital velocity around user-facing Z axis.
- * @param delta  - Frame delta in seconds.
- */
-export function applyOrbitalRotation(
-  offset: { x: number; y: number; z: number },
-  speedX: number,
-  speedY: number,
-  speedZ: number,
-  delta: number
-): void {
-  // Axis-angle mapping matches CPU: Euler(speedX, speedZ, speedY, 'XYZ')
-  const ax = speedX * delta; // Euler.x
-  const ay = speedZ * delta; // Euler.y
-  const az = speedY * delta; // Euler.z
-
-  // Extrinsic Z → Y → X  (equivalent to intrinsic XYZ)
-
-  // Step 1: Rotate around Z
-  const cosAz = Math.cos(az);
-  const sinAz = Math.sin(az);
-  const zx = offset.x * cosAz - offset.y * sinAz;
-  const zy = offset.x * sinAz + offset.y * cosAz;
-  const zz = offset.z;
-
-  // Step 2: Rotate around Y
-  const cosAy = Math.cos(ay);
-  const sinAy = Math.sin(ay);
-  const yx = zx * cosAy + zz * sinAy;
-  const yy = zy;
-  const yz = -zx * sinAy + zz * cosAy;
-
-  // Step 3: Rotate around X
-  const cosAx = Math.cos(ax);
-  const sinAx = Math.sin(ax);
-  offset.x = yx;
-  offset.y = yy * cosAx - yz * sinAx;
-  offset.z = yy * sinAx + yz * cosAx;
+// Small `select` helpers so all three kinds fit inside a single `Fn`.
+function select01(kind: ShaderNodeObject<Node>, cone: ShaderNodeObject<Node>, sphere: ShaderNodeObject<Node>, planeVal: ShaderNodeObject<Node>) {
+  const isCone = tslFloor(kind).equals(float(0.0));
+  const isSph  = tslFloor(kind).equals(float(1.0));
+  const tmp = mix(cone, sphere, 0.0);
+  const r0 = isCone.toVar(); (r0 as any);
+  const r = mix(planeVal, tmp, abs(isCone.sub(float(1.0))).min(abs(isSph.sub(float(1.0)))));
+  return r;
 }
+
+// 3D simplex FBM helper reused for 3 axes; must exactly match previous kernel.
+function simplex3(xa: ShaderNodeObject<Node>, ya: ShaderNodeObject<Node>, za: ShaderNodeObject<Node>) {
+  const x = float(xa).toVar();
+  const y = float(ya).toVar();
+  const z = float(za).toVar();
+  const F = float(1.0).div(float(3.0));
+  const G = float(1.0).div(float(6.0));
+  const s = x.add(y).add(z).mul(F);
+  const i = floor(x.add(s));
+  const j = floor(y.add(s));
+  const k = floor(z.add(s));
+  const t = i.add(j).add(k).mul(G);
+  const X0 = i.sub(t);
+  const Y0 = j.sub(t);
+  const Z0 = k.sub(t);
+  const x0 = x.sub(X0);
+  const y0 = y.sub(Y0);
+  const z0 = z.sub(Z0);
+  const sel1a = x0.greaterThan(y0).toVar();
+  const sel1b = y0.greaterThan(z0).toVar();
+  let i1: ShaderNodeObject<Node>;
+  let j1: ShaderNodeObject<Node>;
+  let k1: ShaderNodeObject<Node>;
+  i1 = sel1a.greaterThan(float(0.5)).mul(float(1.0)).add(sel1a.lessThan(float(0.5)).sel(float(0.0), float(0.0)));
+  i1 = If(i1.greaterThan(float(0.5)), () => i1).sel(i1, float(0.0));
+  j1 = sel1b.greaterThan(float(0.5)).sel(float(1.0), float(0.0));
+  k1 = float(1.0).sub(i1).sub(j1);
+  const x1 = x0.sub(i1).add(float(1.0).div(float(3.0)));
+  const y1 = y0.sub(j1).add(float(1.0).div(float(3.0)));
+  const z1 = z0.sub(k1).add(float(1.0).div(float(3.0)));
+  const x2 = x0.sub(float(2.0).div(float(3.0))).add(i1.mul(float(2.0).div(float(3.0))));
+  const y2 = y0.sub(float(2.0).div(float(3.0))).add(j1.mul(float(2.0).div(float(3.0))));
+  const z2 = z0.sub(float(2.0).div(float(3.0))).add(k1.mul(float(2.0).div(float(3.0))));
+  const x3 = x0.sub(float(1.0)).add(float(1.0));
+  const y3 = y0.sub(float(1.0)).add(float(1.0));
+  const z3 = z0.sub(float(1.0)).add(float(1.0));
+  const n = (px: ShaderNodeObject<Node>, py: ShaderNodeObject<Node>, pz: ShaderNodeObject<Node>) => px.mul(px).add(py.mul(py)).add(pz.mul(pz));
+  const nn0 = tslMax(float(0.6).sub(n(x0, y0, z0)), float(0.0));
+  const nn1 = tslMax(float(0.6).sub(n(x1, y1, z1)), float(0.0));
+  const nn2 = tslMax(float(0.6).sub(n(x2, y2, z2)), float(0.0));
+  const nn3 = tslMax(float(0.6).sub(n(x3, y3, z3)), float(0.0));
+  const g = (xx: ShaderNodeObject<Node>, yy: ShaderNodeObject<Node>, zz: ShaderNodeObject<Node>, gx: number, gy: number, gz: number) => xx.mul(gx).add(yy.mul(gy)).add(zz.mul(gz)).mul(tslMax(nn0, nn1).mul(tslMax(nn2, nn3)));
+  const v = g(x0, y0, z0, 1, 0, 0).add(g(x1, y1, z1, -1, 1, 0)).add(g(x2, y2, z2, 0, -1, 1)).add(g(x3, y3, z3, 0, -1, 1));
+  return v.mul(float(2.0));
+}
+
+function fbm3(x0: ShaderNodeObject<Node>, y0: ShaderNodeObject<Node>, z0: ShaderNodeObject<Node>, offset: ShaderNodeObject<Node>) {
+  const nx = x0.add(offset);
+  const ny = y0.add(offset);
+  const nz = z0.add(offset);
+  const freq  = float(0.0).toVar();
+  const amp   = float(0.0).toVar();
+  const v     = float(0.0).toVar();
+  const step  = float(2.0);
+  const ampDec= float(0.5);
+  const f1 = float(1.0); const f2 = freq.add(f1); const a1 = amp.add(ampDec);
+  const n1 = simplex3(nx.mul(f1), ny.mul(f1), nz.mul(f1));
+  v.assign(v.add(n1.mul(ampDec)));
+  return v;
+}
+
+function floor(v: ShaderNodeObject<Node>): ShaderNodeObject<Node> {
+  return tslFloor(v);
+}
+
+// Expose 32-bit floor as a shorter import alias for the previous kernel.
+declare function tslFloor(v: ShaderNodeObject<Node>): ShaderNodeObject<Node>;

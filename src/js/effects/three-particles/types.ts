@@ -1887,14 +1887,31 @@ export type ParticleSystemInstance = {
   /** GPU compute pipeline for WebGPU simulation. Opaque type to avoid pulling TSL types into DTS. */
   computePipeline?: {
     computeNode: unknown;
+    /** Ordered list of compute dispatches: [emitNode, simNode] on the GPU-only engine. */
+    computeNodes?: unknown[];
     uniforms: Record<string, unknown>;
+    /** GPU storage buffers that are ALSO attached as geometry attributes. */
     buffers: Record<string, unknown>;
+    /** Float32 offset into `curveData` where the free-list stack starts. */
+    freeListOffset?: number;
     forceFieldInfo: { offset: number; countUniform: unknown } | null;
+    /** Optional for backwards compat with the older single-forceFieldInfo shape. */
+    collisionPlaneInfo?: { offset: number; countUniform: unknown } | null;
   };
   /** Whether this system uses GPU compute for simulation. */
   useGPUCompute?: boolean;
   /** Flag set by update loop, consumed by onBeforeRender to dispatch compute. */
   computeDispatchReady?: boolean;
+  /** Storage-pool capacity, used to cap `instanceCount` on the geometry. */
+  maxParticles?: number;
+  /** Attached material (TSL NodeMaterial or legacy ShaderMaterial). */
+  material?: THREE.Material;
+  /** Attached geometry (used to sync `instanceCount` on CPU/GPU transitions). */
+  geometry?: THREE.BufferGeometry | THREE.InstancedBufferGeometry;
+  /** Chosen renderer type; used to derive `instanceCount` behaviour after `updateConfig`. */
+  rrType?: "POINTS" | "INSTANCED" | "MESH" | "TRAIL";
+  /** Cached TSL shared uniform table. */
+  sharedUniforms?: { [k: string]: { value: unknown } };
 };
 
 /**

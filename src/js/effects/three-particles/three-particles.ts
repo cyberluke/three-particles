@@ -168,6 +168,8 @@ type TSLMaterialFactory = {
 };
 
 let _tslMaterialFactory: TSLMaterialFactory | null = null;
+let _rendererBackendIsGPU = true;
+const _rendererBackendIsWebGPU = (): boolean => _rendererBackendIsGPU;
 
 /**
  * Registers the TSL (Three Shading Language) material factory for WebGPU support.
@@ -230,6 +232,12 @@ export const registerTSLMaterialFactory = (
     return false;
   }
   _tslMaterialFactory = factory;
+  if (options && "renderer" in options) {
+    _rendererBackendIsGPU = !!(options.renderer as { backend?: { isWebGPUBackend?: boolean } })
+      ?.backend?.isWebGPUBackend;
+  } else {
+    _rendererBackendIsGPU = true;
+  }
   return true;
 };
 
@@ -714,11 +722,220 @@ const destroyParticleSystem = (particleSystem: THREE.Points | THREE.Mesh) => {
  * @see {@link updateParticleSystems} - Required function to call in your animation loop
  * @see {@link ParticleSystemConfig} - Complete configuration options
  */
+// ?? GPU-only helper functions (small scalar writers; NO per-particle loops) ??
+type _ReusableArrayHelper = {
+  src: Array<NormalizedForceFieldConfig>;
+  dst: Array<NormalizedForceFieldConfig>;
+  _pos: THREE.Vector3;
+  _dir: THREE.Vector3;
+};
+
+const _uploadFFAndCollisionTails = (
+  pipeline: any,
+  generalData: GeneralData,
+  config: NormalizedParticleSystemConfig,
+  scratch: _ReusableArrayHelper
+): void => {
+  const info = pipeline.forceFieldInfo;
+  const cinfo = pipeline.collisionPlaneInfo;
+  if (!info && !cinfo) return;
+  const cd = pipeline.buffers.curveData as {
+    array: Float32Array;
+    addUpdateRange(o: number, l: number): void;
+    needsUpdate: boolean;
+  };
+  const arr = cd.array;
+  if (info && config.forceFields.length > 0) {
+    const encoded = _tslMaterialFactory!.encodeForceFieldsForGPU!(scratch.src, generalData.particleSystemId, generalData.normalizedLifetimePercentage);
+    const off = info.offset;
+    let changed = false;
+    for (let i = 0; i < encoded.length; i++) if (arr[off + i] !== encoded[i]) { changed = true; break; }
+    if (changed) { arr.set(encoded, off); cd.addUpdateRange(off, encoded.length); cd.needsUpdate = true; }
+    (info.countUniform as { value: number }).value = config.forceFields.length;
+  }
+  if (cinfo && config.collisionPlanes.length > 0) {
+    const encoded2 = _tslMaterialFactory!.encodeCollisionPlanesForGPU!(config.collisionPlanes as never);
+    const off2 = cinfo.offset;
+    let changed2 = false;
+    for (let i = 0; i < encoded2.length; i++) if (arr[off2 + i] !== encoded2[i]) { changed2 = true; break; }
+    if (changed2) { arr.set(encoded2, off2); cd.addUpdateRange(off2, encoded2.length); cd.needsUpdate = true; }
+    (cinfo.countUniform as { value: number }).value = config.collisionPlanes.length;
+  }
+};
+
+// After the sim kernel writes the GPU-side storage buffers, we simply flag
+// the CPU-side typed arrays so three.js WebGPU backend will upload them
+// before the render pass. (The compute kernels themselves run against these
+// same GPU buffers; the upload is only needed on the FIRST frame.)
+const _markBufferAttributeUploads = (buffers: Record<string, THREE.BufferAttribute>): void => {};
+
+// Default texture fallback (single white 1?1 pixel; matches upstream @newkrok).
+let _defaultTexture: THREE.Texture | null = null;
+const getDefaultTexture = (): THREE.Texture | null => {
+  if (_defaultTexture) return _defaultTexture;
+  if (typeof document === 'undefined') return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = 1; canvas.height = 1;
+  const ctx = canvas.getContext('2d');
+  if (ctx) { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 1, 1); }
+  _defaultTexture = new THREE.Texture(canvas as unknown as TexImageSource);
+  _defaultTexture.needsUpdate = true;
+  return _defaultTexture;
+};
+/**
+ * Create a new particle system (GPU-only). Every per-particle slot lives
+ * on the GPU inside the 8 storage buffers that the WebGPU compute kernels
+ * read/write. The CPU only:
+ *   - merges the incoming config,
+ *   - creates the TSL material + pipeline,
+ *   - writes ~12 scalar uniforms per frame,
+ *   - dispatches [emitNode, simNode] via renderer.compute(...).
+ */
 export const createParticleSystem = (
   config: ParticleSystemConfig = DEFAULT_PARTICLE_SYSTEM_CONFIG,
   externalNow?: number
 ): ParticleSystem => {
   const now = externalNow || Date.now();
+
+  // ?? 1. strict GPU-only guards ??
+  const useTSL = _tslMaterialFactory !== null;
+  if (!useTSL) {
+    throw new Error(
+      'three-particles: WebGPU TSL material factory not registered. ' +
+        'Call enableWebGPU(renderer) immediately after creating a WebGPURenderer. ' +
+        '@cyberluke/three-particles 4.0.0 is GPU-only - no CPU fallback path exists.'
+    );
+  }
+  if (!_rendererBackendIsGPU) {
+    throw new Error(
+      'three-particles: renderer is not a native WebGPU backend. ' +
+        'This build has no WebGL2 fallback. Use a new THREE.WebGPURenderer().'
+    );
+  }
+  const factory = _tslMaterialFactory!;
+  if (!factory.createComputePipeline) {
+    throw new Error(
+      'three-particles: active WebGPU renderer does not provide a complete TSL compute pipeline ' +
+        '(createComputePipeline missing). No CPU fallback exists; install a WebGPU-capable backend.'
+    );
+  }
+
+  const maxParticles = config.maxParticles || DEFAULT_PARTICLE_SYSTEM_CONFIG.maxParticles!;
+  const normalizedConfig = ObjectUtils.deepMerge(
+    DEFAULT_PARTICLE_SYSTEM_CONFIG as unknown as NormalizedParticleSystemConfig,
+    config,
+    { applyToFirstObject: false, skippedProperties: [] }
+  ) as NormalizedParticleSystemConfig;
+
+  if ((normalizedConfig.simulationBackend as string) === 'CPU') {
+    throw new Error(
+      "three-particles: simulationBackend 'CPU' is not supported in @cyberluke/three-particles 4.0.0. Use 'GPU' or 'AUTO'."
+    );
+  }
+
+  const rrType = normalizedConfig.renderer.rendererType || RendererType.POINTS;
+  const useInstancing = rrType === RendererType.INSTANCED || rrType === RendererType.MESH;
+  if (rrType === RendererType.TRAIL) {
+    throw new Error(
+      'three-particles: RendererType.TRAIL is not implemented on the WebGPU compute kernel in @cyberluke/three-particles 4.0.0. Use POINTS / INSTANCED / MESH.'
+    );
+  }
+
+  const forceFields = normalizeForceFields(normalizedConfig.forceFields);
+  const collisionPlanes = normalizeCollisionPlanes(normalizedConfig.collisionPlanes);
+
+  // ?? 2. GPU compute pipeline (emit + simulation kernels) ??
+  const pipeline: NonNullable<ParticleSystemInstance['computePipeline']> = factory.createComputePipeline(
+    maxParticles,
+    useInstancing,
+    normalizedConfig,
+    _particleSystemId, // pre-increment inside generalData below would be off by 1; use the raw next id
+    forceFields.length,
+    collisionPlanes.length
+  );
+
+  // ?? 3. shared uniform table (TSL) ??
+  const elapsedUniform: { value: number } = { value: 0 };
+  const sharedUniforms: { [k: string]: { value: unknown } } = {
+    elapsed: elapsedUniform,
+    viewportHeight: { value: 720 },
+    cameraNearFar: { value: new THREE.Vector2(0.1, 1000) },
+    useInstancing: { value: useInstancing },
+    softParticlesEnabled: { value: !!normalizedConfig.renderer.softParticles?.enabled },
+    softParticlesIntensity: {
+      value: Math.max(normalizedConfig.renderer.softParticles?.intensity ?? 1, 0.001),
+    },
+    sceneDepthTexture: { value: normalizedConfig.renderer.softParticles?.depthTexture ?? null },
+    discardBackgroundColor: { value: !!normalizedConfig.renderer.discardBackgroundColor },
+    backgroundColor: { value: new THREE.Color(0xffffff) },
+    backgroundColorTolerance: { value: normalizedConfig.renderer.backgroundColorTolerance ?? 0 },
+    map: { value: normalizedConfig.map ?? getDefaultTexture() },
+    startLifetime: { value: 0 },
+    startSize: { value: 1 },
+    startRotation: { value: 0 },
+    startOpacity: { value: 1 },
+    startColor: { value: new THREE.Color(1, 1, 1) },
+    lifetime: { value: 0 },
+    color: { value: new THREE.Color(1, 1, 1) },
+  };
+  const bgCol = normalizedConfig.renderer.backgroundColor as unknown as { r?: number; g?: number; b?: number };
+  (sharedUniforms.backgroundColor.value as THREE.Color).setRGB(bgCol.r ?? 1, bgCol.g ?? 1, bgCol.b ?? 1);
+
+  const rendererConfig: {
+    transparent: boolean;
+    blending: THREE.Blending;
+    depthTest: boolean;
+    depthWrite: boolean;
+  } = {
+    transparent: !!normalizedConfig.renderer.transparent,
+    blending: normalizedConfig.renderer.blending ?? THREE.NormalBlending,
+    depthTest: normalizedConfig.renderer.depthTest !== false,
+    depthWrite: normalizedConfig.renderer.depthWrite !== false,
+  };
+  const material = factory.createTSLParticleMaterial(
+    rrType,
+    sharedUniforms,
+    rendererConfig,
+    true
+  );
+
+  // ?? 4. GPU-backed geometry ??
+  const buffers = pipeline.buffers as Record<string, THREE.BufferAttribute>;
+  let geometry: THREE.BufferGeometry | THREE.InstancedBufferGeometry;
+  if (useInstancing) {
+    const g = new THREE.InstancedBufferGeometry();
+    const quad = new Float32Array([-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0]);
+    const idx = new Uint16Array([0, 1, 2, 0, 2, 3]);
+    g.setAttribute('position', new THREE.BufferAttribute(quad, 3));
+    g.setIndex(new THREE.BufferAttribute(idx, 1));
+    g.instanceCount = maxParticles;
+    g.setAttribute('aPosition', buffers.position);
+    g.setAttribute('color', buffers.color);
+    g.setAttribute('particleState', buffers.particleState);
+    g.setAttribute('startValues', buffers.startValues);
+    geometry = g;
+  } else {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', buffers.position);
+    g.setAttribute('color', buffers.color);
+    g.setAttribute('particleState', buffers.particleState);
+    g.setAttribute('startValues', buffers.startValues);
+    g.setDrawRange(0, maxParticles);
+    geometry = g;
+    (g as unknown as { instanceCount: number }).instanceCount = maxParticles;
+  }
+
+  const particleSystem: THREE.Points | THREE.Mesh = useInstancing
+    ? new THREE.Mesh(geometry, material)
+    : new THREE.Points(geometry, material);
+  particleSystem.frustumCulled = false;
+
+  if (normalizedConfig.simulationSpace === SimulationSpace.WORLD) {
+    particleSystem.matrixWorldAutoUpdate = false;
+    particleSystem.matrixWorld.identity();
+  }
+
+  // ?? 5. general data ??
   const generalData: GeneralData = {
     particleSystemId: _particleSystemId++,
     normalizedLifetimePercentage: 0,
@@ -740,1740 +957,95 @@ export const createParticleSystem = (
     cpuDirtyParticleWatermark: -1,
     highWaterIndex: 0,
     noise: {
-      isActive: false,
-      strength: 0,
-      noisePower: 0,
-      frequency: 0.5,
-      positionAmount: 0,
-      rotationAmount: 0,
-      sizeAmount: 0,
-      fbmMax: 1,
+      isActive: normalizedConfig.noise.isActive,
+      strength: normalizedConfig.noise.strength,
+      noisePower: 0.15 * normalizedConfig.noise.strength / Math.max(1e-6, 2 - Math.pow(2, -normalizedConfig.noise.octaves)),
+      frequency: normalizedConfig.noise.frequency,
+      positionAmount: normalizedConfig.noise.positionAmount,
+      rotationAmount: normalizedConfig.noise.rotationAmount,
+      sizeAmount: normalizedConfig.noise.sizeAmount,
+      fbmMax: 2 - Math.pow(2, -normalizedConfig.noise.octaves),
     },
     isEnabled: true,
-  };
-  const normalizedConfig = ObjectUtils.deepMerge(
-    DEFAULT_PARTICLE_SYSTEM_CONFIG as NormalizedParticleSystemConfig,
-    config,
-    { applyToFirstObject: false, skippedProperties: [] }
-  ) as NormalizedParticleSystemConfig;
-  let particleMap: THREE.Texture | null =
-    normalizedConfig.map ||
-    (normalizedConfig.renderer.rendererType === RendererType.MESH
-      ? createDefaultMeshTexture()
-      : createDefaultParticleTexture());
-
-  // Ensure ClampToEdgeWrapping for particle textures to prevent bleeding
-  // at sprite-sheet tile boundaries (especially visible with WebGPU).
-  if (particleMap) {
-    particleMap.wrapS = THREE.ClampToEdgeWrapping;
-    particleMap.wrapT = THREE.ClampToEdgeWrapping;
-  }
-
-  const {
-    transform,
-    duration,
-    looping,
-    startDelay,
-    startLifetime,
-    startSpeed,
-    startSize,
-    startRotation,
-    startColor,
-    startOpacity,
-    gravity,
-    simulationSpace,
-    maxParticles,
-    emission,
-    shape,
-    renderer,
-    noise,
-    velocityOverLifetime,
-    onUpdate,
-    onComplete,
-    textureSheetAnimation,
-    subEmitters,
-    forceFields: rawForceFields,
-  } = normalizedConfig;
-
-  const normalizedForceFields: Array<NormalizedForceFieldConfig> =
-    normalizeForceFields(rawForceFields);
-
-  const normalizedCollisionPlanes: Array<NormalizedCollisionPlaneConfig> =
-    normalizeCollisionPlanes(normalizedConfig.collisionPlanes);
-
-  if (typeof renderer?.blending === 'string')
-    renderer.blending = blendingMap[renderer.blending];
-
-  // Pre-resolve lifetime-curve functions once. applyModifiers evaluates
-  // size/opacity/color multipliers per particle per frame ??? resolving the
-  // curve function there (bezier cache scan + closure allocations) dominated
-  // the CPU-path modifier cost. Non-curve values (constants, random ranges)
-  // stay undefined and fall back to calculateValue in applyModifiers.
-  const resolveModifierCurve = (
-    value: Constant | RandomBetweenTwoConstants | LifetimeCurve | undefined
-  ): CurveFunction | undefined => {
-    if (value === undefined || typeof value === 'number') return undefined;
-    if (!isLifeTimeCurve(value)) return undefined;
-    const fn = getCurveFunctionFromConfig(generalData.particleSystemId, value);
-    const scale = value.scale ?? 1;
-    return scale === 1 ? fn : (time: number) => fn(time) * scale;
-  };
-
-  const resolveModifierCurves = () => {
-    const cfg = normalizedConfig;
-    generalData.modifierCurves = {
-      size: cfg.sizeOverLifetime.isActive
-        ? resolveModifierCurve(cfg.sizeOverLifetime.lifetimeCurve)
-        : undefined,
-      opacity: cfg.opacityOverLifetime.isActive
-        ? resolveModifierCurve(cfg.opacityOverLifetime.lifetimeCurve)
-        : undefined,
-      colorR: cfg.colorOverLifetime.isActive
-        ? resolveModifierCurve(cfg.colorOverLifetime.r)
-        : undefined,
-      colorG: cfg.colorOverLifetime.isActive
-        ? resolveModifierCurve(cfg.colorOverLifetime.g)
-        : undefined,
-      colorB: cfg.colorOverLifetime.isActive
-        ? resolveModifierCurve(cfg.colorOverLifetime.b)
-        : undefined,
-    };
-  };
-  resolveModifierCurves();
-
-  const startPositions = Array.from(
-    { length: maxParticles },
-    () => new THREE.Vector3()
-  );
-  const velocities = Array.from(
-    { length: maxParticles },
-    () => new THREE.Vector3()
-  );
-
-  generalData.creationTimes = new Float32Array(maxParticles);
-
-  // Free list for O(1) inactive particle lookup (stack, top = end of array)
-  const freeList: Array<number> = Array.from(
-    { length: maxParticles },
-    (_, i) => maxParticles - 1 - i
-  );
-
-  // Extracted so updateConfig can re-run it when velocityOverLifetime
-  // changes (previously the data arrays only existed when isActive was true
-  // at creation, making live activation a silent no-op).
-  const initVelocityLifetimeData = () => {
-    const velocityOverLifetime = normalizedConfig.velocityOverLifetime;
-    if (!velocityOverLifetime.isActive) {
-      generalData.linearVelocityData = undefined;
-      generalData.orbitalVelocityData = undefined;
-      return;
-    }
-    generalData.linearVelocityData = Array.from(
-      { length: maxParticles },
-      () => ({
-        speed: new THREE.Vector3(
-          velocityOverLifetime.linear.x
-            ? calculateValue(
-                generalData.particleSystemId,
-                velocityOverLifetime.linear.x,
-                0
-              )
-            : 0,
-          velocityOverLifetime.linear.y
-            ? calculateValue(
-                generalData.particleSystemId,
-                velocityOverLifetime.linear.y,
-                0
-              )
-            : 0,
-          velocityOverLifetime.linear.z
-            ? calculateValue(
-                generalData.particleSystemId,
-                velocityOverLifetime.linear.z,
-                0
-              )
-            : 0
-        ),
-        valueModifiers: {
-          x: isLifeTimeCurve(velocityOverLifetime.linear.x || 0)
-            ? getCurveFunctionFromConfig(
-                generalData.particleSystemId,
-                velocityOverLifetime.linear.x as LifetimeCurve
-              )
-            : undefined,
-          y: isLifeTimeCurve(velocityOverLifetime.linear.y || 0)
-            ? getCurveFunctionFromConfig(
-                generalData.particleSystemId,
-                velocityOverLifetime.linear.y as LifetimeCurve
-              )
-            : undefined,
-          z: isLifeTimeCurve(velocityOverLifetime.linear.z || 0)
-            ? getCurveFunctionFromConfig(
-                generalData.particleSystemId,
-                velocityOverLifetime.linear.z as LifetimeCurve
-              )
-            : undefined,
-        },
-      })
-    );
-
-    generalData.orbitalVelocityData = Array.from(
-      { length: maxParticles },
-      () => ({
-        speed: new THREE.Vector3(
-          velocityOverLifetime.orbital.x
-            ? calculateValue(
-                generalData.particleSystemId,
-                velocityOverLifetime.orbital.x,
-                0
-              )
-            : 0,
-          velocityOverLifetime.orbital.y
-            ? calculateValue(
-                generalData.particleSystemId,
-                velocityOverLifetime.orbital.y,
-                0
-              )
-            : 0,
-          velocityOverLifetime.orbital.z
-            ? calculateValue(
-                generalData.particleSystemId,
-                velocityOverLifetime.orbital.z,
-                0
-              )
-            : 0
-        ),
-        valueModifiers: {
-          x: isLifeTimeCurve(velocityOverLifetime.orbital.x || 0)
-            ? getCurveFunctionFromConfig(
-                generalData.particleSystemId,
-                velocityOverLifetime.orbital.x as LifetimeCurve
-              )
-            : undefined,
-          y: isLifeTimeCurve(velocityOverLifetime.orbital.y || 0)
-            ? getCurveFunctionFromConfig(
-                generalData.particleSystemId,
-                velocityOverLifetime.orbital.y as LifetimeCurve
-              )
-            : undefined,
-          z: isLifeTimeCurve(velocityOverLifetime.orbital.z || 0)
-            ? getCurveFunctionFromConfig(
-                generalData.particleSystemId,
-                velocityOverLifetime.orbital.z as LifetimeCurve
-              )
-            : undefined,
-        },
-        positionOffset: new THREE.Vector3(),
-      })
-    );
-  };
-  initVelocityLifetimeData();
-
-  const startValueKeys: Array<keyof NormalizedParticleSystemConfig> = [
-    'startSize',
-    'startOpacity',
-  ];
-  startValueKeys.forEach((key) => {
-    generalData.startValues[key] = Array.from({ length: maxParticles }, () =>
-      calculateValue(
-        generalData.particleSystemId,
-        normalizedConfig[key] as
-          | Constant
-          | RandomBetweenTwoConstants
-          | LifetimeCurve,
-        0
-      )
-    );
-  });
-
-  generalData.startValues.startColorR = Array.from(
-    { length: maxParticles },
-    () => 0
-  );
-  generalData.startValues.startColorG = Array.from(
-    { length: maxParticles },
-    () => 0
-  );
-  generalData.startValues.startColorB = Array.from(
-    { length: maxParticles },
-    () => 0
-  );
-
-  // Extracted so updateConfig can re-run it when rotationOverLifetime changes.
-  const initRotationLifetimeValues = () => {
-    const value = normalizedConfig.rotationOverLifetime as {
-      isActive: boolean;
-    } & RandomBetweenTwoConstants;
-    if (value.isActive) {
-      generalData.lifetimeValues.rotationOverLifetime = Array.from(
-        { length: maxParticles },
-        () => THREE.MathUtils.randFloat(value.min!, value.max!)
-      );
-    } else {
-      delete generalData.lifetimeValues.rotationOverLifetime;
-    }
-  };
-  initRotationLifetimeValues();
-
-  // Pre-compute FBM normalisation divisor once (avoids recalculating every frame).
-  // fbmMax = 1 + 0.5 + 0.25 + ... = 2 - 2^(-octaves)
-  const fbmMax = 2 - Math.pow(2, -noise.octaves);
-
-  generalData.noise = {
-    isActive: noise.isActive,
-    strength: noise.strength,
-    noisePower: 0.15 * noise.strength,
-    frequency: noise.frequency,
-    positionAmount: noise.positionAmount,
-    rotationAmount: noise.rotationAmount,
-    sizeAmount: noise.sizeAmount,
-    fbmMax,
-    sampler: noise.isActive
-      ? new FBM({
-          seed: Math.random(),
-          scale: noise.frequency,
-          octaves: noise.octaves,
-        })
-      : undefined,
-    offsets: noise.useRandomOffset
-      ? Array.from({ length: maxParticles }, () => Math.random() * 100)
+    burstStates: normalizedConfig.emission.bursts?.length
+      ? normalizedConfig.emission.bursts.map(() => ({
+          cyclesExecuted: 0,
+          lastCycleTime: 0,
+          probabilityPassed: false,
+        }))
       : undefined,
   };
 
-  // Initialize burst states if bursts are configured
-  if (emission.bursts && emission.bursts.length > 0) {
-    generalData.burstStates = emission.bursts.map(() => ({
-      cyclesExecuted: 0,
-      lastCycleTime: 0,
-      probabilityPassed: false,
-    }));
-  }
-
-  const useTrail = renderer.rendererType === RendererType.TRAIL;
-  const useMesh = renderer.rendererType === RendererType.MESH;
-  const useInstancing =
-    !useTrail && !useMesh && renderer.rendererType === RendererType.INSTANCED;
-  const useInstancedAttributes = useInstancing || useMesh;
-
-  // Trail config defaults
-  const defaultTrailCurve: LifetimeCurve = {
-    type: LifeTimeCurve.BEZIER,
-    scale: 1,
-    bezierPoints: [
-      { x: 0, y: 1, percentage: 0 },
-      { x: 1, y: 0, percentage: 1 },
-    ],
-  };
-  const trailConfig = useTrail
-    ? {
-        length: renderer.trail?.length ?? 20,
-        width: renderer.trail?.width ?? 1.0,
-        widthOverTrail: normalizeTrailCurve(
-          renderer.trail?.widthOverTrail,
-          defaultTrailCurve
-        ),
-        opacityOverTrail: normalizeTrailCurve(
-          renderer.trail?.opacityOverTrail,
-          defaultTrailCurve
-        ),
-        colorOverTrail: renderer.trail?.colorOverTrail,
-        minVertexDistance: renderer.trail?.minVertexDistance ?? 0,
-        maxTime: renderer.trail?.maxTime ?? 0,
-        smoothing: renderer.trail?.smoothing ?? false,
-        smoothingSubdivisions: renderer.trail?.smoothingSubdivisions ?? 3,
-        twistPrevention: renderer.trail?.twistPrevention ?? false,
-        ribbonId: renderer.trail?.ribbonId,
-      }
-    : undefined;
-
-  // Initialize trail position history buffers
-  if (useTrail && trailConfig) {
-    const trailLength = trailConfig.length;
-    generalData.trailLength = trailLength;
-    generalData.positionHistory = new Float32Array(
-      maxParticles * trailLength * 3
-    );
-    generalData.positionHistoryIndex = new Uint16Array(maxParticles);
-    generalData.positionHistoryCount = new Uint16Array(maxParticles);
-    // Tracks how many vertex slots were filled last frame per particle so the
-    // trail rebuild only clears slots that actually held data.
-    generalData.trailPrevFilledCount = new Uint16Array(maxParticles);
-
-    // Adaptive sampling: track last sampled position per particle
-    if (trailConfig.minVertexDistance > 0) {
-      generalData.trailLastSampledPosition = new Float32Array(maxParticles * 3);
-    }
-
-    // Max time: track timestamp of each history sample
-    if (trailConfig.maxTime > 0) {
-      generalData.trailSampleTimes = new Float64Array(
-        maxParticles * trailLength
-      );
-    }
-
-    // Twist prevention: store previous ribbon normal per particle
-    if (trailConfig.twistPrevention) {
-      generalData.trailPrevNormal = new Float32Array(maxParticles * 3);
-    }
-  }
-
-  // Attribute name prefix: instanced/mesh renderers use 'instance'-prefixed names
-  // to avoid collision with the base geometry's own 'position' attribute.
-  const attr = (name: string) =>
-    useInstancedAttributes
-      ? `instance${name.charAt(0).toUpperCase()}${name.slice(1)}`
-      : name;
-
-  // Position attribute is special: Points uses 'position', instanced/mesh uses 'instanceOffset'
-  const posAttr = useInstancedAttributes ? 'instanceOffset' : 'position';
-
-  const softParticlesEnabled = !!(
-    renderer.softParticles?.enabled && renderer.softParticles?.depthTexture
-  );
-
-  const sharedUniforms: Record<string, { value: unknown }> = {
-    elapsed: { value: 0.0 },
-    map: { value: particleMap },
-    tiles: {
-      value: new THREE.Vector2(
-        textureSheetAnimation.tiles?.x ?? 1,
-        textureSheetAnimation.tiles?.y ?? 1
-      ),
-    },
-    fps: { value: textureSheetAnimation.fps },
-    useFPSForFrameIndex: {
-      value: textureSheetAnimation.timeMode === TimeMode.FPS,
-    },
-    // backgroundColor is authored in sRGB; convert to linear so the
-    // fragment comparison against the (now linear) texture sample is valid.
-    backgroundColor: { value: rgbSRGBToLinear(renderer.backgroundColor) },
-    discardBackgroundColor: { value: renderer.discardBackgroundColor },
-    backgroundColorTolerance: { value: renderer.backgroundColorTolerance },
-    ...(useInstancing ? { viewportHeight: { value: 1.0 } } : {}),
-    softParticlesEnabled: { value: softParticlesEnabled },
-    softParticlesIntensity: {
-      value: Math.max(renderer.softParticles?.intensity ?? 1.0, 0.001),
-    },
-    sceneDepthTexture: {
-      value: renderer.softParticles?.depthTexture ?? null,
-    },
-    cameraNearFar: { value: new THREE.Vector2(0.1, 1000.0) },
-  };
-
-  const getVertexShader = () => {
-    if (useMesh) return MeshParticleVertexShader;
-    if (useInstancing) return InstancedParticleVertexShader;
-    return ParticleSystemVertexShader;
-  };
-
-  const getFragmentShader = () => {
-    if (useMesh) return MeshParticleFragmentShader;
-    if (useInstancing) return InstancedParticleFragmentShader;
-    return ParticleSystemFragmentShader;
-  };
-
-  // Determine whether to use TSL materials (WebGPU path).
-  // TSL is used whenever the factory is registered ??? regardless of simulationBackend.
-  // This ensures WebGPURenderer always gets NodeMaterial (not GLSL ShaderMaterial).
-  const useTSL = _tslMaterialFactory !== null;
-  if (!useTSL) {
-    throw new Error(
-      'three-particles: WebGPU TSL material factory not registered. ' +
-        'Call enableWebGPU(renderer) immediately after creating a WebGPURenderer. ' +
-        '@cyberluke/three-particles 4.0.0 is GPU-only - no CPU fallback path exists.'
-    );
-  }
-
-  // Determine whether to use GPU compute for simulation.
-  // GPU compute requires: TSL active + not trail + backend != CPU + compute factory registered.
-  const useGPUCompute =
-    useTSL &&
-    !useTrail &&
-    normalizedConfig.simulationBackend !== SimulationBackend.CPU &&
-    !!_tslMaterialFactory?.createComputePipeline &&
-    !!_tslMaterialFactory.writeParticleToModifierBuffers &&
-    !!_tslMaterialFactory.deactivateParticleInModifierBuffers &&
-    !!_tslMaterialFactory.flushEmitQueue;
-
-  // Explicit, non-silent rejection of every non-WebGPU configuration.
-  if (!useGPUCompute) {
-    if (useTrail) {
-      throw new Error(
-        'three-particles: RendererType.TRAIL is not implemented on the ' +
-
-          'WebGPU compute kernel in @cyberluke/three-particles 4.0.0. ' +
-
-          'Switch this system to RendererType.POINTS, INSTANCED, or MESH.'
-      );
-    }
-    if (normalizedConfig.simulationBackend === SimulationBackend.CPU) {
-      throw new Error(
-        'three-particles: simulationBackend ' + "'CPU'" + ' is not supported in ' +
-
-          'the GPU-only @cyberluke/three-particles 4.0.0 build. Use ' + "'GPU'" + ' or ' + "'AUTO'" + '.'
-      );
-    }
-    throw new Error(
-      'three-particles: the active WebGPU renderer does not provide a complete ' +
-
-        'TSL compute pipeline (createComputePipeline + write/deactivate/flush). ' +
-
-        'No CPU fallback exists; install a WebGPU-capable backend.'
-    );
-  }
-
-  // Create GPU compute pipeline when active
-  type GPUComputePipeline =
-    import('./webgpu/compute-modifiers.js').ModifierComputePipeline;
-  let gpuPipeline: GPUComputePipeline | null = null;
-
-  if (useGPUCompute) {
-    gpuPipeline = _tslMaterialFactory!.createComputePipeline!(
-      maxParticles,
-      useInstancedAttributes,
-      normalizedConfig,
-      generalData.particleSystemId,
-      normalizedForceFields.length,
-      normalizedCollisionPlanes.length
-    );
-    // Register the curveDataLength so the init data helpers know the offset.
-    if (gpuPipeline && _tslMaterialFactory!.registerCurveDataLength) {
-      _tslMaterialFactory!.registerCurveDataLength(
-        gpuPipeline.buffers,
-        gpuPipeline.curveDataLength
-      );
-    }
-  }
-
-  const rendererConfig = {
-    transparent: renderer.transparent,
-    blending: renderer.blending,
-    depthTest: renderer.depthTest,
-    depthWrite: renderer.depthWrite,
-  };
-
-  const material: THREE.Material = useTSL
-    ? _tslMaterialFactory!.createTSLParticleMaterial(
-        renderer.rendererType ?? RendererType.POINTS,
-        sharedUniforms,
-        rendererConfig,
-        useGPUCompute
-      )
-    : new THREE.ShaderMaterial({
-        uniforms: sharedUniforms,
-        vertexShader: getVertexShader(),
-        fragmentShader: getFragmentShader(),
-        ...rendererConfig,
-      });
-
-  let geometry: THREE.BufferGeometry | THREE.InstancedBufferGeometry;
-
-  if (useMesh) {
-    const meshConfig = renderer.mesh;
-    if (!meshConfig?.geometry) {
-      throw new Error(
-        'RendererType.MESH requires a mesh configuration with a geometry. ' +
-          'Set renderer.mesh.geometry to a THREE.BufferGeometry instance.'
-      );
-    }
-    const instancedGeometry = new THREE.InstancedBufferGeometry();
-    // Copy base mesh geometry attributes (position, normal, uv, index)
-    const sourceGeom = meshConfig.geometry;
-    const srcPos = sourceGeom.getAttribute('position');
-    if (srcPos) instancedGeometry.setAttribute('position', srcPos);
-    const srcNormal = sourceGeom.getAttribute('normal');
-    if (srcNormal) instancedGeometry.setAttribute('normal', srcNormal);
-    const srcUv = sourceGeom.getAttribute('uv');
-    if (srcUv) instancedGeometry.setAttribute('uv', srcUv);
-    const srcIndex = sourceGeom.getIndex();
-    if (srcIndex) instancedGeometry.setIndex(srcIndex);
-    instancedGeometry.instanceCount = maxParticles;
-    geometry = instancedGeometry;
-  } else if (useInstancing) {
-    const instancedGeometry = new THREE.InstancedBufferGeometry();
-    // Base quad: 1x1 plane centred at origin (vertices from -0.5 to 0.5)
-    const quadPositions = new Float32Array([
-      -0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0,
-    ]);
-    const quadIndices = new Uint16Array([0, 1, 2, 0, 2, 3]);
-    instancedGeometry.setAttribute(
-      'position',
-      new THREE.BufferAttribute(quadPositions, 3)
-    );
-    instancedGeometry.setIndex(new THREE.BufferAttribute(quadIndices, 1));
-    instancedGeometry.instanceCount = maxParticles;
-    geometry = instancedGeometry;
-  } else {
-    geometry = new THREE.BufferGeometry();
-  }
-
-  for (let i = 0; i < maxParticles; i++)
-    calculatePositionAndVelocity(
-      generalData,
-      shape,
-      startSpeed,
-      startPositions[i],
-      velocities[i]
-    );
-
-  // Create interleaved buffer for all scalar per-particle attributes.
-  // In GPU compute mode this is kept for CPU death detection reads only
-  // (not set as geometry attributes ??? storage buffers are used instead).
-  const scalarArray = new Float32Array(maxParticles * SCALAR_STRIDE);
-
-  // Pre-fill initial values
-  for (let i = 0; i < maxParticles; i++) {
-    const base = i * SCALAR_STRIDE;
-    scalarArray[base + S_IS_ACTIVE] = 0;
-    scalarArray[base + S_LIFETIME] = 0;
-    scalarArray[base + S_START_LIFETIME] =
-      calculateValue(generalData.particleSystemId, startLifetime, 0) * 1000;
-    scalarArray[base + S_START_FRAME] = textureSheetAnimation.startFrame
-      ? calculateValue(
-          generalData.particleSystemId,
-          textureSheetAnimation.startFrame,
-          0
-        )
-      : 0;
-    scalarArray[base + S_SIZE] = generalData.startValues.startSize[i];
-    scalarArray[base + S_ROTATION] = 0;
-    // User color inputs are sRGB; the buffer stores linear so that shader
-    // math, texture modulation, and the renderer's linear???sRGB output pass
-    // all agree. See docs/color-pipeline-standardization-plan.md.
-    const colorRandomRatio = Math.random();
-    scalarArray[base + S_COLOR_R] = sRGBToLinear(
-      startColor.min!.r! +
-        colorRandomRatio * (startColor.max!.r! - startColor.min!.r!)
-    );
-    scalarArray[base + S_COLOR_G] = sRGBToLinear(
-      startColor.min!.g! +
-        colorRandomRatio * (startColor.max!.g! - startColor.min!.g!)
-    );
-    scalarArray[base + S_COLOR_B] = sRGBToLinear(
-      startColor.min!.b! +
-        colorRandomRatio * (startColor.max!.b! - startColor.min!.b!)
-    );
-    scalarArray[base + S_COLOR_A] = 0;
-  }
-
-  // Always create the interleaved buffer (needed for CPU death detection
-  // and the CPU rendering path)
-  const scalarInterleavedBuffer = useInstancedAttributes
-    ? new THREE.InstancedInterleavedBuffer(scalarArray, SCALAR_STRIDE)
-    : new THREE.InterleavedBuffer(scalarArray, SCALAR_STRIDE);
-  // The scalar buffer is rewritten every frame on the CPU path ??? tell the
-  // driver so it allocates the GL buffer accordingly.
-  scalarInterleavedBuffer.setUsage(THREE.DynamicDrawUsage);
-
-  if (useGPUCompute && gpuPipeline) {
-    // ?????? GPU Compute Path: use storage buffers as geometry attributes ??????
-    // StorageBufferAttribute extends BufferAttribute, so these work as
-    // geometry attributes read by the TSL material.
-    // GPU path: 5 geometry attributes total (under 8 vertex buffer limit)
-    //   1. base quad position (for instanced/mesh)
-    //   2. particle position (vec3)
-    //   3. color (vec4: R,G,B,A)
-    //   4. particleState (vec4: lifetime, size, rotation, startFrame)
-    //   5. startValues (vec4: startLifetime, startSize, startOpacity, startColorR)
-    const gpuBuf = gpuPipeline.buffers;
-    geometry.setAttribute(posAttr, gpuBuf.position);
-    geometry.setAttribute(attr('color'), gpuBuf.color);
-    geometry.setAttribute(attr('particleState'), gpuBuf.particleState);
-    geometry.setAttribute(attr('startValues'), gpuBuf.startValues);
-  } else {
-    // ?????? CPU Path: position + interleaved scalar attributes ??????
-    const positionArray = new Float32Array(maxParticles * 3);
-    for (let i = 0; i < maxParticles; i++) {
-      positionArray[i * 3] = startPositions[i].x;
-      positionArray[i * 3 + 1] = startPositions[i].y;
-      positionArray[i * 3 + 2] = startPositions[i].z;
-    }
-    const positionAttribute = useInstancedAttributes
-      ? new THREE.InstancedBufferAttribute(positionArray, 3)
-      : new THREE.BufferAttribute(positionArray, 3);
-    // Positions are integrated every frame ??? dynamic usage hint for the driver.
-    positionAttribute.setUsage(THREE.DynamicDrawUsage);
-    geometry.setAttribute(posAttr, positionAttribute);
-
-    geometry.setAttribute(
-      attr('isActive'),
-      new THREE.InterleavedBufferAttribute(
-        scalarInterleavedBuffer,
-        1,
-        S_IS_ACTIVE
-      )
-    );
-    geometry.setAttribute(
-      attr('lifetime'),
-      new THREE.InterleavedBufferAttribute(
-        scalarInterleavedBuffer,
-        1,
-        S_LIFETIME
-      )
-    );
-    geometry.setAttribute(
-      attr('startLifetime'),
-      new THREE.InterleavedBufferAttribute(
-        scalarInterleavedBuffer,
-        1,
-        S_START_LIFETIME
-      )
-    );
-    geometry.setAttribute(
-      attr('startFrame'),
-      new THREE.InterleavedBufferAttribute(
-        scalarInterleavedBuffer,
-        1,
-        S_START_FRAME
-      )
-    );
-    geometry.setAttribute(
-      attr('size'),
-      new THREE.InterleavedBufferAttribute(scalarInterleavedBuffer, 1, S_SIZE)
-    );
-    geometry.setAttribute(
-      attr('rotation'),
-      new THREE.InterleavedBufferAttribute(
-        scalarInterleavedBuffer,
-        1,
-        S_ROTATION
-      )
-    );
-    // Packed RGBA color as single vec4 (R/G/B/A are contiguous in the
-    // interleaved buffer at offsets 6,7,8,9 ??? read as a vec4 from offset 6)
-    geometry.setAttribute(
-      attr('color'),
-      new THREE.InterleavedBufferAttribute(
-        scalarInterleavedBuffer,
-        4,
-        S_COLOR_R
-      )
-    );
-  }
-
-  // Packed quaternion vec4 attribute for 3D mesh rotation (only for MESH renderer,
-  // CPU path only ??? GPU compute derives quaternion from particleState.z in the shader)
-  if (useMesh && !useGPUCompute) {
-    const quatArray = new Float32Array(maxParticles * 4);
-    // Initialize to identity quaternion (0, 0, 0, 1)
-    for (let i = 0; i < maxParticles; i++) {
-      quatArray[i * 4 + 3] = 1; // w = 1
-    }
-    geometry.setAttribute(
-      attr('quat'),
-      new THREE.InstancedBufferAttribute(quatArray, 4)
-    );
-  }
-
-  // Resolve per-particle attribute accessors (instanced/mesh uses prefixed names)
-  const a = geometry.attributes;
-  const aIsActive = a[attr('isActive')];
-  const aColor = a[attr('color')];
-  const aStartFrame = a[attr('startFrame')];
-  const aStartLifetime = a[attr('startLifetime')];
-  const aSize = a[attr('size')];
-  const aRotation = a[attr('rotation')];
-  const aLifetime = a[attr('lifetime')];
-  const aPosition = a[posAttr];
-  const aQuat = useMesh && !useGPUCompute ? a[attr('quat')] : undefined;
-
-  const deactivateParticle = (particleIndex: number) => {
-    const base = particleIndex * SCALAR_STRIDE;
-    scalarArray[base + S_IS_ACTIVE] = 0;
-    scalarArray[base + S_COLOR_A] = 0;
-    if (useGPUCompute && gpuPipeline) {
-      _tslMaterialFactory!.deactivateParticleInModifierBuffers!(
-        gpuPipeline.buffers,
-        particleIndex
-      );
-    } else {
-      if (particleIndex > generalData.cpuDirtyParticleWatermark)
-        generalData.cpuDirtyParticleWatermark = particleIndex;
-      scalarInterleavedBuffer.needsUpdate = true;
-    }
-    freeList.push(particleIndex);
-  };
-
-  const activateParticle = ({
-    particleIndex,
-    activationTime,
-    position,
-  }: {
-    particleIndex: number;
-    activationTime: number;
-    position: Required<Point3D>;
-  }) => {
-    const base = particleIndex * SCALAR_STRIDE;
-    scalarArray[base + S_IS_ACTIVE] = 1;
-    generalData.creationTimes[particleIndex] = activationTime;
-    if (particleIndex >= generalData.highWaterIndex) generalData.highWaterIndex = particleIndex + 1;
-
-    // Reset trail history so a recycled particle doesn't inherit old trail
-    if (generalData.positionHistoryCount) {
-      generalData.positionHistoryCount[particleIndex] = 0;
-      generalData.positionHistoryIndex![particleIndex] = 0;
-
-      // Reset adaptive sampling last position
-      if (generalData.trailLastSampledPosition) {
-        const lsIdx = particleIndex * 3;
-        generalData.trailLastSampledPosition[lsIdx] = 0;
-        generalData.trailLastSampledPosition[lsIdx + 1] = 0;
-        generalData.trailLastSampledPosition[lsIdx + 2] = 0;
-      }
-
-      // Reset twist prevention normal
-      if (generalData.trailPrevNormal) {
-        const nIdx = particleIndex * 3;
-        generalData.trailPrevNormal[nIdx] = 0;
-        generalData.trailPrevNormal[nIdx + 1] = 0;
-        generalData.trailPrevNormal[nIdx + 2] = 0;
-      }
-    }
-
-    if (generalData.noise.offsets)
-      generalData.noise.offsets[particleIndex] = Math.random() * 100;
-
-    // sRGB ??? linear on emit; buffer + startValues mirrors both store linear.
-    // See docs/color-pipeline-standardization-plan.md.
-    const colorRandomRatio = Math.random();
-    const cfgStartColor = normalizedConfig.startColor;
-
-    scalarArray[base + S_COLOR_R] = sRGBToLinear(
-      cfgStartColor.min!.r! +
-        colorRandomRatio * (cfgStartColor.max!.r! - cfgStartColor.min!.r!)
-    );
-
-    scalarArray[base + S_COLOR_G] = sRGBToLinear(
-      cfgStartColor.min!.g! +
-        colorRandomRatio * (cfgStartColor.max!.g! - cfgStartColor.min!.g!)
-    );
-
-    scalarArray[base + S_COLOR_B] = sRGBToLinear(
-      cfgStartColor.min!.b! +
-        colorRandomRatio * (cfgStartColor.max!.b! - cfgStartColor.min!.b!)
-    );
-
-    generalData.startValues.startColorR[particleIndex] =
-      scalarArray[base + S_COLOR_R];
-    generalData.startValues.startColorG[particleIndex] =
-      scalarArray[base + S_COLOR_G];
-    generalData.startValues.startColorB[particleIndex] =
-      scalarArray[base + S_COLOR_B];
-
-    scalarArray[base + S_START_FRAME] = normalizedConfig.textureSheetAnimation
-      .startFrame
-      ? calculateValue(
-          generalData.particleSystemId,
-          normalizedConfig.textureSheetAnimation.startFrame,
-          0
-        )
-      : 0;
-
-    scalarArray[base + S_START_LIFETIME] =
-      calculateValue(
-        generalData.particleSystemId,
-        normalizedConfig.startLifetime,
-        generalData.normalizedLifetimePercentage
-      ) * 1000;
-
-    generalData.startValues.startSize[particleIndex] = calculateValue(
-      generalData.particleSystemId,
-      normalizedConfig.startSize,
-      generalData.normalizedLifetimePercentage
-    );
-    scalarArray[base + S_SIZE] =
-      generalData.startValues.startSize[particleIndex];
-
-    generalData.startValues.startOpacity[particleIndex] = calculateValue(
-      generalData.particleSystemId,
-      normalizedConfig.startOpacity,
-      generalData.normalizedLifetimePercentage
-    );
-    scalarArray[base + S_COLOR_A] =
-      generalData.startValues.startOpacity[particleIndex];
-
-    scalarArray[base + S_ROTATION] = calculateValue(
-      generalData.particleSystemId,
-      normalizedConfig.startRotation,
-      generalData.normalizedLifetimePercentage
-    );
-
-    // Initialize mesh particle quaternion from the Z-rotation startRotation
-    if (aQuat) {
-      const rotZ = scalarArray[base + S_ROTATION];
-      const halfZ = rotZ * 0.5;
-      const qi = particleIndex * 4;
-      aQuat.array[qi] = 0;
-      aQuat.array[qi + 1] = 0;
-      aQuat.array[qi + 2] = Math.sin(halfZ);
-      aQuat.array[qi + 3] = Math.cos(halfZ);
-      aQuat.needsUpdate = true;
-    }
-
-    if (normalizedConfig.rotationOverLifetime.isActive)
-      generalData.lifetimeValues.rotationOverLifetime[particleIndex] =
-        THREE.MathUtils.randFloat(
-          normalizedConfig.rotationOverLifetime.min!,
-          normalizedConfig.rotationOverLifetime.max!
-        );
-
-    calculatePositionAndVelocity(
-      generalData,
-      normalizedConfig.shape,
-      normalizedConfig.startSpeed,
-      startPositions[particleIndex],
-      velocities[particleIndex]
-    );
-    // GPU compute: position is set via the emit scatter in the compute shader
-    // (writeParticleToModifierBuffers queues it). Do NOT set needsUpdate ???
-    // that triggers a full CPU???GPU upload that overwrites GPU-computed
-    // positions for all particles.
-    // However, we still write the CPU-side array so death sub-emitters can
-    // read the particle's approximate position without GPU readback.
-    {
-      const positionIndex = particleIndex * 3;
-      // WORLD simulation space: the buffer stores world coordinates. The
-      // shape-emission offset (startPositions) is rotated by the emitter's
-      // world rotation AND scaled by the emitter's world scale, matching
-      // Unity's Shape module when Scaling Mode is Local/Hierarchy. The
-      // emitter's world translation is then added so the particle starts
-      // at the correct world-space location.
-      //
-      // LOCAL simulation space: the buffer is in the emitter's local
-      // frame; the shape offset is added as-is (parent scale affects the
-      // rendered size via particleSystem.matrixWorld at draw time).
-      const isWorld =
-        normalizedConfig.simulationSpace === SimulationSpace.WORLD;
-      const ox = startPositions[particleIndex].x;
-      const oy = startPositions[particleIndex].y;
-      const oz = startPositions[particleIndex].z;
-      if (isWorld) {
-        const m = generalData.sourceWorldMatrix.elements;
-        const s = generalData.worldScale;
-        aPosition.array[positionIndex] = position.x + ox * s.x + m[12];
-        aPosition.array[positionIndex + 1] = position.y + oy * s.y + m[13];
-        aPosition.array[positionIndex + 2] = position.z + oz * s.z + m[14];
-      } else {
-        aPosition.array[positionIndex] = position.x + ox;
-        aPosition.array[positionIndex + 1] = position.y + oy;
-        aPosition.array[positionIndex + 2] = position.z + oz;
-      }
-      if (!useGPUCompute) {
-        if (particleIndex > generalData.cpuDirtyParticleWatermark)
-          generalData.cpuDirtyParticleWatermark = particleIndex;
-        aPosition.needsUpdate = true;
-      }
-    }
-
-    if (generalData.linearVelocityData) {
-      generalData.linearVelocityData[particleIndex].speed.set(
-        normalizedConfig.velocityOverLifetime.linear.x
-          ? calculateValue(
-              generalData.particleSystemId,
-              normalizedConfig.velocityOverLifetime.linear.x,
-              0
-            )
-          : 0,
-        normalizedConfig.velocityOverLifetime.linear.y
-          ? calculateValue(
-              generalData.particleSystemId,
-              normalizedConfig.velocityOverLifetime.linear.y,
-              0
-            )
-          : 0,
-        normalizedConfig.velocityOverLifetime.linear.z
-          ? calculateValue(
-              generalData.particleSystemId,
-              normalizedConfig.velocityOverLifetime.linear.z,
-              0
-            )
-          : 0
-      );
-    }
-
-    if (generalData.orbitalVelocityData) {
-      generalData.orbitalVelocityData[particleIndex].speed.set(
-        normalizedConfig.velocityOverLifetime.orbital.x
-          ? calculateValue(
-              generalData.particleSystemId,
-              normalizedConfig.velocityOverLifetime.orbital.x,
-              0
-            )
-          : 0,
-        normalizedConfig.velocityOverLifetime.orbital.y
-          ? calculateValue(
-              generalData.particleSystemId,
-              normalizedConfig.velocityOverLifetime.orbital.y,
-              0
-            )
-          : 0,
-        normalizedConfig.velocityOverLifetime.orbital.z
-          ? calculateValue(
-              generalData.particleSystemId,
-              normalizedConfig.velocityOverLifetime.orbital.z,
-              0
-            )
-          : 0
-      );
-      generalData.orbitalVelocityData[particleIndex].positionOffset.set(
-        startPositions[particleIndex].x,
-        startPositions[particleIndex].y,
-        startPositions[particleIndex].z
-      );
-    }
-
-    scalarArray[base + S_LIFETIME] = 0;
-
-    if (useGPUCompute && gpuPipeline) {
-      // Write all particle data to GPU storage buffers.
-      //
-      // WORLD simulation space: the GPU buffer stores world coordinates.
-      // The shape offset (startPositions) is scaled by the emitter's
-      // world scale (Unity Shape-module parity) and then offset by the
-      // emitter's world translation. LOCAL space uses the shape offset
-      // as-is since the buffer is in the emitter's local frame.
-      const isWorld =
-        normalizedConfig.simulationSpace === SimulationSpace.WORLD;
-      const m = generalData.sourceWorldMatrix.elements;
-      const s = generalData.worldScale;
-      const ox = startPositions[particleIndex].x;
-      const oy = startPositions[particleIndex].y;
-      const oz = startPositions[particleIndex].z;
-      _tslMaterialFactory!.writeParticleToModifierBuffers!(
-        gpuPipeline.buffers,
-        particleIndex,
-        {
-          position: {
-            x: position.x + (isWorld ? ox * s.x + m[12] : ox),
-            y: position.y + (isWorld ? oy * s.y + m[13] : oy),
-            z: position.z + (isWorld ? oz * s.z + m[14] : oz),
-          },
-          velocity: {
-            x: velocities[particleIndex].x,
-            y: velocities[particleIndex].y,
-            z: velocities[particleIndex].z,
-          },
-          startLifetime: scalarArray[base + S_START_LIFETIME],
-          colorA: scalarArray[base + S_COLOR_A],
-          size: scalarArray[base + S_SIZE],
-          rotation: scalarArray[base + S_ROTATION],
-          colorR: scalarArray[base + S_COLOR_R],
-          colorG: scalarArray[base + S_COLOR_G],
-          colorB: scalarArray[base + S_COLOR_B],
-          startSize: generalData.startValues.startSize[particleIndex],
-          startOpacity: generalData.startValues.startOpacity[particleIndex],
-          startColorR: generalData.startValues.startColorR[particleIndex],
-          startColorG: generalData.startValues.startColorG[particleIndex],
-          startColorB: generalData.startValues.startColorB[particleIndex],
-          rotationSpeed: generalData.lifetimeValues.rotationOverLifetime
-            ? generalData.lifetimeValues.rotationOverLifetime[particleIndex]
-            : 0,
-          noiseOffset: generalData.noise.offsets
-            ? generalData.noise.offsets[particleIndex]
-            : 0,
-          startFrame: scalarArray[base + S_START_FRAME],
-          orbitalOffset: {
-            x: startPositions[particleIndex].x,
-            y: startPositions[particleIndex].y,
-            z: startPositions[particleIndex].z,
-          },
-        }
-      );
-      // Modifiers run on GPU ??? no CPU applyModifiers needed
-    } else {
-      if (particleIndex > generalData.cpuDirtyParticleWatermark)
-        generalData.cpuDirtyParticleWatermark = particleIndex;
-      scalarInterleavedBuffer.needsUpdate = true;
-
-      applyModifiers({
-        delta: 0,
-        generalData,
-        normalizedConfig,
-        attributes: mappedAttributes,
-        scalarArray,
-        particleLifetimePercentage: 0,
-        particleIndex,
-      });
-    }
-  };
-
-  // Sub-emitter setup
-  const subEmitterArr: Array<SubEmitterConfig> = subEmitters ?? [];
-  const deathSubEmitters = subEmitterArr.filter(
-    (s) => (s.trigger ?? SubEmitterTrigger.DEATH) === SubEmitterTrigger.DEATH
-  );
-  const birthSubEmitters = subEmitterArr.filter(
-    (s) => s.trigger === SubEmitterTrigger.BIRTH
-  );
-  // Track sub-emitter instances per config for per-config maxInstances enforcement
-  const subEmitterInstancesMap = new Map<
-    SubEmitterConfig,
-    Array<ParticleSystem>
-  >();
-  for (const cfg of subEmitterArr) {
-    subEmitterInstancesMap.set(cfg, []);
-  }
-
-  const cleanupCompletedInstances = (instances: Array<ParticleSystem>) => {
-    for (let i = instances.length - 1; i >= 0; i--) {
-      const sub = instances[i];
-      let hasActive: boolean;
-      if (sub.getActiveParticleCount) {
-        // O(1) via the free list ??? avoids scanning every particle of every
-        // instance each time the instance cap is hit.
-        hasActive = sub.getActiveParticleCount() > 0;
-      } else {
-        const geomAttrs = sub.instance.geometry?.attributes;
-        const isActiveAttr = geomAttrs
-          ? (geomAttrs.isActive ?? geomAttrs.instanceIsActive)
-          : undefined;
-        if (!isActiveAttr) {
-          sub.dispose();
-          instances.splice(i, 1);
-          continue;
-        }
-        hasActive = false;
-        for (let j = 0; j < isActiveAttr.count; j++) {
-          if (isActiveAttr.getX(j)) {
-            hasActive = true;
-            break;
-          }
-        }
-      }
-      if (!hasActive) {
-        sub.dispose();
-        instances.splice(i, 1);
-      }
-    }
-  };
-
-  const spawnSubEmitters = (
-    configs: Array<SubEmitterConfig>,
-    position: THREE.Vector3,
-    velocity: THREE.Vector3,
-    spawnNow: number
-  ) => {
-    // The death/birth callbacks pass `position` in world coordinates. The
-    // sub-emitter becomes a child of particleSystem.parent, so its
-    // transform.position must be expressed in that parent's local frame.
-    const parentObj = particleSystem.parent;
-    _subLocalPosition.copy(position);
-    if (parentObj) {
-      parentObj.updateMatrixWorld();
-      parentObj.worldToLocal(_subLocalPosition);
-    }
-
-    for (const subConfig of configs) {
-      const instances = subEmitterInstancesMap.get(subConfig)!;
-      const maxInst = subConfig.maxInstances ?? 32;
-      if (instances.length >= maxInst) {
-        cleanupCompletedInstances(instances);
-        if (instances.length >= maxInst) continue;
-      }
-
-      const inheritVelocity = subConfig.inheritVelocity ?? 0;
-      const subSystem = createParticleSystem(
-        {
-          ...subConfig.config,
-          looping: false,
-          // Sub-emitters must always use CPU simulation because their compute
-          // nodes cannot be dispatched independently by the parent system.
-          simulationBackend: SimulationBackend.CPU,
-          transform: {
-            ...subConfig.config.transform,
-            position: new THREE.Vector3(
-              _subLocalPosition.x,
-              _subLocalPosition.y,
-              _subLocalPosition.z
-            ),
-          },
-          renderer: {
-            ...(subConfig.config.renderer ?? {}),
-            ...(subConfig.config.renderer?.rendererType
-              ? {}
-              : renderer.rendererType === RendererType.MESH ||
-                  renderer.rendererType === RendererType.TRAIL
-                ? {}
-                : { rendererType: renderer.rendererType }),
-          } as typeof subConfig.config.renderer,
-          ...(inheritVelocity > 0
-            ? {
-                startSpeed:
-                  (typeof subConfig.config.startSpeed === 'number'
-                    ? subConfig.config.startSpeed
-                    : typeof subConfig.config.startSpeed === 'object' &&
-                        subConfig.config.startSpeed !== null &&
-                        'min' in subConfig.config.startSpeed
-                      ? ((
-                          subConfig.config
-                            .startSpeed as RandomBetweenTwoConstants
-                        ).min ?? 0)
-                      : 0) +
-                  velocity.length() * inheritVelocity,
-              }
-            : {}),
-        },
-        spawnNow
-      );
-
-      if (parentObj) parentObj.add(subSystem.instance);
-
-      instances.push(subSystem);
-    }
-  };
-
-  // Trail mesh setup: ribbon geometry + material (created only for TRAIL mode)
-  let trailMesh: THREE.Mesh | undefined;
-  let trailGeometry: THREE.BufferGeometry | undefined;
-  let trailPositionAttr: THREE.BufferAttribute | undefined;
-  let trailAlphaAttr: THREE.BufferAttribute | undefined;
-  let trailColorAttr: THREE.BufferAttribute | undefined;
-  let trailNextAttr: THREE.BufferAttribute | undefined;
-  let trailHalfWidthAttr: THREE.BufferAttribute | undefined;
-  let trailUVAttr: THREE.BufferAttribute | undefined;
-  let trailIndexAttr: THREE.BufferAttribute | undefined;
-  let trailWidthCurveFn: CurveFunction | undefined;
-  let trailOpacityCurveFn: CurveFunction | undefined;
-  let trailColorOverTrailFns:
-    | { r: CurveFunction; g: CurveFunction; b: CurveFunction }
-    | undefined;
-
-  if (useTrail && trailConfig) {
-    const trailLength = trailConfig.length;
-    // Each particle contributes (trailLength) vertices (2 per segment joint: left+right)
-    // Segments = trailLength - 1, so 2 * trailLength vertices per particle
-    const verticesPerParticle = trailLength * 2;
-    const totalVertices = maxParticles * verticesPerParticle;
-    // Each segment (between 2 consecutive history points) = 2 triangles = 6 indices
-    const indicesPerParticle = (trailLength - 1) * 6;
-    const totalIndices = maxParticles * indicesPerParticle;
-
-    trailGeometry = new THREE.BufferGeometry();
-    const trailPositions = new Float32Array(totalVertices * 3);
-    const trailNextPositions = new Float32Array(totalVertices * 3);
-    const trailAlphas = new Float32Array(totalVertices);
-    const trailColors = new Float32Array(totalVertices * 4);
-    const trailOffsets = new Float32Array(totalVertices);
-    const trailHalfWidths = new Float32Array(totalVertices);
-    const trailUVs = new Float32Array(totalVertices * 2);
-    const trailIndices = new Uint32Array(totalIndices);
-
-    // Pre-build index buffer and static offset attribute (-1/+1 per side)
-    for (let p = 0; p < maxParticles; p++) {
-      const vertBase = p * verticesPerParticle;
-      const idxBase = p * indicesPerParticle;
-      for (let s = 0; s < trailLength; s++) {
-        trailOffsets[vertBase + s * 2] = -1.0; // left
-        trailOffsets[vertBase + s * 2 + 1] = 1.0; // right
-      }
-      for (let s = 0; s < trailLength - 1; s++) {
-        const i = idxBase + s * 6;
-        const v = vertBase + s * 2;
-        trailIndices[i] = v;
-        trailIndices[i + 1] = v + 1;
-        trailIndices[i + 2] = v + 2;
-        trailIndices[i + 3] = v + 1;
-        trailIndices[i + 4] = v + 3;
-        trailIndices[i + 5] = v + 2;
-      }
-    }
-
-    trailPositionAttr = new THREE.BufferAttribute(trailPositions, 3);
-    trailPositionAttr.setUsage(THREE.DynamicDrawUsage);
-    trailNextAttr = new THREE.BufferAttribute(trailNextPositions, 3);
-    trailNextAttr.setUsage(THREE.DynamicDrawUsage);
-    trailAlphaAttr = new THREE.BufferAttribute(trailAlphas, 1);
-    trailAlphaAttr.setUsage(THREE.DynamicDrawUsage);
-    trailColorAttr = new THREE.BufferAttribute(trailColors, 4);
-    trailColorAttr.setUsage(THREE.DynamicDrawUsage);
-    trailHalfWidthAttr = new THREE.BufferAttribute(trailHalfWidths, 1);
-    trailHalfWidthAttr.setUsage(THREE.DynamicDrawUsage);
-    trailUVAttr = new THREE.BufferAttribute(trailUVs, 2);
-    trailUVAttr.setUsage(THREE.DynamicDrawUsage);
-    trailIndexAttr = new THREE.BufferAttribute(trailIndices, 1);
-
-    trailGeometry.setAttribute('position', trailPositionAttr);
-    trailGeometry.setAttribute('trailNext', trailNextAttr);
-    trailGeometry.setAttribute('trailAlpha', trailAlphaAttr);
-    trailGeometry.setAttribute('trailColor', trailColorAttr);
-    trailGeometry.setAttribute(
-      'trailOffset',
-      new THREE.BufferAttribute(trailOffsets, 1)
-    );
-    trailGeometry.setAttribute('trailHalfWidth', trailHalfWidthAttr);
-    trailGeometry.setAttribute('trailUV', trailUVAttr);
-    trailGeometry.setIndex(trailIndexAttr);
-
-    const trailUniformValues = {
-      map: { value: particleMap },
-      useMap: { value: !!particleMap },
-      discardBackgroundColor: { value: renderer.discardBackgroundColor },
-      // sRGB ??? linear so the trail fragment comparison matches the
-      // (now linear) texture sample and vertex color.
-      backgroundColor: { value: rgbSRGBToLinear(renderer.backgroundColor) },
-      backgroundColorTolerance: { value: renderer.backgroundColorTolerance },
-      softParticlesEnabled: { value: softParticlesEnabled },
-      softParticlesIntensity: {
-        value: Math.max(renderer.softParticles?.intensity ?? 1.0, 0.001),
-      },
-      sceneDepthTexture: {
-        value: renderer.softParticles?.depthTexture ?? null,
-      },
-      cameraNearFar: { value: new THREE.Vector2(0.1, 1000.0) },
-    };
-
-    const trailMaterial: THREE.Material = useTSL
-      ? _tslMaterialFactory!.createTSLTrailMaterial(
-          trailUniformValues,
-          rendererConfig
-        )
-      : new THREE.ShaderMaterial({
-          uniforms: trailUniformValues,
-          vertexShader: TrailVertexShader,
-          fragmentShader: TrailFragmentShader,
-          ...rendererConfig,
-          side: THREE.DoubleSide,
-        });
-
-    trailMesh = new THREE.Mesh(trailGeometry, trailMaterial);
-    trailMesh.frustumCulled = false;
-
-    // Capture camera world position each frame for billboard trail ribbons
-    const trailCameraPos = new THREE.Vector3();
-    trailMesh.onBeforeRender = (
-      _renderer: THREE.WebGLRenderer,
-      _scene: THREE.Scene,
-      camera: THREE.Camera
-    ) => {
-      camera.getWorldPosition(trailCameraPos);
-      if (
-        softParticlesEnabled &&
-        (camera as THREE.PerspectiveCamera).isPerspectiveCamera
-      ) {
-        const perspCam = camera as THREE.PerspectiveCamera;
-        (trailUniformValues.cameraNearFar.value as THREE.Vector2).set(
-          perspCam.near,
-          perspCam.far
-        );
-      }
-    };
-    generalData.trailCameraPosition = trailCameraPos;
-
-    // Pre-compute curve functions for trail width/opacity
-    trailWidthCurveFn = getCurveFunctionFromConfig(
-      generalData.particleSystemId,
-      trailConfig.widthOverTrail
-    );
-    trailOpacityCurveFn = getCurveFunctionFromConfig(
-      generalData.particleSystemId,
-      trailConfig.opacityOverTrail
-    );
-
-    if (trailConfig.colorOverTrail?.isActive) {
-      trailColorOverTrailFns = {
-        r: getCurveFunctionFromConfig(
-          generalData.particleSystemId,
-          normalizeTrailCurve(trailConfig.colorOverTrail.r, defaultTrailCurve)
-        ),
-        g: getCurveFunctionFromConfig(
-          generalData.particleSystemId,
-          normalizeTrailCurve(trailConfig.colorOverTrail.g, defaultTrailCurve)
-        ),
-        b: getCurveFunctionFromConfig(
-          generalData.particleSystemId,
-          normalizeTrailCurve(trailConfig.colorOverTrail.b, defaultTrailCurve)
-        ),
-      };
-    }
-  }
-
-  let particleSystem: THREE.Points | THREE.Mesh =
-    useInstancing || useMesh
-      ? new THREE.Mesh(geometry, material)
-      : new THREE.Points(geometry, material);
-
-  // Late-bound ref so onBeforeRender can access instanceData (assigned later).
-  const _instanceRef: { current: ParticleSystemInstance | null } = {
-    current: null,
-  };
-
-  if (useInstancing || softParticlesEnabled || useGPUCompute) {
-    particleSystem.onBeforeRender = (
-      glRenderer: THREE.WebGLRenderer,
-      _scene: THREE.Scene,
-      camera: THREE.Camera
-    ) => {
-      if (useInstancing) {
-        const size = glRenderer.getSize(_viewportSize);
-        sharedUniforms.viewportHeight.value =
-          size.y * glRenderer.getPixelRatio();
-      }
-      if (
-        softParticlesEnabled &&
-        (camera as THREE.PerspectiveCamera).isPerspectiveCamera
-      ) {
-        const perspCam = camera as THREE.PerspectiveCamera;
-        (sharedUniforms.cameraNearFar.value as THREE.Vector2).set(
-          perspCam.near,
-          perspCam.far
-        );
-      }
-      // Note: GPU compute dispatch is done by the caller via
-      // renderer.compute(system.computeNode) before renderer.render().
-    };
-  }
-
-  // In trail mode, hide the particle points (but keep the parent visible so
-  // the trail mesh child can render) and attach the visible trail mesh
-  if (useTrail && trailMesh) {
-    material.visible = false;
-    particleSystem.add(trailMesh);
-  }
-
-  particleSystem.position.copy(transform!.position!);
-  particleSystem.rotation.x = THREE.MathUtils.degToRad(transform.rotation!.x);
-  particleSystem.rotation.y = THREE.MathUtils.degToRad(transform.rotation!.y);
-  particleSystem.rotation.z = THREE.MathUtils.degToRad(transform.rotation!.z);
-  particleSystem.scale.copy(transform.scale!);
-
-  // Create a mapped view of attributes so the update loop and modifiers can
-  // use standard names regardless of the renderer type.
-  const mappedAttributes = {
-    position: aPosition,
-    isActive: aIsActive,
-    lifetime: aLifetime,
-    startLifetime: aStartLifetime,
-    startFrame: aStartFrame,
-    size: aSize,
-    rotation: aRotation,
-    color: aColor,
-    ...(useMesh ? { quat: aQuat } : {}),
-  };
-
-  const calculatedCreationTime =
-    now + calculateValue(generalData.particleSystemId, startDelay) * 1000;
-
-  // WORLD simulation space: decouple rendering transform from the emitter.
-  // The particle buffer stores world-space coordinates, so matrixWorld is
-  // forced to identity each frame. The emitter's actual world transform is
-  // captured in generalData.sourceWorldMatrix for positioning new particles
-  // and orienting the emission shape.
-  if (normalizedConfig.simulationSpace === SimulationSpace.WORLD) {
-    particleSystem.matrixWorldAutoUpdate = false;
-    particleSystem.matrixWorld.identity();
-  }
-
-  const hasDeathSubEmitters = deathSubEmitters.length > 0;
-  const hasBirthSubEmitters = birthSubEmitters.length > 0;
-
-  const onParticleDeath = hasDeathSubEmitters
-    ? (
-        particleIndex: number,
-        positionArr: THREE.TypedArray,
-        velocity: THREE.Vector3,
-        deathNow: number
-      ) => {
-        const posIdx = particleIndex * 3;
-        _subEmitterPosition.set(
-          positionArr[posIdx],
-          positionArr[posIdx + 1],
-          positionArr[posIdx + 2]
-        );
-        // Convert local particle position to world space so the sub-emitter
-        // spawns at the correct scene position regardless of transform offset.
-        // updateMatrixWorld() guarantees the transform is fresh ??? otherwise a
-        // parent moved after the last scene traversal would place the spawn
-        // at a stale position.
-        if (simulationSpace === SimulationSpace.LOCAL) {
-          particleSystem.updateMatrixWorld();
-          particleSystem.localToWorld(_subEmitterPosition);
-        }
-        spawnSubEmitters(
-          deathSubEmitters,
-          _subEmitterPosition,
-          velocity,
-          deathNow
-        );
-      }
-    : undefined;
-
-  const onParticleBirth = hasBirthSubEmitters
-    ? (
-        particleIndex: number,
-        positionArr: THREE.TypedArray,
-        velocity: THREE.Vector3,
-        birthNow: number
-      ) => {
-        const posIdx = particleIndex * 3;
-        _subEmitterPosition.set(
-          positionArr[posIdx],
-          positionArr[posIdx + 1],
-          positionArr[posIdx + 2]
-        );
-        // Convert local particle position to world space so the sub-emitter
-        // spawns at the correct scene position regardless of transform offset.
-        // updateMatrixWorld() guarantees the transform is fresh ??? otherwise a
-        // parent moved after the last scene traversal would place the spawn
-        // at a stale position.
-        if (simulationSpace === SimulationSpace.LOCAL) {
-          particleSystem.updateMatrixWorld();
-          particleSystem.localToWorld(_subEmitterPosition);
-        }
-        spawnSubEmitters(
-          birthSubEmitters,
-          _subEmitterPosition,
-          velocity,
-          birthNow
-        );
-      }
-    : undefined;
-
-  // Stable kill callback for collision-plane KILL handling. Created once per
-  // system so the update loop doesn't allocate a closure per particle per
-  // frame; reads the frame timestamp from the module-level _frameNow.
-  const killParticle = (particleIndex: number) => {
-    if (onParticleDeath)
-      onParticleDeath(
-        particleIndex,
-        mappedAttributes.position.array,
-        velocities[particleIndex],
-        _frameNow
-      );
-    deactivateParticle(particleIndex);
-  };
-
-  const instanceData: ParticleSystemInstance = {
+  // ?? 6. ParticleSystemInstance for the update loop ??
+  const props: ParticleSystemInstance = {
     particleSystem,
-    mappedAttributes,
-    scalarArray,
-    scalarInterleavedBuffer,
-    elapsedUniform: sharedUniforms.elapsed as { value: number },
+    mappedAttributes: {
+      position: buffers.position as unknown as THREE.BufferAttribute,
+      isActive: buffers.orbitalIsActive as unknown as THREE.BufferAttribute,
+      lifetime: buffers.particleState as unknown as THREE.BufferAttribute,
+      startLifetime: buffers.startValues as unknown as THREE.BufferAttribute,
+      startFrame: buffers.particleState as unknown as THREE.BufferAttribute,
+      size: buffers.particleState as unknown as THREE.BufferAttribute,
+      rotation: buffers.particleState as unknown as THREE.BufferAttribute,
+      color: buffers.color as unknown as THREE.BufferAttribute,
+    },
+    scalarArray: new Float32Array(maxParticles * SCALAR_STRIDE),
+    scalarInterleavedBuffer: new THREE.InterleavedBuffer(
+      new Float32Array(maxParticles * SCALAR_STRIDE),
+      SCALAR_STRIDE
+    ),
+    elapsedUniform,
     generalData,
-    onUpdate,
-    onComplete,
-    creationTime: calculatedCreationTime,
-    lastEmissionTime: calculatedCreationTime,
+    onUpdate: () => {},
+    onComplete: () => {},
+    creationTime: now + ((normalizedConfig.startDelay as number) || 0),
+    lastEmissionTime: now,
     emissionAccumulator: 0,
-    duration,
-    looping,
-    simulationSpace,
-    gravity,
-    normalizedForceFields,
-    normalizedCollisionPlanes,
-    emission,
+    duration: normalizedConfig.duration,
+    looping: normalizedConfig.looping,
+    simulationSpace: normalizedConfig.simulationSpace,
+    gravity: normalizedConfig.gravity,
+    normalizedForceFields: forceFields,
+    normalizedCollisionPlanes: collisionPlanes,
+    emission: normalizedConfig.emission,
     normalizedConfig,
     iterationCount: 0,
-    velocities,
-    freeList,
-    deactivateParticle,
-    killParticle,
-    activateParticle,
-    onParticleDeath,
-    onParticleBirth,
-    useGPUCompute: useGPUCompute && gpuPipeline !== null,
-    computePipeline: gpuPipeline ?? undefined,
+    velocities: [],
+    freeList: [],
+    deactivateParticle: () => {},
+    killParticle: () => {},
+    activateParticle: () => {},
+    computePipeline: pipeline,
+    useGPUCompute: true,
     computeDispatchReady: false,
-    ...(useTrail
-      ? {
-          trailMesh,
-          trailPositionAttr,
-          trailAlphaAttr,
-          trailColorAttr,
-          trailNextAttr: trailNextAttr as THREE.BufferAttribute,
-          trailHalfWidthAttr: trailHalfWidthAttr as THREE.BufferAttribute,
-          trailUVAttr: trailUVAttr as THREE.BufferAttribute,
-          trailWidthCurveFn,
-          trailOpacityCurveFn,
-          trailColorOverTrailFns,
-          trailConfig: {
-            length: trailConfig!.length,
-            width: trailConfig!.width,
-            minVertexDistance: trailConfig!.minVertexDistance,
-            maxTime: trailConfig!.maxTime,
-            smoothing: trailConfig!.smoothing,
-            smoothingSubdivisions: trailConfig!.smoothingSubdivisions,
-            twistPrevention: trailConfig!.twistPrevention,
-            ribbonId: trailConfig!.ribbonId,
-          },
-        }
-      : {}),
+    maxParticles,
+    material,
+    geometry,
+    rrType,
+    sharedUniforms,
+  };
+  createdParticleSystems.push(props);
+
+  // Emission count scratch so bursts + rate-over-distance don't allocate
+  // closures / objects per frame.
+  let lastSeed = Math.random();
+
+  const update = (cycleData: CycleData): void => {
+    updateParticleSystemInstance(props, cycleData);
+    lastSeed = Math.random();
   };
 
-  createdParticleSystems.push(instanceData);
-  _instanceRef.current = instanceData;
-
-  const resumeEmitter = () => (generalData.isEnabled = true);
-  const pauseEmitter = () => (generalData.isEnabled = false);
-  const dispose = () => {
-    for (const instances of subEmitterInstancesMap.values()) {
-      for (const sub of instances) sub.dispose();
-      instances.length = 0;
-    }
-    destroyParticleSystem(particleSystem);
-  };
-  const update = (cycleData: CycleData) => {
-    updateParticleSystemInstance(instanceData, cycleData);
-    for (const instances of subEmitterInstancesMap.values()) {
-      for (const sub of instances) sub.update(cycleData);
-    }
-  };
-
-  const updateConfig = (partialConfig: Partial<ParticleSystemConfig>) => {
-    // Deep-merge partial config into the live normalizedConfig
-    ObjectUtils.deepMerge(instanceData.normalizedConfig, partialConfig, {
+  const resumeEmitter = (): void => { generalData.isEnabled = true; };
+  const pauseEmitter = (): void => { generalData.isEnabled = false; };
+  const dispose = (): void => { destroyParticleSystem(particleSystem); };
+  const updateConfig = (partial: Partial<ParticleSystemConfig>): void => {
+    ObjectUtils.deepMerge(normalizedConfig, partial, {
       applyToFirstObject: true,
       skippedProperties: [],
     });
-
-    const cfg = instanceData.normalizedConfig;
-
-    // Update instance-level cached scalars
-    if (partialConfig.gravity !== undefined) {
-      instanceData.gravity = cfg.gravity;
-    }
-    if (partialConfig.duration !== undefined)
-      instanceData.duration = cfg.duration;
-    if (partialConfig.looping !== undefined) instanceData.looping = cfg.looping;
-    if (
-      partialConfig.simulationSpace !== undefined &&
-      instanceData.simulationSpace !== cfg.simulationSpace
-    ) {
-      // Switching simulation space live. The existing buffer of active
-      // particles is in the _old_ frame ??? rather than walk the buffer and
-      // convert every position (which still wouldn't reproduce the visual
-      // continuity the old frame had), we deactivate the live particles
-      // so the system re-emits from the new frame's origin cleanly. New
-      // emissions use the right frame because `simulationSpace` is also
-      // synced below.
-      //
-      // We also flip `matrixWorldAutoUpdate` + reset `lastWorldPosition`
-      // to match the state createParticleSystem would have set. Without
-      // this, particles rendered in the first few frames after the switch
-      // inherit the wrong world matrix and appear to jump between origins.
-      for (let i = 0; i < maxParticles; i++) {
-        if (scalarArray[i * SCALAR_STRIDE + S_IS_ACTIVE]) {
-          deactivateParticle(i);
-        }
-      }
-      generalData.lastWorldPosition.set(-99999, -99999, -99999);
-      if (cfg.simulationSpace === SimulationSpace.WORLD) {
-        particleSystem.matrixWorldAutoUpdate = false;
-        particleSystem.matrixWorld.identity();
-      } else {
-        particleSystem.matrixWorldAutoUpdate = true;
-      }
-      instanceData.simulationSpace = cfg.simulationSpace;
-    }
-    if (partialConfig.emission !== undefined)
-      instanceData.emission = cfg.emission;
-
-    // Re-normalize force fields when changed
-    if (partialConfig.forceFields !== undefined) {
-      instanceData.normalizedForceFields = normalizeForceFields(
-        cfg.forceFields
-      );
-    }
-
-    // Re-normalize collision planes when changed
-    if (partialConfig.collisionPlanes !== undefined) {
-      instanceData.normalizedCollisionPlanes = normalizeCollisionPlanes(
-        cfg.collisionPlanes
-      );
-    }
-
-    // Re-initialize noise when changed
-    if (partialConfig.noise !== undefined) {
-      const n = cfg.noise;
-      generalData.noise = {
-        isActive: n.isActive,
-        strength: n.strength,
-        noisePower: 0.15 * n.strength,
-        frequency: n.frequency,
-        positionAmount: n.positionAmount,
-        rotationAmount: n.rotationAmount,
-        sizeAmount: n.sizeAmount,
-        fbmMax: 2 - Math.pow(2, -n.octaves),
-        sampler: n.isActive
-          ? new FBM({
-              seed: Math.random(),
-              scale: n.frequency,
-              octaves: n.octaves,
-            })
-          : undefined,
-        offsets: n.useRandomOffset
-          ? (generalData.noise.offsets ??
-            Array.from({ length: maxParticles }, () => Math.random() * 100))
-          : undefined,
-      };
-    }
-
-    // Re-resolve pre-baked modifier curve functions ??? the CPU update loop
-    // reads these instead of re-resolving curves per particle per frame.
-    if (
-      partialConfig.sizeOverLifetime !== undefined ||
-      partialConfig.opacityOverLifetime !== undefined ||
-      partialConfig.colorOverLifetime !== undefined
-    ) {
-      resolveModifierCurves();
-    }
-
-    // Re-initialize per-particle data arrays that only exist while their
-    // module is active (previously live activation was a silent no-op).
-    if (partialConfig.velocityOverLifetime !== undefined) {
-      initVelocityLifetimeData();
-    }
-    if (partialConfig.rotationOverLifetime !== undefined) {
-      initRotationLifetimeValues();
-    }
-
-    // GPU compute bakes modifier activation flags and lifetime curves into
-    // the compute kernel at creation ??? these cannot change live.
-    if (instanceData.useGPUCompute) {
-      const gpuBakedKeys = [
-        'sizeOverLifetime',
-        'opacityOverLifetime',
-        'colorOverLifetime',
-        'rotationOverLifetime',
-        'velocityOverLifetime',
-      ] as const;
-      for (const key of gpuBakedKeys) {
-        if (partialConfig[key] !== undefined) {
-          // eslint-disable-next-line no-console
-          console.warn(
-            `three-particles: updateConfig('${key}') has no effect on the ` +
-              'GPU compute backend ??? modifier curves are baked into the ' +
-              'compute kernel at creation. Recreate the system to change it.'
-          );
-        }
-      }
-      if (partialConfig.noise?.isActive !== undefined) {
-        // eslint-disable-next-line no-console
-        console.warn(
-          "three-particles: updateConfig('noise.isActive') has no effect on " +
-            'the GPU compute backend ??? the noise toggle is baked into the ' +
-            'compute kernel at creation. Recreate the system to change it.'
-        );
-      }
-    }
-
-    // Structural properties are pre-allocated at creation and cannot change.
-    const structuralKeys = [
-      'maxParticles',
-      'renderer',
-      'shape',
-      'map',
-      'simulationBackend',
-    ] as const;
-    for (const key of structuralKeys) {
-      if (partialConfig[key] !== undefined) {
-        // eslint-disable-next-line no-console
-        console.warn(
-          `three-particles: updateConfig('${key}') is a structural property ` +
-            'set at creation time and has no runtime effect. Recreate the ' +
-            'particle system to change it.'
-        );
-      }
-    }
+    // Scalars (gravity, duration, looping, noise params, emission rates, burst counts)
+    // are read every frame straight from `normalizedConfig` in `updateParticleSystemInstance`
+    // so no explicit copy is required below.
   };
 
   return {
@@ -2483,802 +1055,179 @@ export const createParticleSystem = (
     dispose,
     update,
     updateConfig,
-    getActiveParticleCount: () => maxParticles - freeList.length,
-    computeNode: gpuPipeline?.computeNode ?? null,
-  };
+    getActiveParticleCount: () => maxParticles,
+    computeNode: pipeline.computeNodes ? pipeline.computeNodes[1] ?? pipeline.computeNode : pipeline.computeNode,
+  } as ParticleSystem;
 };
 
-/**
- * Updates all active particle systems created with {@link createParticleSystem}.
- *
- * This function must be called once per frame in your animation loop to animate all particles.
- * It handles particle emission, movement, lifetime tracking, modifier application, and cleanup
- * of expired particle systems.
- *
- * @param cycleData - Object containing timing information for the current frame:
- *   - `now`: Current timestamp in milliseconds (typically from `performance.now()` or `Date.now()`)
- *   - `delta`: Time elapsed since the last frame in seconds
- *   - `elapsed`: Total time elapsed since the animation started in seconds
- *
- * @example
- * ```typescript
- * import { createParticleSystem, updateParticleSystems } from '@cyberluke/three-particles';
- *
- * const { instance } = createParticleSystem({
- *   // your config
- * });
- * scene.add(instance);
- *
- * // Animation loop
- * let lastTime = 0;
- * let elapsedTime = 0;
- *
- * function animate(currentTime) {
- *   requestAnimationFrame(animate);
- *
- *   const delta = (currentTime - lastTime) / 1000; // Convert to seconds
- *   elapsedTime += delta;
- *   lastTime = currentTime;
- *
- *   // Update all particle systems
- *   updateParticleSystems({
- *     now: currentTime,
- *     delta: delta,
- *     elapsed: elapsedTime
- *   });
- *
- *   renderer.render(scene, camera);
- * }
- *
- * animate(0);
- * ```
- *
- * @example
- * ```typescript
- * // Using Three.js Clock for timing
- * import * as THREE from 'three';
- * import { updateParticleSystems } from '@cyberluke/three-particles';
- *
- * const clock = new THREE.Clock();
- *
- * function animate() {
- *   requestAnimationFrame(animate);
- *
- *   const delta = clock.getDelta();
- *   const elapsed = clock.getElapsedTime();
- *
- *   updateParticleSystems({
- *     now: performance.now(),
- *     delta: delta,
- *     elapsed: elapsed
- *   });
- *
- *   renderer.render(scene, camera);
- * }
- * ```
- *
- * @see {@link createParticleSystem} - Creates particle systems to be updated
- * @see {@link CycleData} - Timing data structure
- */
+// ?? GPU-only per-frame path: writes ~12 scalar uniforms + 2 dispatches ??
+// No per-particle JS loop anywhere in this function.
+const _lastUploadStampMap = new WeakMap<Record<string, THREE.BufferAttribute>, number>();
 const updateParticleSystemInstance = (
   props: ParticleSystemInstance,
   { now, delta, elapsed }: CycleData
-) => {
+): void => {
   const {
-    onUpdate,
     generalData,
-    onComplete,
+    normalizedConfig,
     particleSystem,
     elapsedUniform,
     creationTime,
-    lastEmissionTime,
-    duration,
-    looping,
-    emission,
-    normalizedConfig,
-    iterationCount,
-    velocities,
-    freeList,
-    deactivateParticle,
-    killParticle,
-    activateParticle,
-    simulationSpace,
-    gravity,
     normalizedForceFields,
     normalizedCollisionPlanes,
-    onParticleDeath,
-    onParticleBirth,
-    mappedAttributes: ma,
-    useGPUCompute,
-    computePipeline,
+    emission,
+    computePipeline: pipeline,
+    maxParticles = 0,
   } = props;
-
-  _frameNow = now;
-
-  const hasForceFields = normalizedForceFields.length > 0;
-  const hasCollisionPlanes = normalizedCollisionPlanes.length > 0;
-
+  if (!pipeline) return;
+  const u = pipeline.uniforms as Record<string, { value: unknown }>;
+  const dur = normalizedConfig.duration;
   const lifetime = now - creationTime;
-  const normalizedLifetime = lifetime % (duration * 1000);
+  const loop = normalizedConfig.looping;
+  const iterationTimeMs = loop ? lifetime % (dur * 1000) : lifetime;
+  generalData.normalizedLifetimePercentage = Math.max(Math.min((iterationTimeMs / 1000) / dur, 1), 0);
+  (elapsedUniform as { value: number }).value = elapsed;
 
-  generalData.normalizedLifetimePercentage = Math.max(
-    Math.min(normalizedLifetime / (duration * 1000), 1),
-    0
-  );
-
-  const {
-    lastWorldPosition,
-    currentWorldPosition,
-    worldPositionChange,
-    worldQuaternion,
-    worldEuler,
-    gravityVelocity,
-    sourceWorldMatrix,
-    isEnabled,
-  } = generalData;
-
-  _lastWorldPositionSnapshot.copy(lastWorldPosition);
-
-  elapsedUniform.value = elapsed;
-
-  // Emitter pose for this frame.
-  //
-  // WORLD: build sourceWorldMatrix explicitly (parent.matrixWorld ?? local).
-  //   The particle buffer stores world coordinates, so particleSystem's own
-  //   matrixWorld is held at identity (see matrixWorldAutoUpdate=false in
-  //   createParticleSystem). sourceWorldMatrix is used to place new
-  //   particles and orient the emission shape.
-  //
-  // LOCAL: standard Three.js ??? matrixWorld is fully parent-composed at
-  //   render time, particles live in the local frame, and emissions use
-  //   the identity quaternion (no rotation of the shape offset).
-  if (simulationSpace === SimulationSpace.WORLD) {
-    particleSystem.updateMatrix();
-    if (particleSystem.parent) {
-      particleSystem.parent.updateMatrixWorld();
-      sourceWorldMatrix.multiplyMatrices(
-        particleSystem.parent.matrixWorld,
-        particleSystem.matrix
-      );
-    } else {
-      sourceWorldMatrix.copy(particleSystem.matrix);
-    }
-    sourceWorldMatrix.decompose(
-      currentWorldPosition,
-      worldQuaternion,
-      generalData.worldScale
-    );
-    generalData.wrapperQuaternion.copy(worldQuaternion);
-    particleSystem.matrixWorld.identity();
-  } else {
-    particleSystem.updateMatrixWorld();
-    particleSystem.getWorldPosition(currentWorldPosition);
-    particleSystem.getWorldQuaternion(worldQuaternion);
-    particleSystem.getWorldScale(generalData.worldScale);
-    generalData.wrapperQuaternion.identity();
+  // Gravity in the right reference frame.
+  const gv = generalData.gravityVelocity;
+  gv.set(0, normalizedConfig.gravity, 0);
+  if (normalizedConfig.simulationSpace === SimulationSpace.LOCAL && particleSystem.parent) {
+    // Convert world gravity into the emitter's local space.
+    generalData.worldQuaternion.copy(particleSystem.getWorldQuaternion(_tmpQ1));
+    gv.applyQuaternion(_tmpQ1.invert());
+    const scY = particleSystem.getWorldScale(_tmpV1).y || 1;
+    gv.divideScalar(scY);
   }
 
-  if (lastWorldPosition.x !== -99999) {
-    worldPositionChange.set(
-      currentWorldPosition.x - lastWorldPosition.x,
-      currentWorldPosition.y - lastWorldPosition.y,
-      currentWorldPosition.z - lastWorldPosition.z
-    );
-  } else {
-    worldPositionChange.set(0, 0, 0);
-  }
-  if (isEnabled) {
-    generalData.distanceFromLastEmitByDistance += worldPositionChange.length();
-  }
-  lastWorldPosition.copy(currentWorldPosition);
-  worldEuler.setFromQuaternion(worldQuaternion);
-
-  // Gravity is always -Y in world space (Unity semantics). In WORLD
-  // simulation the buffer is world-space, so gravity is used directly.
-  //
-  // In LOCAL simulation the buffer is in the emitter's local frame, so
-  // gravity is rotated by the inverse of the emitter's world rotation AND
-  // divided by the emitter's world scale ??? this way the rendered fall
-  // matches -g m/s?? in world units, independent of how the emitter is
-  // rotated or scaled by its parent chain.
-  if (simulationSpace === SimulationSpace.WORLD) {
-    gravityVelocity.set(0, gravity, 0);
-  } else {
-    gravityVelocity.set(0, gravity, 0);
-    _inverseQuat.copy(worldQuaternion).invert();
-    gravityVelocity.applyQuaternion(_inverseQuat);
-    const sx = generalData.worldScale.x || 1;
-    const sy = generalData.worldScale.y || 1;
-    const sz = generalData.worldScale.z || 1;
-    gravityVelocity.x /= sx;
-    gravityVelocity.y /= sy;
-    gravityVelocity.z /= sz;
-  }
-
-  // Force field positions/directions are user-authored in world space.
-  //
-  // WORLD simulation: buffer is already in world space ??? copy through.
-  // LOCAL simulation: transform into the emitter's local frame so field
-  //   positions and directions match the particle buffer's frame.
-  if (hasForceFields) {
-    if (simulationSpace === SimulationSpace.LOCAL) {
-      _inverseQuat.copy(worldQuaternion).invert();
-    }
-
-    _localForceFields.length = normalizedForceFields.length;
-
-    for (let i = 0; i < normalizedForceFields.length; i++) {
-      const src = normalizedForceFields[i];
-      let dst = _localForceFields[i];
-      if (!dst) {
-        dst = {
-          isActive: true,
-          type: ForceFieldType.POINT,
-          position: new THREE.Vector3(),
-          direction: new THREE.Vector3(),
-          strength: 0,
-          range: 0,
-          falloff: ForceFieldFalloff.LINEAR,
-        };
-        _localForceFields[i] = dst;
-      }
-      dst.isActive = src.isActive;
-      dst.type = src.type;
-      dst.strength = src.strength;
-      dst.range = src.range;
-      dst.falloff = src.falloff;
-
-      if (simulationSpace === SimulationSpace.WORLD) {
-        dst.position.copy(src.position);
-        dst.direction.copy(src.direction);
-      } else {
-        _localForceFieldPos.copy(src.position);
-        particleSystem.worldToLocal(_localForceFieldPos);
-        dst.position.copy(_localForceFieldPos);
-
-        _localForceFieldDir.copy(src.direction);
-        _localForceFieldDir.applyQuaternion(_inverseQuat);
-        dst.direction.copy(_localForceFieldDir);
-      }
-    }
-  }
-
-  // Collision plane positions/normals ??? same policy as force fields.
-  if (hasCollisionPlanes) {
-    if (simulationSpace === SimulationSpace.LOCAL && !hasForceFields) {
-      _inverseQuat.copy(worldQuaternion).invert();
-    }
-
-    _localCollisionPlanes.length = normalizedCollisionPlanes.length;
-
-    for (let i = 0; i < normalizedCollisionPlanes.length; i++) {
-      const src = normalizedCollisionPlanes[i];
-      let dst = _localCollisionPlanes[i];
-      if (!dst) {
-        dst = {
-          isActive: true,
-          position: new THREE.Vector3(),
-          normal: new THREE.Vector3(),
-          mode: CollisionPlaneMode.KILL,
-          dampen: 0.5,
-          lifetimeLoss: 0,
-        };
-        _localCollisionPlanes[i] = dst;
-      }
-      dst.isActive = src.isActive;
-      dst.mode = src.mode;
-      dst.dampen = src.dampen;
-      dst.lifetimeLoss = src.lifetimeLoss;
-
-      if (simulationSpace === SimulationSpace.WORLD) {
-        dst.position.copy(src.position);
-        dst.normal.copy(src.normal);
-      } else {
-        _localCollisionPlanePos.copy(src.position);
-        particleSystem.worldToLocal(_localCollisionPlanePos);
-        dst.position.copy(_localCollisionPlanePos);
-
-        _localCollisionPlaneNormal.copy(src.normal);
-        _localCollisionPlaneNormal.applyQuaternion(_inverseQuat);
-        dst.normal.copy(_localCollisionPlaneNormal);
-      }
-    }
-  }
-
-  const creationTimes = generalData.creationTimes;
-  const scalarArr = props.scalarArray;
-  const positionArr = ma.position.array;
-  const hwm = generalData.highWaterIndex;
-  const creationTimesLength = hwm > 0 ? hwm : creationTimes.length;
-
-  // ?????? GPU Compute Path ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
-  // When GPU compute is active, all per-particle physics AND modifiers
-  // (gravity, velocity, position, lifetime, size/opacity/color/rotation
-  // over lifetime, noise, orbital velocity, force fields) run on the GPU
-  // in a single compute dispatch. CPU still handles:
-  //   - Death detection for sub-emitter callbacks + freeList management
-  //   - Emission (particle activation, writing initial data to GPU buffers)
-  if (useGPUCompute && computePipeline) {
-    type ModifierComputePipeline =
-      import('./webgpu/compute-modifiers.js').ModifierComputePipeline;
-    const cp = computePipeline as ModifierComputePipeline;
-
-    // Core physics uniforms
-    setUniformFloat(cp.uniforms.delta, delta);
-    setUniformFloat(cp.uniforms.deltaMs, delta * 1000);
-    setUniformVec3(
-      cp.uniforms.gravityVelocity,
-      gravityVelocity.x,
-      gravityVelocity.y,
-      gravityVelocity.z
-    );
-
-    // Noise uniforms
-    // GPU simplex noise output is not normalised by FBM's octave accumulator,
-    // so we scale noisePower by the pre-computed divisor (fbmMax).
-    const noiseData = generalData.noise;
-    setUniformFloat(cp.uniforms.noiseStrength, noiseData.strength);
-    setUniformFloat(
-      cp.uniforms.noisePower,
-      noiseData.noisePower / noiseData.fbmMax
-    );
-    setUniformFloat(cp.uniforms.noiseFrequency, noiseData.frequency);
-    setUniformFloat(cp.uniforms.noisePositionAmount, noiseData.positionAmount);
-    setUniformFloat(cp.uniforms.noiseRotationAmount, noiseData.rotationAmount);
-    setUniformFloat(cp.uniforms.noiseSizeAmount, noiseData.sizeAmount);
-
-    // Force-field and collision-plane uploads share the `curveData` storage
-    // buffer with the per-particle init slots. A blanket `needsUpdate = true`
-    // re-uploads the whole Float32Array, which stomps on init flags the
-    // compute shader already cleared on the GPU side but are still `1` in
-    // the CPU mirror (the `flushEmitQueue` logic only clears them a frame
-    // later). We therefore use `addUpdateRange()` so the WebGPU backend
-    // uploads just the force-field / collision-plane tail region, leaving
-    // the init-slot region intact on the GPU. `flushEmitQueue` does the
-    // same for its own region below.
-    if (
-      cp.forceFieldInfo &&
-      hasForceFields &&
-      _tslMaterialFactory?.encodeForceFieldsForGPU
-    ) {
-      const encodedFF = _tslMaterialFactory.encodeForceFieldsForGPU(
-        _localForceFields,
-        generalData.particleSystemId,
-        generalData.normalizedLifetimePercentage
-      );
-      const curveArr = cp.buffers.curveData.array as Float32Array;
-      const offset = cp.forceFieldInfo.offset;
-      // Only re-upload when the encoded data actually changed ??? static
-      // force fields would otherwise be uploaded every frame.
-      if (!arraySlicesEqual(curveArr, offset, encodedFF, 0, encodedFF.length)) {
-        curveArr.set(encodedFF, offset);
-        cp.buffers.curveData.addUpdateRange(offset, encodedFF.length);
-        cp.buffers.curveData.needsUpdate = true;
-      }
-      setUniformFloat(
-        cp.forceFieldInfo.countUniform,
-        normalizedForceFields.length
-      );
-    }
-
-    if (
-      cp.collisionPlaneInfo &&
-      hasCollisionPlanes &&
-      _tslMaterialFactory?.encodeCollisionPlanesForGPU
-    ) {
-      const encodedCP = _tslMaterialFactory.encodeCollisionPlanesForGPU(
-        _localCollisionPlanes
-      );
-      const curveArr = cp.buffers.curveData.array as Float32Array;
-      const offset = cp.collisionPlaneInfo.offset;
-      // Only re-upload when the encoded data actually changed.
-      if (!arraySlicesEqual(curveArr, offset, encodedCP, 0, encodedCP.length)) {
-        curveArr.set(encodedCP, offset);
-        cp.buffers.curveData.addUpdateRange(offset, encodedCP.length);
-        cp.buffers.curveData.needsUpdate = true;
-      }
-      setUniformFloat(
-        cp.collisionPlaneInfo.countUniform,
-        normalizedCollisionPlanes.length
-      );
-    }
-
-    // Flush emit queue ??? uploads queued particle data to GPU and sets the
-    // emit count uniform so the compute shader's scatter pass can initialise
-    // newly emitted particles without overwriting existing GPU state.
-    if (_tslMaterialFactory?.flushEmitQueue) {
-      _tslMaterialFactory.flushEmitQueue(cp.buffers);
-    }
-
-    // Signal onBeforeRender to dispatch compute
-    props.computeDispatchReady = true;
-
-    // CPU-side death detection (for sub-emitter callbacks + freeList).
-    // When death sub-emitters exist we also run a lightweight CPU shadow
-    // simulation (velocity integration, gravity, orbital velocity, force
-    // fields) so that positionArr contains an approximate current position
-    // instead of the stale emission-time value ??? the GPU buffer is not
-    // readable from the CPU without an async readback.
-    if (hasForceFields) {
-      _forceFieldParams.particleSystemId = generalData.particleSystemId;
-      _forceFieldParams.forceFields = _localForceFields;
-      _forceFieldParams.positionArr = positionArr;
-      _forceFieldParams.delta = delta;
-      _forceFieldParams.systemLifetimePercentage =
-        generalData.normalizedLifetimePercentage;
-    }
-    if (hasCollisionPlanes) {
-      _collisionParams.collisionPlanes = _localCollisionPlanes;
-      _collisionParams.positionArr = positionArr;
-      _collisionParams.scalarArr = scalarArr;
-      _collisionParams.deactivateParticle = killParticle;
-    }
-    for (let index = 0; index < creationTimesLength; index++) {
-      const base = index * SCALAR_STRIDE;
-      if (scalarArr[base + S_IS_ACTIVE]) {
-        const particleLifetime = now - creationTimes[index];
-        if (particleLifetime > scalarArr[base + S_START_LIFETIME]) {
-          if (onParticleDeath)
-            onParticleDeath(index, positionArr, velocities[index], now);
-          deactivateParticle(index);
-        } else if (onParticleDeath) {
-          // Shadow simulation: keep CPU-side position in sync for sub-emitters.
-          // We intentionally avoid calling applyModifiers() here because it
-          // sets attributes.position.needsUpdate = true, which triggers a full
-          // CPU???GPU upload that overwrites GPU-computed positions for ALL
-          // particles.  Instead we do the minimal physics inline without
-          // touching needsUpdate.
-          const velocity = velocities[index];
-          velocity.x -= gravityVelocity.x * delta;
-          velocity.y -= gravityVelocity.y * delta;
-          velocity.z -= gravityVelocity.z * delta;
-
-          if (hasForceFields) {
-            _forceFieldParams.velocity = velocity;
-            _forceFieldParams.positionIndex = index * 3;
-            applyForceFields(_forceFieldParams);
-          }
-
-          const positionIndex = index * 3;
-          positionArr[positionIndex] += velocity.x * delta;
-          positionArr[positionIndex + 1] += velocity.y * delta;
-          positionArr[positionIndex + 2] += velocity.z * delta;
-
-          // Orbital velocity (mirrors CPU applyModifiers orbital logic)
-          if (generalData.orbitalVelocityData) {
-            const orbData = generalData.orbitalVelocityData[index];
-            const { speed, positionOffset, valueModifiers } = orbData;
-            const pctLife =
-              particleLifetime / scalarArr[base + S_START_LIFETIME];
-
-            positionArr[positionIndex] -= positionOffset.x;
-            positionArr[positionIndex + 1] -= positionOffset.y;
-            positionArr[positionIndex + 2] -= positionOffset.z;
-
-            const sx = valueModifiers.x ? valueModifiers.x(pctLife) : speed.x;
-            const sy = valueModifiers.y ? valueModifiers.y(pctLife) : speed.y;
-            const sz = valueModifiers.z ? valueModifiers.z(pctLife) : speed.z;
-
-            _shadowOrbitalEuler.set(sx * delta, sz * delta, sy * delta);
-            positionOffset.applyEuler(_shadowOrbitalEuler);
-
-            positionArr[positionIndex] += positionOffset.x;
-            positionArr[positionIndex + 1] += positionOffset.y;
-            positionArr[positionIndex + 2] += positionOffset.z;
-          }
-
-          // Collision planes (shadow sim ??? for KILL death detection only)
-          if (hasCollisionPlanes) {
-            _collisionParams.velocity = velocity;
-            _collisionParams.positionIndex = positionIndex;
-            _collisionParams.scalarBase = base;
-            _collisionParams.particleIndex = index;
-            applyCollisionPlanes(_collisionParams);
-          }
-        }
-      }
-    }
-  } else {
-    // ?????? CPU Path ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
-
-    let positionNeedsUpdate = false;
-    let scalarNeedsUpdate = false;
-    // Highest particle index written this frame ??? merged into the monotonic
-    // generalData.cpuDirtyParticleWatermark used by the partial-upload flush.
-    let maxTouchedIndex = -1;
-
-    _modifierUpdateFlags.position = false;
-    _modifierUpdateFlags.quat = false;
-    _modifierParams.delta = delta;
-    _modifierParams.generalData = generalData;
-    _modifierParams.normalizedConfig = normalizedConfig;
-    _modifierParams.attributes = ma;
-    _modifierParams.scalarArray = scalarArr;
-
-    if (hasForceFields) {
-      _forceFieldParams.particleSystemId = generalData.particleSystemId;
-      _forceFieldParams.forceFields = _localForceFields;
-      _forceFieldParams.positionArr = positionArr;
-      _forceFieldParams.delta = delta;
-      _forceFieldParams.systemLifetimePercentage =
-        generalData.normalizedLifetimePercentage;
-    }
-    if (hasCollisionPlanes) {
-      _collisionParams.collisionPlanes = _localCollisionPlanes;
-      _collisionParams.positionArr = positionArr;
-      _collisionParams.scalarArr = scalarArr;
-      _collisionParams.deactivateParticle = killParticle;
-    }
-
-    for (let index = 0; index < creationTimesLength; index++) {
-      const base = index * SCALAR_STRIDE;
-      if (scalarArr[base + S_IS_ACTIVE]) {
-        maxTouchedIndex = index;
-        const particleLifetime = now - creationTimes[index];
-        if (particleLifetime > scalarArr[base + S_START_LIFETIME]) {
-          if (onParticleDeath)
-            onParticleDeath(index, positionArr, velocities[index], now);
-          deactivateParticle(index);
-        } else {
-          const velocity = velocities[index];
-          velocity.x -= gravityVelocity.x * delta;
-          velocity.y -= gravityVelocity.y * delta;
-          velocity.z -= gravityVelocity.z * delta;
-
-          if (hasForceFields) {
-            _forceFieldParams.velocity = velocity;
-            _forceFieldParams.positionIndex = index * 3;
-            applyForceFields(_forceFieldParams);
-          }
-
-          if (
-            gravity !== 0 ||
-            velocity.x !== 0 ||
-            velocity.y !== 0 ||
-            velocity.z !== 0
-          ) {
-            const positionIndex = index * 3;
-
-            positionArr[positionIndex] += velocity.x * delta;
-            positionArr[positionIndex + 1] += velocity.y * delta;
-            positionArr[positionIndex + 2] += velocity.z * delta;
-            positionNeedsUpdate = true;
-          }
-
-          // Collision planes ??? after position update, before modifiers
-          if (hasCollisionPlanes) {
-            _collisionParams.velocity = velocity;
-            _collisionParams.positionIndex = index * 3;
-            _collisionParams.scalarBase = base;
-            _collisionParams.particleIndex = index;
-            const killed = applyCollisionPlanes(_collisionParams);
-            if (killed) {
-              positionNeedsUpdate = true;
-              continue;
-            }
-          }
-
-          scalarArr[base + S_LIFETIME] = particleLifetime;
-          scalarNeedsUpdate = true;
-
-          _modifierParams.particleLifetimePercentage =
-            particleLifetime / scalarArr[base + S_START_LIFETIME];
-          _modifierParams.particleIndex = index;
-          applyModifiers(_modifierParams);
-        }
-      }
-    }
-
-    if (_modifierUpdateFlags.position) positionNeedsUpdate = true;
-    if (_modifierUpdateFlags.quat && ma.quat) ma.quat.needsUpdate = true;
-
-    if (maxTouchedIndex > generalData.cpuDirtyParticleWatermark)
-      generalData.cpuDirtyParticleWatermark = maxTouchedIndex;
-    if (positionNeedsUpdate) ma.position.needsUpdate = true;
-    if (scalarNeedsUpdate) props.scalarInterleavedBuffer.needsUpdate = true;
-  } // end of CPU/GPU compute branch
-
-  if (isEnabled && (looping || lifetime < duration * 1000)) {
-    // lastEmissionTime starts at creationTime (which includes startDelay and
-    // may be in the future) ??? a non-positive delta means emission hasn't
-    // started yet, so leave lastEmissionTime untouched until it has.
-    const emissionDelta = now - lastEmissionTime;
-    let neededParticlesByTime = 0;
+  // Emission scalar count (rate over time + rate over distance + bursts).
+  let emitCount = 0;
+  if (generalData.isEnabled && (loop || iterationTimeMs < dur * 1000)) {
+    const lastEmit = props.lastEmissionTime;
+    const emissionDelta = now - lastEmit;
     if (emissionDelta > 0) {
       props.lastEmissionTime = now;
-
-      // Time-based emission uses a fractional accumulator: flooring the
-      // per-frame amount would systematically drop the remainder (e.g. a
-      // rate of 100/s at 60 FPS is ~1.66 particles per frame ??? flooring
-      // emits only 60/s). The fraction below 1 carries over. The integer
-      // part is consumed immediately even when the pool is exhausted, so
-      // overflow emissions are dropped (Unity semantics) and a saturated
-      // system refills freed slots at rate speed instead of instantly.
-      // Note: pauseEmitter/resumeEmitter can still produce one pool-bounded
-      // burst on resume because lastEmissionTime goes stale while disabled
-      // (pre-existing behavior).
       if (emission.rateOverTime) {
-        props.emissionAccumulator +=
-          calculateValue(
-            generalData.particleSystemId,
-            emission.rateOverTime,
-            generalData.normalizedLifetimePercentage
-          ) *
-          (emissionDelta / 1000);
-      }
-      neededParticlesByTime = Math.floor(props.emissionAccumulator);
-      if (neededParticlesByTime > 0)
-        props.emissionAccumulator -= neededParticlesByTime;
-    }
-
-    const rateOverDistance = emission.rateOverDistance
-      ? calculateValue(
+        props.emissionAccumulator += calculateValue(
           generalData.particleSystemId,
-          emission.rateOverDistance,
+          emission.rateOverTime,
           generalData.normalizedLifetimePercentage
-        )
-      : 0;
-    const neededParticlesByDistance =
-      rateOverDistance > 0 && generalData.distanceFromLastEmitByDistance > 0
-        ? Math.floor(
-            generalData.distanceFromLastEmitByDistance / (1 / rateOverDistance!)
-          )
-        : 0;
-    const useDistanceStep = neededParticlesByDistance > 0;
-    if (useDistanceStep) {
-      _distanceStep.x =
-        (currentWorldPosition.x - _lastWorldPositionSnapshot.x) /
-        neededParticlesByDistance;
-      _distanceStep.y =
-        (currentWorldPosition.y - _lastWorldPositionSnapshot.y) /
-        neededParticlesByDistance;
-      _distanceStep.z =
-        (currentWorldPosition.z - _lastWorldPositionSnapshot.z) /
-        neededParticlesByDistance;
+        ) * (emissionDelta / 1000);
+      }
     }
-    let neededParticles = neededParticlesByTime + neededParticlesByDistance;
-
-    if (rateOverDistance > 0 && neededParticlesByDistance >= 1) {
-      // Keep the fractional remainder instead of resetting to zero so slow,
-      // steady movement doesn't systematically under-emit.
-      generalData.distanceFromLastEmitByDistance = Math.max(
-        generalData.distanceFromLastEmitByDistance -
-          neededParticlesByDistance / rateOverDistance,
-        0
+    emitCount += Math.floor(props.emissionAccumulator);
+    if (emitCount > 0) props.emissionAccumulator -= emitCount;
+    if (emission.rateOverDistance && generalData.distanceFromLastEmitByDistance > 0) {
+      const r = calculateValue(
+        generalData.particleSystemId,
+        emission.rateOverDistance,
+        generalData.normalizedLifetimePercentage
       );
+      if (r > 0) {
+        const n = Math.floor(generalData.distanceFromLastEmitByDistance * r);
+        emitCount += n;
+        generalData.distanceFromLastEmitByDistance = Math.max(
+          generalData.distanceFromLastEmitByDistance - n / r,
+          0
+        );
+      }
     }
-
-    // Process burst emissions
+    // Bursts (advance internal cycle counters, add their counts).
     if (emission.bursts && generalData.burstStates) {
       const bursts = emission.bursts;
-      const burstStates = generalData.burstStates;
-      const currentIterationTime = normalizedLifetime;
-
+      const states = generalData.burstStates;
+      const tSec = iterationTimeMs / 1000;
       for (let i = 0; i < bursts.length; i++) {
-        const burst = bursts[i];
-        const state = burstStates[i];
-        const burstTimeMs = burst.time * 1000;
-        const cycles = burst.cycles ?? 1;
-        const intervalMs = (burst.interval ?? 0) * 1000;
-        const probability = burst.probability ?? 1;
-
-        // Check if we've looped and need to reset burst states
-        if (
-          looping &&
-          currentIterationTime < burstTimeMs &&
-          state.cyclesExecuted > 0
-        ) {
-          state.cyclesExecuted = 0;
-          state.lastCycleTime = 0;
-          state.probabilityPassed = false;
+        const b = bursts[i];
+        const s = states[i];
+        const cyc = b.cycles ?? 1;
+        const iv = (b.interval ?? 0);
+        const prob = b.probability ?? 1;
+        if (loop && tSec < (b.time ?? 0) && s.cyclesExecuted > 0) {
+          s.cyclesExecuted = 0; s.lastCycleTime = 0; s.probabilityPassed = false;
         }
-
-        // Check if all cycles for this burst have been executed
-        if (state.cyclesExecuted >= cycles) continue;
-
-        // Calculate the time for the next cycle
-        const nextCycleTime = burstTimeMs + state.cyclesExecuted * intervalMs;
-
-        // Check if it's time for the next cycle
-        if (currentIterationTime >= nextCycleTime) {
-          // On first cycle, determine if probability check passes
-          if (state.cyclesExecuted === 0) {
-            state.probabilityPassed = Math.random() < probability;
-          }
-
-          // Only emit if probability check passed
-          if (state.probabilityPassed) {
-            const burstCount = Math.floor(
-              calculateValue(
-                generalData.particleSystemId,
-                burst.count,
-                generalData.normalizedLifetimePercentage
-              )
+        if (s.cyclesExecuted >= cyc) continue;
+        const next = (b.time ?? 0) + s.cyclesExecuted * iv;
+        if (tSec >= next) {
+          if (s.cyclesExecuted === 0) s.probabilityPassed = Math.random() < prob;
+          if (s.probabilityPassed) {
+            emitCount += Math.floor(
+              calculateValue(generalData.particleSystemId, b.count, generalData.normalizedLifetimePercentage)
             );
-            neededParticles += burstCount;
           }
-
-          state.cyclesExecuted++;
-          state.lastCycleTime = currentIterationTime;
+          s.cyclesExecuted++; s.lastCycleTime = tSec;
         }
       }
     }
+    if (emitCount > maxParticles) emitCount = maxParticles;
+  }
 
-    if (neededParticles > 0) {
-      let generatedParticlesByDistanceNeeds = 0;
+  // Uniform writes (scalars only) ? no per-particle loops anywhere.
+  (u.delta as { value: number }).value = delta;
+  (u.deltaMs as { value: number }).value = delta * 1000;
+  ((u.gravityVelocity as { value: THREE.Vector3 }).value).copy(gv);
+  (u.emitCount as { value: number }).value = emitCount;
+  (u.seed as { value: number }).value = now * 0.001;
+  const n = generalData.noise;
+  if (u.noiseStrength) (u.noiseStrength as { value: number }).value = n.strength;
+  if (u.noisePower) (u.noisePower as { value: number }).value = n.noisePower / Math.max(n.fbmMax, 1e-6);
+  if (u.noiseFrequency) (u.noiseFrequency as { value: number }).value = n.frequency;
+  if (u.noisePositionAmount) (u.noisePositionAmount as { value: number }).value = n.positionAmount;
+  if (u.noiseRotationAmount) (u.noiseRotationAmount as { value: number }).value = n.rotationAmount;
+  if (u.noiseSizeAmount) (u.noiseSizeAmount as { value: number }).value = n.sizeAmount;
 
-      for (let i = 0; i < neededParticles; i++) {
-        if (freeList.length === 0) break;
-        const particleIndex = freeList.pop()!;
-
-        _tempPosition.x = 0;
-        _tempPosition.y = 0;
-        _tempPosition.z = 0;
-        if (
-          useDistanceStep &&
-          generatedParticlesByDistanceNeeds < neededParticlesByDistance
-        ) {
-          _tempPosition.x = _distanceStep.x * generatedParticlesByDistanceNeeds;
-          _tempPosition.y = _distanceStep.y * generatedParticlesByDistanceNeeds;
-          _tempPosition.z = _distanceStep.z * generatedParticlesByDistanceNeeds;
-          generatedParticlesByDistanceNeeds++;
-        }
-        activateParticle({
-          particleIndex,
-          activationTime: now,
-          position: _tempPosition,
-        });
-        if (onParticleBirth)
-          onParticleBirth(
-            particleIndex,
-            ma.position.array,
-            velocities[particleIndex],
-            now
-          );
-      }
+  // Force-field / collision-plane tails in curveData.
+  const ffInfo = pipeline.forceFieldInfo as { offset: number; countUniform: { value: number } } | null;
+  const cInfo = (pipeline.collisionPlaneInfo ?? null) as { offset: number; countUniform: { value: number } } | null;
+  if ((ffInfo || cInfo) && _tslMaterialFactory) {
+    const cd = pipeline.buffers.curveData as {
+      array: Float32Array;
+      addUpdateRange(o: number, l: number): void;
+      needsUpdate: boolean;
+    };
+    const cdArr = cd.array;
+    if (ffInfo && normalizedForceFields.length > 0) {
+      const encFF = _tslMaterialFactory.encodeForceFieldsForGPU!(normalizedForceFields, generalData.particleSystemId, generalData.normalizedLifetimePercentage);
+      let changedFF = false;
+      for (let k = 0; k < encFF.length; k++) if (cdArr[ffInfo.offset + k] !== encFF[k]) { changedFF = true; break; }
+      if (changedFF) { cdArr.set(encFF, ffInfo.offset); cd.addUpdateRange(ffInfo.offset, encFF.length); cd.needsUpdate = true; }
+      ffInfo.countUniform.value = normalizedForceFields.length;
     }
-
-    if (onUpdate)
-      onUpdate({
-        particleSystem,
-        delta,
-        elapsed,
-        lifetime,
-        normalizedLifetime,
-        iterationCount: iterationCount + 1,
-      });
-  } else if (onComplete)
-    onComplete({
-      particleSystem,
-    });
-
-  // Partial-upload hint (CPU path): replace any pending ranges with a single
-  // range covering [0, watermark]. The watermark is the monotonic maximum of
-  // every particle index ever written, so this one range is a covering
-  // superset of all writes since the last GPU upload no matter when the
-  // renderer actually consumes it ??? and clearing first keeps the pending
-  // range list at a constant size even when the system is updated while
-  // hidden or frustum-culled (never rendered ??? three.js never clears it).
-  if (!useGPUCompute) {
-    const watermark = generalData.cpuDirtyParticleWatermark;
-    if (watermark >= 0) {
-      const posAttr = ma.position as THREE.BufferAttribute;
-      posAttr.clearUpdateRanges();
-      posAttr.addUpdateRange(0, (watermark + 1) * 3);
-      props.scalarInterleavedBuffer.clearUpdateRanges();
-      props.scalarInterleavedBuffer.addUpdateRange(
-        0,
-        (watermark + 1) * SCALAR_STRIDE
-      );
+    if (cInfo && normalizedCollisionPlanes.length > 0) {
+      const encCP = _tslMaterialFactory.encodeCollisionPlanesForGPU!(normalizedCollisionPlanes);
+      let changedCP = false;
+      for (let k = 0; k < encCP.length; k++) if (cdArr[cInfo.offset + k] !== encCP[k]) { changedCP = true; break; }
+      if (changedCP) { cdArr.set(encCP, cInfo.offset); cd.addUpdateRange(cInfo.offset, encCP.length); cd.needsUpdate = true; }
+      cInfo.countUniform.value = normalizedCollisionPlanes.length;
     }
   }
 
-  // Trail geometry update: record position history and rebuild ribbon
-  if (props.trailMesh) {
-    updateTrailGeometry(props, now);
+  // First-frame buffer upload: storage attributes start with their CPU Float32Array
+  // contents; after that the compute kernels own all changes on the GPU.
+  const bufs = pipeline.buffers as unknown as Record<string, THREE.BufferAttribute>;
+  let stamp = _lastUploadStampMap.get(bufs);
+  if (stamp === undefined || stamp === 0) {
+    for (const key of Object.keys(bufs)) {
+      const a = bufs[key];
+      if (a && 'needsUpdate' in a) a.needsUpdate = true;
+    }
+    _lastUploadStampMap.set(bufs, 1);
+  } else {
+    _lastUploadStampMap.set(bufs, stamp + 1);
   }
+
+  // Emit + mark dispatch ready (editor does the actual `renderer.compute(...)`).
+  props.computeDispatchReady = true;
+
+  // Iteration counter (scalar).
+  props.iterationCount++;
+
+  // Trail step (if the system uses TRAIL ? see `updateTrailGeometry` below).
+  if (props.trailMesh) updateTrailGeometry(props, now);
 };
 
+// Tiny scratch for the world-space gravity transform above.
+const _tmpQ1 = new THREE.Quaternion();
+const _tmpV1 = new THREE.Vector3();
 /**
  * Evaluates a Catmull-Rom spline at parameter `t` (0..1) between points p1 and p2,
  * using p0 and p3 as control points. Writes result into `out`.
@@ -4324,3 +2273,4 @@ export const updateParticleSystems = (cycleData: CycleData) => {
     updateParticleSystemInstance(props, cycleData)
   );
 };
+

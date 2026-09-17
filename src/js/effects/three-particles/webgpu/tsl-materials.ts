@@ -1,27 +1,26 @@
 /**
- * TSL material factory for all particle renderer types.
- *
- * Selects and creates the appropriate TSL NodeMaterial based on the
- * renderer type (POINTS, INSTANCED, MESH, TRAIL).
+ * TSL material factory for all particle renderer types + the GPU-only compute
+ * pipeline (emission kernel + simulation kernel sharing one storage pool).
  *
  * @module
  */
 import { RendererType } from '../three-particles-enums.js';
 import { isLifeTimeCurve } from '../three-particles-utils.js';
+import { sRGBToLinear } from '../color-utils.js';
 import {
   createModifierStorageBuffers,
   createModifierComputeUpdate,
   type ModifierComputePipeline,
   type ModifierFlags,
+  type ShapeEmitParams,
 } from './compute-modifiers.js';
 
-// Re-export emit queue helpers so callers can register them via the factory.
 export {
-  writeParticleToModifierBuffers,
-  deactivateParticleInModifierBuffers,
-  flushEmitQueue,
-  registerCurveDataLength,
-} from './compute-modifiers.js';
+  createModifierStorageBuffers,
+  createModifierComputeUpdate,
+};
+export type { ModifierComputePipeline, ModifierFlags, ShapeEmitParams };
+
 import { bakeParticleSystemCurves } from './curve-bake.js';
 import { createInstancedBillboardTSLMaterial } from './tsl-instanced-billboard-material.js';
 import { createMeshParticleTSLMaterial } from './tsl-mesh-particle-material.js';
@@ -31,7 +30,10 @@ import {
   type TrailUniforms,
 } from './tsl-trail-ribbon-material.js';
 import type { SharedUniforms } from './tsl-shared.js';
-import type { NormalizedParticleSystemConfig } from '../types.js';
+import type {
+  NormalizedParticleSystemConfig,
+  ShapeType,
+} from '../types.js';
 import type * as THREE from 'three';
 
 export type { TrailUniforms };
@@ -45,11 +47,6 @@ export type RendererConfig = {
 
 /**
  * Creates a TSL NodeMaterial for the main particle system (non-trail).
- *
- * @param rendererType - The particle renderer type.
- * @param sharedUniforms - Shared uniform values managed by the particle system.
- * @param rendererConfig - Material rendering properties (transparency, blending, etc.).
- * @returns A NodeMaterial instance configured for the specified renderer type.
  */
 export function createTSLParticleMaterial(
   rendererType: RendererType,
@@ -59,34 +56,15 @@ export function createTSLParticleMaterial(
 ): THREE.Material {
   switch (rendererType) {
     case RendererType.INSTANCED:
-      return createInstancedBillboardTSLMaterial(
-        sharedUniforms,
-        rendererConfig,
-        gpuCompute
-      );
+      return createInstancedBillboardTSLMaterial(sharedUniforms, rendererConfig, gpuCompute);
     case RendererType.MESH:
-      return createMeshParticleTSLMaterial(
-        sharedUniforms,
-        rendererConfig,
-        gpuCompute
-      );
+      return createMeshParticleTSLMaterial(sharedUniforms, rendererConfig, gpuCompute);
     case RendererType.POINTS:
     default:
-      return createPointSpriteTSLMaterial(
-        sharedUniforms,
-        rendererConfig,
-        gpuCompute
-      );
+      return createPointSpriteTSLMaterial(sharedUniforms, rendererConfig, gpuCompute);
   }
 }
 
-/**
- * Creates a TSL NodeMaterial for the trail ribbon renderer.
- *
- * @param trailUniforms - Trail-specific uniform values.
- * @param rendererConfig - Material rendering properties.
- * @returns A NodeMaterial instance configured for trail ribbon rendering.
- */
 export function createTSLTrailMaterial(
   trailUniforms: TrailUniforms,
   rendererConfig: RendererConfig
@@ -94,21 +72,25 @@ export function createTSLTrailMaterial(
   return createTrailRibbonTSLMaterial(trailUniforms, rendererConfig);
 }
 
-/**
- * Creates the GPU compute pipeline for particle simulation.
- *
- * Bakes all lifetime curves, determines which modifiers are active,
- * creates GPU storage buffers, and returns the complete compute pipeline.
- * All `three/webgpu` imports are contained here — the caller does not
- * need to import any WebGPU-specific modules.
- *
- * @param maxParticles - Maximum particle count.
- * @param instanced - Whether to use InstancedBufferAttribute.
- * @param normalizedConfig - Fully normalized particle system config.
- * @param particleSystemId - Numeric ID for Bezier caching.
- * @param forceFieldCount - Number of active force fields.
- * @returns The complete modifier compute pipeline.
- */
+/** Pull a scalar pair out of either a `number` or `{ min, max }` shape. */
+const pair = (v: unknown): [number, number] => {
+  if (typeof v === 'number') return [v, v];
+  if (v && typeof v === 'object') {
+    const o = v as Record<string, number>;
+    return [Number(o.min) || 0, Number(o.max) || 0];
+  }
+  return [0, 0];
+};
+
+/** Map the 5 shape enum values into the {cone, sphere, axis-aligned box} kernel kinds. */
+const shapeKind = (t: ShapeType | undefined): 0 | 1 | 2 => {
+  switch (t) {
+    case 'SPHERE': return 1;
+    case 'CONE':
+    default: return 0;
+  }
+};
+
 export function createComputePipeline(
   maxParticles: number,
   instanced: boolean,
@@ -117,12 +99,8 @@ export function createComputePipeline(
   forceFieldCount: number,
   collisionPlaneCount = 0
 ): ModifierComputePipeline {
-  const bakedCurves = bakeParticleSystemCurves(
-    normalizedConfig,
-    particleSystemId
-  );
-
-  const { velocityOverLifetime } = normalizedConfig;
+  const bakedCurves = bakeParticleSystemCurves(normalizedConfig, particleSystemId);
+  const v = normalizedConfig.velocityOverLifetime;
 
   const flags: ModifierFlags = {
     sizeOverLifetime: normalizedConfig.sizeOverLifetime.isActive,
@@ -130,27 +108,65 @@ export function createComputePipeline(
     colorOverLifetime: normalizedConfig.colorOverLifetime.isActive,
     rotationOverLifetime: normalizedConfig.rotationOverLifetime.isActive,
     linearVelocity:
-      velocityOverLifetime.isActive &&
-      (isLifeTimeCurve(velocityOverLifetime.linear.x ?? 0) ||
-        isLifeTimeCurve(velocityOverLifetime.linear.y ?? 0) ||
-        isLifeTimeCurve(velocityOverLifetime.linear.z ?? 0) ||
-        velocityOverLifetime.linear.x !== 0 ||
-        velocityOverLifetime.linear.y !== 0 ||
-        velocityOverLifetime.linear.z !== 0),
+      v.isActive &&
+      (isLifeTimeCurve(v.linear.x ?? 0) ||
+        isLifeTimeCurve(v.linear.y ?? 0) ||
+        isLifeTimeCurve(v.linear.z ?? 0) ||
+        v.linear.x !== 0 ||
+        v.linear.y !== 0 ||
+        v.linear.z !== 0),
     orbitalVelocity:
-      velocityOverLifetime.isActive &&
-      (isLifeTimeCurve(velocityOverLifetime.orbital.x ?? 0) ||
-        isLifeTimeCurve(velocityOverLifetime.orbital.y ?? 0) ||
-        isLifeTimeCurve(velocityOverLifetime.orbital.z ?? 0) ||
-        velocityOverLifetime.orbital.x !== 0 ||
-        velocityOverLifetime.orbital.y !== 0 ||
-        velocityOverLifetime.orbital.z !== 0),
+      v.isActive &&
+      (isLifeTimeCurve(v.orbital.x ?? 0) ||
+        isLifeTimeCurve(v.orbital.y ?? 0) ||
+        isLifeTimeCurve(v.orbital.z ?? 0) ||
+        v.orbital.x !== 0 ||
+        v.orbital.y !== 0 ||
+        v.orbital.z !== 0),
     noise: normalizedConfig.noise.isActive,
     forceFields: forceFieldCount > 0,
     collisionPlanes: collisionPlaneCount > 0,
   };
 
-  const buffers = createModifierStorageBuffers(
+  const [lifeMin, lifeMax] = pair(normalizedConfig.startLifetime);
+  const [spdMin, spdMax] = pair(normalizedConfig.startSpeed);
+  const [szMin,  szMax]  = pair(normalizedConfig.startSize);
+  const [rotMin, rotMax] = pair(normalizedConfig.startRotation);
+  const [opMin,  opMax]  = pair(normalizedConfig.startOpacity);
+  const cMin = (normalizedConfig.startColor as { min?: { r: number; g: number; b: number } }).min || { r: 1, g: 1, b: 1 };
+  const cMax = (normalizedConfig.startColor as { max?: { r: number; g: number; b: number } }).max || { r: 1, g: 1, b: 1 };
+
+  const sf = (normalizedConfig.textureSheetAnimation && (normalizedConfig.textureSheetAnimation as { startFrame?: unknown }).startFrame) || 0;
+  const sfPair = pair(sf);
+
+  const shp = normalizedConfig.shape;
+  const shapeParams: ShapeEmitParams = {
+    shapeKind: shapeKind(shp.shapeType),
+    radius: shp.radius ?? 1,
+    length: shp.length ?? 0,
+    arc: shp.arc ?? 360,
+    spreadX: (shp as unknown as Record<string, number>).spreadX ?? 0,
+    spreadY: (shp as unknown as Record<string, number>).spreadY ?? 0,
+    spreadZ: (shp as unknown as Record<string, number>).spreadZ ?? 0,
+    speedMin: spdMin, speedMax: spdMax,
+    sizeMin: szMin, sizeMax: szMax,
+    rotMin: rotMin, rotMax: rotMax,
+    opacityMin: opMin, opacityMax: opMax,
+    lifeMin: lifeMin, lifeMax: lifeMax,
+    colorRMin: cMin.r, colorRMax: cMax.r,
+    colorGMin: cMin.g, colorGMax: cMax.g,
+    colorBMin: cMin.b, colorBMax: cMax.b,
+    startFrameMin: sfPair[0], startFrameMax: sfPair[1],
+    rotationCurveActive: normalizedConfig.rotationOverLifetime.isActive,
+    rotationalXCurve: (bakedCurves as unknown as Record<string, number>).orbitalVelX ?? -1,
+    rotationalYCurve: (bakedCurves as unknown as Record<string, number>).orbitalVelY ?? -1,
+    rotationalZCurve: (bakedCurves as unknown as Record<string, number>).orbitalVelZ ?? -1,
+    linearXCurve: (bakedCurves as unknown as Record<string, number>).linearVelX ?? -1,
+    linearYCurve: (bakedCurves as unknown as Record<string, number>).linearVelY ?? -1,
+    linearZCurve: (bakedCurves as unknown as Record<string, number>).linearVelZ ?? -1,
+  };
+
+  const built = createModifierStorageBuffers(
     maxParticles,
     instanced,
     bakedCurves.data,
@@ -159,11 +175,13 @@ export function createComputePipeline(
   );
 
   return createModifierComputeUpdate(
-    buffers,
+    built.buffers,
     maxParticles,
     bakedCurves,
     flags,
+    shapeParams,
     forceFieldCount,
-    collisionPlaneCount
+    collisionPlaneCount,
+    built.freeListOffset
   );
 }
