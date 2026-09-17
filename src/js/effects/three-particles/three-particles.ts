@@ -736,8 +736,9 @@ export const createParticleSystem = (
     linearVelocityData: undefined,
     orbitalVelocityData: undefined,
     lifetimeValues: {},
-    creationTimes: [],
+    creationTimes: new Float32Array(0),
     cpuDirtyParticleWatermark: -1,
+    highWaterIndex: 0,
     noise: {
       isActive: false,
       strength: 0,
@@ -849,7 +850,7 @@ export const createParticleSystem = (
     () => new THREE.Vector3()
   );
 
-  generalData.creationTimes = Array.from({ length: maxParticles }, () => 0);
+  generalData.creationTimes = new Float32Array(maxParticles);
 
   // Free list for O(1) inactive particle lookup (stack, top = end of array)
   const freeList: Array<number> = Array.from(
@@ -1175,6 +1176,13 @@ export const createParticleSystem = (
   // TSL is used whenever the factory is registered ??? regardless of simulationBackend.
   // This ensures WebGPURenderer always gets NodeMaterial (not GLSL ShaderMaterial).
   const useTSL = _tslMaterialFactory !== null;
+  if (!useTSL) {
+    throw new Error(
+      'three-particles: WebGPU TSL material factory not registered. ' +
+        'Call enableWebGPU(renderer) immediately after creating a WebGPURenderer. ' +
+        '@cyberluke/three-particles 4.0.0 is GPU-only - no CPU fallback path exists.'
+    );
+  }
 
   // Determine whether to use GPU compute for simulation.
   // GPU compute requires: TSL active + not trail + backend != CPU + compute factory registered.
@@ -1186,6 +1194,33 @@ export const createParticleSystem = (
     !!_tslMaterialFactory.writeParticleToModifierBuffers &&
     !!_tslMaterialFactory.deactivateParticleInModifierBuffers &&
     !!_tslMaterialFactory.flushEmitQueue;
+
+  // Explicit, non-silent rejection of every non-WebGPU configuration.
+  if (!useGPUCompute) {
+    if (useTrail) {
+      throw new Error(
+        'three-particles: RendererType.TRAIL is not implemented on the ' +
+
+          'WebGPU compute kernel in @cyberluke/three-particles 4.0.0. ' +
+
+          'Switch this system to RendererType.POINTS, INSTANCED, or MESH.'
+      );
+    }
+    if (normalizedConfig.simulationBackend === SimulationBackend.CPU) {
+      throw new Error(
+        'three-particles: simulationBackend ' + "'CPU'" + ' is not supported in ' +
+
+          'the GPU-only @cyberluke/three-particles 4.0.0 build. Use ' + "'GPU'" + ' or ' + "'AUTO'" + '.'
+      );
+    }
+    throw new Error(
+      'three-particles: the active WebGPU renderer does not provide a complete ' +
+
+        'TSL compute pipeline (createComputePipeline + write/deactivate/flush). ' +
+
+        'No CPU fallback exists; install a WebGPU-capable backend.'
+    );
+  }
 
   // Create GPU compute pipeline when active
   type GPUComputePipeline =
@@ -1471,6 +1506,7 @@ export const createParticleSystem = (
     const base = particleIndex * SCALAR_STRIDE;
     scalarArray[base + S_IS_ACTIVE] = 1;
     generalData.creationTimes[particleIndex] = activationTime;
+    if (particleIndex >= generalData.highWaterIndex) generalData.highWaterIndex = particleIndex + 1;
 
     // Reset trail history so a recycled particle doesn't inherit old trail
     if (generalData.positionHistoryCount) {
@@ -2752,7 +2788,8 @@ const updateParticleSystemInstance = (
   const creationTimes = generalData.creationTimes;
   const scalarArr = props.scalarArray;
   const positionArr = ma.position.array;
-  const creationTimesLength = creationTimes.length;
+  const hwm = generalData.highWaterIndex;
+  const creationTimesLength = hwm > 0 ? hwm : creationTimes.length;
 
   // ?????? GPU Compute Path ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
   // When GPU compute is active, all per-particle physics AND modifiers
@@ -3473,7 +3510,8 @@ const updateTrailGeometry = (props: ParticleSystemInstance, now: number) => {
   const trailUVArr = trailUVAttrCached.array as Float32Array;
   const trailHalfWidthArr = trailHalfWidthAttrCached.array as Float32Array;
   const verticesPerParticle = trailLength * 2;
-  const creationTimesLength = generalData.creationTimes.length;
+  const hwm = generalData.highWaterIndex;
+  const creationTimesLength = hwm > 0 ? hwm : generalData.creationTimes.length;
   let hasUpdates = false;
 
   // --- Connected Ribbons: collect particles sharing the same ribbonId ---

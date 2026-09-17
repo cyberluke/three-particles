@@ -54,7 +54,7 @@ export type CurveBase = {
 export type CurveFunction = (time: number) => number;
 
 /**
- * A Bézier curve point representing a control point.
+ * A B??zier curve point representing a control point.
  * @property x - The time (normalized between 0 and 1).
  * @property y - The value at that point.
  * @property percentage - (Optional) Normalized position within the curve (for additional flexibility).
@@ -66,9 +66,9 @@ export type BezierPoint = {
 };
 
 /**
- * A Bézier curve representation for controlling particle properties.
+ * A B??zier curve representation for controlling particle properties.
  * @property type - Specifies that this curve is of type `bezier`.
- * @property bezierPoints - An array of control points defining the Bézier curve.
+ * @property bezierPoints - An array of control points defining the B??zier curve.
  * @example
  * {
  *   type: LifeTimeCurve.BEZIER,
@@ -101,7 +101,7 @@ export type EasingCurve = CurveBase & {
 };
 
 /**
- * A flexible curve representation that supports Bézier curves and easing functions.
+ * A flexible curve representation that supports B??zier curves and easing functions.
  */
 export type LifetimeCurve = BezierCurve | EasingCurve;
 
@@ -248,7 +248,7 @@ export type Burst = {
 
 /**
  * Defines the emission behavior of the particles.
- * Supports rates defined over time or distance using constant values, random ranges, or curves (Bézier or easing).
+ * Supports rates defined over time or distance using constant values, random ranges, or curves (B??zier or easing).
  * Also supports burst emissions for instantaneous particle effects.
  *
  * @default
@@ -263,7 +263,7 @@ export type Burst = {
  * // Rate over time as a random range
  * rateOverTime: { min: 5, max: 15 };
  *
- * // Rate over time using a Bézier curve
+ * // Rate over time using a B??zier curve
  * rateOverTime: {
  *   type: 'bezier',
  *   bezierPoints: [
@@ -516,7 +516,7 @@ export type TrailConfig = {
   /**
    * Minimum distance (in world units) a particle must travel before a new
    * trail sample is recorded. When set, the trail becomes frame-rate
-   * independent — at high FPS the samples are spread further apart in time,
+   * independent ??? at high FPS the samples are spread further apart in time,
    * at low FPS they cluster around sharp turns.
    *
    * When `0` or `undefined`, a sample is recorded every frame (legacy behavior).
@@ -645,8 +645,8 @@ export type Renderer = {
   /**
    * Selects the rendering technique for particles.
    *
-   * - `RendererType.POINTS` (default) — classic point-sprite renderer using `THREE.Points`.
-   * - `RendererType.INSTANCED` — camera-facing quads via `InstancedBufferGeometry`,
+   * - `RendererType.POINTS` (default) ??? classic point-sprite renderer using `THREE.Points`.
+   * - `RendererType.INSTANCED` ??? camera-facing quads via `InstancedBufferGeometry`,
    *   removing the `gl_PointSize` hardware limit and enabling stretched billboards.
    *
    * @default RendererType.POINTS
@@ -782,7 +782,7 @@ export type NoiseConfig = {
 
 /**
  * Defines the velocity of particles over their lifetime, allowing for linear and orbital velocity (in degrees) adjustments.
- * Supports constant values, random ranges, or curves (Bézier or easing) for each axis.
+ * Supports constant values, random ranges, or curves (B??zier or easing) for each axis.
  *
  * @default
  * isActive: false
@@ -799,7 +799,7 @@ export type NoiseConfig = {
  *   y: { min: 0, max: 2 }
  * };
  *
- * // Linear velocity using a Bézier curve
+ * // Linear velocity using a B??zier curve
  * linear: {
  *   z: {
  *     type: 'bezier',
@@ -861,7 +861,7 @@ export type SubEmitterConfig = {
    */
   trigger?: SubEmitterTrigger;
   /**
-   * Multiplier (0–1) for inheriting the parent particle's velocity.
+   * Multiplier (0???1) for inheriting the parent particle's velocity.
    * 0 = no inheritance, 1 = full velocity inheritance.
    * @default 0
    */
@@ -956,7 +956,7 @@ export type NormalizedForceFieldConfig = {
  *
  * @example
  * ```typescript
- * // Water surface — kill bubbles when they reach y=5
+ * // Water surface ??? kill bubbles when they reach y=5
  * const waterSurface: CollisionPlaneConfig = {
  *   position: { x: 0, y: 5, z: 0 },
  *   normal: { x: 0, y: -1, z: 0 },
@@ -994,13 +994,13 @@ export type CollisionPlaneConfig = {
   /** The collision response mode. @default CollisionPlaneMode.KILL */
   mode?: CollisionPlaneMode;
   /**
-   * Energy retention factor for BOUNCE mode (0–1).
+   * Energy retention factor for BOUNCE mode (0???1).
    * 0 = no bounce (all energy absorbed), 1 = perfect bounce (no energy loss).
    * @default 0.5
    */
   dampen?: number;
   /**
-   * Fraction of the particle's start lifetime to subtract on collision (0–1).
+   * Fraction of the particle's start lifetime to subtract on collision (0???1).
    * Applied on each collision for BOUNCE mode; ignored for KILL and CLAMP.
    * @default 0
    */
@@ -1067,7 +1067,7 @@ export type ParticleSystemConfig = {
 
   /**
    * Initial lifetime of the particles.
-   * Supports constant value, random range, or curves (Bézier or easing).
+   * Supports constant value, random range, or curves (B??zier or easing).
    * @default 5.0
    * @example
    * // Constant 3 seconds.
@@ -1076,7 +1076,7 @@ export type ParticleSystemConfig = {
    * // Random range between 1 and 4 seconds.
    * startLifetime: { min: 1, max: 4 };
    *
-   * // Bézier curve example with scaling.
+   * // B??zier curve example with scaling.
    * startLifetime: {
    *   type: LifeTimeCurve.BEZIER,
    *   bezierPoints: [
@@ -1098,7 +1098,7 @@ export type ParticleSystemConfig = {
 
   /**
    * Defines the initial speed of the particles.
-   * Supports constant values, random ranges, or curves (Bézier or easing).
+   * Supports constant values, random ranges, or curves (B??zier or easing).
    * @default 1.0
    * @example
    * // Constant value
@@ -1107,7 +1107,7 @@ export type ParticleSystemConfig = {
    * // Random range
    * startSpeed: { min: 1, max: 4 };
    *
-   * // Bézier curve example with scaling.
+   * // B??zier curve example with scaling.
    * startSpeed: {
    *   type: 'bezier',
    *   bezierPoints: [
@@ -1129,7 +1129,7 @@ export type ParticleSystemConfig = {
 
   /**
    * Defines the initial size of the particles.
-   * Supports constant values, random ranges, or curves (Bézier or easing).
+   * Supports constant values, random ranges, or curves (B??zier or easing).
    * @default 1.0
    * @example
    * // Constant value
@@ -1138,7 +1138,7 @@ export type ParticleSystemConfig = {
    * // Random range
    * startSize: { min: 1, max: 4 };
    *
-   * // Bézier curve example with scaling.
+   * // B??zier curve example with scaling.
    * startSize: {
    *   type: 'bezier',
    *   bezierPoints: [
@@ -1160,7 +1160,7 @@ export type ParticleSystemConfig = {
 
   /**
    * Defines the initial opacity of the particles.
-   * Supports constant values, random ranges, or curves (Bézier or easing).
+   * Supports constant values, random ranges, or curves (B??zier or easing).
    * @default 1.0
    * @example
    * // Constant value
@@ -1169,7 +1169,7 @@ export type ParticleSystemConfig = {
    * // Random range
    * startOpacity: { min: 1, max: 4 };
    *
-   * // Bézier curve example with scaling.
+   * // B??zier curve example with scaling.
    * startOpacity: {
    *   type: 'bezier',
    *   bezierPoints: [
@@ -1191,7 +1191,7 @@ export type ParticleSystemConfig = {
 
   /**
    * Defines the initial rotation of the particles in degrees.
-   * Supports constant values, random ranges, or curves (Bézier or easing).
+   * Supports constant values, random ranges, or curves (B??zier or easing).
    * @default 0.0
    * @example
    * // Constant value
@@ -1200,7 +1200,7 @@ export type ParticleSystemConfig = {
    * // Random range
    * startRotation: { min: 1, max: 4 };
    *
-   * // Bézier curve example with scaling.
+   * // B??zier curve example with scaling.
    * startRotation: {
    *   type: 'bezier',
    *   bezierPoints: [
@@ -1373,7 +1373,7 @@ export type ParticleSystemConfig = {
 
   /**
    * Controls the size of particles over their lifetime.
-   * The size can be adjusted using a lifetime curve (Bézier or other supported types).
+   * The size can be adjusted using a lifetime curve (B??zier or other supported types).
    *
    * @default
    * sizeOverLifetime: {
@@ -1395,7 +1395,7 @@ export type ParticleSystemConfig = {
 
   /**
    * Controls the opacity of particles over their lifetime.
-   * The opacity can be adjusted using a lifetime curve (Bézier or other supported types).
+   * The opacity can be adjusted using a lifetime curve (B??zier or other supported types).
    *
    * @default
    * opacityOverLifetime: {
@@ -1417,7 +1417,7 @@ export type ParticleSystemConfig = {
 
   /**
    * Controls the color of particles over their lifetime.
-   * Each RGB channel can be adjusted independently using a lifetime curve (Bézier or easing).
+   * Each RGB channel can be adjusted independently using a lifetime curve (B??zier or easing).
    * The curves act as multipliers (0-1 range) that are applied to the particle's start color.
    *
    * This follows Unity's Color over Lifetime behavior where the final color is:
@@ -1642,14 +1642,14 @@ export type BurstState = {
 export type GeneralData = {
   particleSystemId: number;
   normalizedLifetimePercentage: number;
-  creationTimes: Array<number>;
+  creationTimes: Float32Array;
   distanceFromLastEmitByDistance: number;
   lastWorldPosition: THREE.Vector3;
   currentWorldPosition: THREE.Vector3;
   worldPositionChange: THREE.Vector3;
   /**
    * For WORLD simulation space: the full world transform of the emitter
-   * (parent.matrixWorld × particleSystem.matrix). Used to position new
+   * (parent.matrixWorld ?? particleSystem.matrix). Used to position new
    * particles in world coordinates at emit time and to orient the
    * emission shape. The particleSystem's own matrixWorld is forced to
    * identity so the buffer coordinates render as world coordinates.
@@ -1664,7 +1664,7 @@ export type GeneralData = {
    *     Shape module in Unity obeys parent scale when Scaling Mode is
    *     Local/Hierarchy). Live particles are unaffected.
    *   - LOCAL mode: gravity is stored in local units, so it is divided by
-   *     this scale so the rendered fall matches world -g m/s² regardless
+   *     this scale so the rendered fall matches world -g m/s?? regardless
    *     of parent scale.
    */
   worldScale: THREE.Vector3;
@@ -1737,15 +1737,17 @@ export type GeneralData = {
   /**
    * Highest particle index ever written on the CPU path (monotonic).
    * The per-frame buffer flush uploads `[0, watermark]` as a single update
-   * range — a provably covering superset of every write since the last GPU
+   * range ??? a provably covering superset of every write since the last GPU
    * upload, independent of render timing. -1 = nothing written yet.
    */
   cpuDirtyParticleWatermark: number;
+  /** Highest ever-active slot + 1 (monotonic). Bounds every per-frame per-particle walk. 0 = nothing emitted yet. */
+  highWaterIndex: number;
 
   /**
    * Pre-resolved lifetime-curve functions for the size / opacity / color
    * modifiers (scale already applied). Resolved once at system creation and
-   * re-resolved by `updateConfig` — evaluating these per particle per frame
+   * re-resolved by `updateConfig` ??? evaluating these per particle per frame
    * avoids the curve-function lookup and closure allocations of
    * `calculateValue`. Undefined entries fall back to `calculateValue`
    * (e.g. constant or random-range values).
@@ -1922,7 +1924,7 @@ export type ParticleSystem = {
   dispose: () => void;
   update: (cycleData: CycleData) => void;
   /**
-   * Returns the number of currently active (alive) particles. O(1) — derived
+   * Returns the number of currently active (alive) particles. O(1) ??? derived
    * from the internal free list, no buffer scan.
    */
   getActiveParticleCount?: () => number;
@@ -1934,7 +1936,7 @@ export type ParticleSystem = {
    * System-level properties (gravity, force fields, noise, emission rates, color/size/opacity
    * over lifetime curves) take effect immediately for all particles.
    * Per-particle spawn properties (startColor, startSize, startSpeed, startLifetime, etc.)
-   * only affect newly emitted particles — already-alive particles retain their original values.
+   * only affect newly emitted particles ??? already-alive particles retain their original values.
    *
    * @param config - A partial configuration object. Only the provided properties will be updated;
    *   all other settings remain unchanged.
@@ -1949,7 +1951,7 @@ export type ParticleSystem = {
    * backend, modifier activation flags and lifetime curves
    * (`sizeOverLifetime`, `opacityOverLifetime`, `colorOverLifetime`,
    * `rotationOverLifetime`, `velocityOverLifetime`, `noise.isActive`) are
-   * baked into the compute kernel at creation and cannot be changed live —
+   * baked into the compute kernel at creation and cannot be changed live ???
    * a console warning is emitted and the system must be recreated instead.
    * On the CPU backend all of these update live.
    *
