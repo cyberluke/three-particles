@@ -294,17 +294,16 @@ export function createComputePipeline(
     particleSystemId
   );
 
-  // Raw axis values (constants / random ranges / curves) for the per-particle
-  // axis storage written by the emission kernel (oracle-parity randomness).
-  const velocityValues = {
-    linear: [v.linear.x as never, v.linear.y as never, v.linear.z as never],
-    orbital: [
-      v.orbital.x as never,
-      v.orbital.y as never,
-      v.orbital.z as never,
-    ],
-  } as const;
-  const hasVelocityAxes = flags.linearVelocity || flags.orbitalVelocity;
+    // Raw axis values (constants / random ranges / curves) for the seed-based
+    // per-particle axis derivation in the kernels (oracle-parity randomness).
+    const velocityValues = {
+      linear: [v.linear.x as never, v.linear.y as never, v.linear.z as never],
+      orbital: [
+        v.orbital.x as never,
+        v.orbital.y as never,
+        v.orbital.z as never,
+      ],
+    } as const;
 
   // Trail ring integer metadata (atomic<u32>): two cursor/count words.
   if (trailDesc && !trailDesc.meta) {
@@ -320,7 +319,6 @@ export function createComputePipeline(
     bakedCurves.data,
     flags.forceFields,
     flags.collisionPlanes,
-    hasVelocityAxes,
     trailDesc ? trailDesc.length : 0
   );
   if (trailDesc && built.buffers.trailMeta) {

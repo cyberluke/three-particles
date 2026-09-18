@@ -322,13 +322,6 @@ export type ModifierStorageBuffers = {
   orbitalIsActive: StorageBufferAttribute | StorageInstancedBufferAttribute;
   /** `array<atomic<u32>, 1>` ring-allocation counter (integer atomic only). */
   allocator: StorageBufferAttribute;
-  /**
-   * Per-particle velocity-axis values (linear xyz + orbital.x). Present only
-   * when velocityOverLifetime is active (`axes == null` otherwise, so the base
-   * pool stays at the 8 guaranteed storage slots). orbital.y lives in
-   * `position.w`, orbital.z in `velocity.w`.
-   */
-  axes: StorageBufferAttribute | null;
   /** Trail ring integer metadata (`atomic<u32>`, 2 words per particle), or null. */
   trailMeta: StorageBufferAttribute | null;
   /** Packed read-mostly f32 tables (curves + force fields + collision planes), uniform-backed. */
@@ -396,7 +389,6 @@ export function createModifierStorageBuffers(
   curveData: Float32Array,
   hasForceFields = false,
   hasCollisionPlanes = false,
-  hasVelocityAxes = false,
   trailLength = 0
 ): { buffers: ModifierStorageBuffers; allocatorCount: number } {
   const Cls = instanced
@@ -442,9 +434,6 @@ export function createModifierStorageBuffers(
       startColorsExt:  new StorageBufferAttribute(new Float32Array(maxParticles * 4), 4),
       orbitalIsActive: new StorageBufferAttribute(new Float32Array(maxParticles * 4), 4),
       allocator:       new StorageBufferAttribute(allocatorData, 1),
-      axes: hasVelocityAxes
-        ? new StorageBufferAttribute(new Float32Array(maxParticles * 4), 4)
-        : null,
       trailMeta,
       packedData,
     },
@@ -783,25 +772,24 @@ export function createModifierComputeUpdate(
   const sEx   = storage(buffers.startColorsExt, 'vec4', maxParticles);
   const sOIA  = storage(buffers.orbitalIsActive, 'vec4', maxParticles);
 
-  // ?? Binding 8 + optional 9: integer ring-allocator counter + axes ?
+  // ?? Binding 8: integer ring-allocator counter ??
   // `array<atomic<u32>, 1>` (only index 0 is live): a monotonic birth counter,
   // slot = counter mod maxParticles, so allocation can never underflow.
+  // With bindings 1-7 above this completes the guaranteed WebGPU budget of
+  // exactly 8 storage buffers for the base pipeline (no optional binding 9).
   const allocatorCount = maxParticles + 1;
   const ringMod = float(maxParticles);
   const sAllocator     = storage(buffers.allocator, 'uint', Math.max(1, allocatorCount)).toAtomic();
-  // Per-particle velocity-axis values (linear.xyz + orbital.x); exists only
-  // when velocityOverLifetime is active; orbital.y / orbital.z ride in the
-  // unused vec4 padding of `position.w` / `velocity.w`.
-  const hasAxes = buffers.axes !== null;
-  const sAxes = hasAxes
-    ? storage(buffers.axes as StorageBufferAttribute, 'vec4', maxParticles)
-    : null;
 
   // ?? Read-mostly f32 tables: uniform buffer binding, non-atomic ??
   // Baked curve samples plus optional force-field / collision-plane records.
   // A plain uniform binding: it neither consumes a storage slot nor becomes
   // `atomic<f32>`, so curve sampling stays a straight `f32` load.
   const sCD = buffer(buffers.packedData, 'float', buffers.packedData.length);
+  // Curve table sampler — must be in lexical scope BEFORE `simAxis`, the
+  // emission/simulation kernels and every size/opacity/color/velocity
+  // lifetime-curve lookup below.
+  const lookupCurve = createCurveLookup(sCD);
 
   // ?? Sub-emitter FIFO channels: integer `atomic<u32>` counters + f32 payloads ??
   // The CPU writes the window index (0/1 frame parity) into uFifoBase; each
@@ -876,10 +864,11 @@ export function createModifierComputeUpdate(
     ? createCollisionPlaneTSL(sCD, collisionOffset, collisionPlaneCount) : null;
 
   // Per-axis raw velocity-over-lifetime values (constant / random-range /
-  // curve) — oracle parity: random ranges are sampled PER PARTICLE at birth.
-  // The per-particle destination slots are:
-  //   linear  -> `axes.xyz`        orbital.x -> `axes.w`
-  //   orbital.y -> `position.w`    orbital.z -> `velocity.w`
+  // curve) — oracle parity: random ranges are sampled PER PARTICLE from the
+  // stable birth seed stored in `startColorsExt.w` (no extra storage buffer).
+  // Destination contract:
+  //   startColorsExt.x = startColorG   startColorsExt.y = startColorB
+  //   startColorsExt.z = rotationOverLifetime speed   .w = particleSeed
   type AxisSpec = {
     /** -1 = not a lifetime curve; >= 0 = baked curve table index. */
     ci: number;
@@ -930,28 +919,37 @@ export function createModifierComputeUpdate(
       axisUniforms.set(a, [uniform(float(a.min)), uniform(float(a.max))]);
     }
   }
-  const sampleAxis = (
-    a: AxisSpec,
-    r: ShaderNodeObject<Node>
-  ): ShaderNodeObject<Node> => {
-    if (a.isRange) {
-      const [mn, mx] = axisUniforms.get(a)!;
-      return mix(mn, mx, r);
-    }
-    return float(a.min);
-  };
-
-  // Per-particle axis value used by the simulation pass: curve axes look up
-  // the baked table at the lifetime percentage; the others read the slot
-  // written by the emission kernel (per-particle constant or fresh random).
+  // Per-particle axis value for `startColorsExt.w = particleSeed`:
+  //   - lifetime curve       -> `lookupCurve` on the baked table
+  //   - random range         -> `mix(min, max, rand(seed + salt))` (stable per
+  //                              particle; only the immutable birth seed is
+  //                              used, NEVER the changing frame seed)
+  //   - constant             -> direct passthrough
+  // Six distinct fixed salts keep the six axis streams decorrelated.
   const simAxis = (
     a: AxisSpec,
-    stored: ShaderNodeObject<Node>,
-    lifePct: ShaderNodeObject<Node>
-  ): ShaderNodeObject<Node> =>
-    a.ci >= 0
-      ? lookupCurve({ curveIndex: float(a.ci), t: lifePct })
-      : stored;
+    lifePct: ShaderNodeObject<Node>,
+    particleSeed: ShaderNodeObject<Node>,
+    salt: number
+  ): ShaderNodeObject<Node> => {
+    if (a.ci >= 0) {
+      return lookupCurve({
+        curveIndex: float(a.ci),
+        t: lifePct,
+      });
+    }
+
+    if (a.isRange) {
+      const [mn, mx] = axisUniforms.get(a)!;
+      return mix(
+        mn,
+        mx,
+        rand(particleSeed.add(float(salt)))
+      );
+    }
+
+    return float(a.min);
+  };
 
   //
   // `i` = invocation index (0 .. emitCount-1). Each invocation:
@@ -960,9 +958,8 @@ export function createModifierComputeUpdate(
   //   3) builds the shape position + velocity (5 shape kinds, oracle math),
   //   4) rotates them by the emitter wrapper quaternion,
   //   5) writes vec4 slots on pos/vel/color/particleState/startValues/ext/orbital.
-  // Random noise phase offset scale: `Math.random() * 100` only with
-  // `useRandomOffset`, else the deterministic 0 (oracle parity).
-  const noiseOffsetScale = float(shapeParams.noiseUseRandomOffset ? 100.0 : 0.0);
+  // The random noise phase offset is derived from the stable birth seed by
+  // the simulation pass (`useRandomOffset` honored there, §6 of the rescue).
   const emitKernel = Fn(() => {
     const i = instanceIndex;
     // Explicit count guard: the host dispatches max(1, emitCount) invocations, so the
@@ -973,13 +970,13 @@ export function createModifierComputeUpdate(
       const slotIdx = birthNo
         .sub(floor(birthNo.div(ringMod)).mul(ringMod))
         .toVar();
-      // 14 independent randoms per particle (stride 16 keeps them unique).
+      // 13 independent randoms per particle (stride 16 keeps them unique;
+      // `rand` hashes each vec4 component separately).
       const base2 = float(i).mul(float(16.0));
       const rnd = (k: number) => rand(uSeed.add(base2.add(float(k + 0.13))));
-      const rNoise = rnd(0);
-      const rA = rnd(1); // 1st angular / x / axis-1
-      const rB = rnd(2); // 2nd angular / y / ratio / axis-2
-      const rC = rnd(3); // 3rd ratio / z / axis-3
+      const rA = rnd(1);
+      const rB = rnd(2);
+      const rC = rnd(3);
       const rSheet = rnd(5);
       const rSpeed = rnd(6);
       const rSize = rnd(7);
@@ -1048,49 +1045,26 @@ export function createModifierComputeUpdate(
       // Separate per-particle rotationOverLifetime speed (oracle keeps its own
       // min/max, distinct from startRotation's rotMin/rotMax).
       const rotSpeed = mix(uRotOLMin, uRotOLMax, rRotSpeed);
-      // Random noise phase offset only with `useRandomOffset` (oracle
-      // `Math.random() * 100`, else 0).
-      const noiseOff = rNoise.mul(noiseOffsetScale);
+      // Stable per-particle seed, created ONCE at birth and immutable for
+      // the particle lifetime. All six non-curve velocity axes and the noise
+      // phase are derived from it by the simulation pass (fixed salts).
+      const particleSeed = rand(
+        uSeed.add(
+          float(i).mul(float(16.0)).add(float(15.73))
+        )
+      );
 
-      sPos.element(slotIdx).assign(
-        vec4(
-          ox,
-          oy,
-          oz,
-          flags.orbitalVelocity ? sampleAxis(orbAxes[1], rC) : float(0.0)
-        )
-      );
-      sVel.element(slotIdx).assign(
-        vec4(
-          rotVX,
-          rotVY,
-          rotVZ,
-          flags.orbitalVelocity ? sampleAxis(orbAxes[2], rA) : float(0.0)
-        )
-      );
+      sPos.element(slotIdx).assign(vec4(ox, oy, oz, float(0.0)));
+      sVel.element(slotIdx).assign(vec4(rotVX, rotVY, rotVZ, float(0.0)));
       sCol.element(slotIdx).assign(vec4(clR, clG, clB, opac));
       // lifetime=0, size, rotation, startFrame
       sPS.element(slotIdx).assign(vec4(float(0.0), ssize, srot, startFrame));
       // startValues = (startLife, size, opacity, colorR)
       sSV.element(slotIdx).assign(vec4(slife, ssize, opac, clR));
-      // ext = (colorG, colorB, rotSpeed, noiseOffset)
-      sEx.element(slotIdx).assign(vec4(clG, clB, rotSpeed, noiseOff));
+      // ext = (colorG, colorB, rotSpeed, particleSeed)
+      sEx.element(slotIdx).assign(vec4(clG, clB, rotSpeed, particleSeed));
       // Orbital pivot = rotated shape offset (oracle positionOffset), w=1.
       sOIA.element(slotIdx).assign(vec4(rotPX, rotPY, rotPZ, float(1.0)));
-
-      // Per-particle velocity-axis values: (linear.x, linear.y, linear.z,
-      // orbital.x); orbital.y/.z ride `position.w` / `velocity.w` (written
-      // above). Curve axes keep their baked table lookup.
-      if (hasAxes && sAxes) {
-        sAxes.element(slotIdx).assign(
-          vec4(
-            sampleAxis(linAxes[0], rA),
-            sampleAxis(linAxes[1], rB),
-            sampleAxis(linAxes[2], rC),
-            flags.orbitalVelocity ? sampleAxis(orbAxes[0], rB) : float(0.0)
-          )
-        );
-      }
 
       // BIRTH events for the configured sub-emitter channels.
       for (const f of fifoNodes) {
@@ -1122,9 +1096,7 @@ export function createModifierComputeUpdate(
       const oiaVec = sOIA.element(i).toVar();
       If(oiaVec.w.greaterThanEqual(float(0.5)), () => {
         const pos = sPos.element(i).xyz.toVar();
-        const posW = sPos.element(i).w.toVar();
         const vel = sVel.element(i).xyz.toVar();
-        const velW = sVel.element(i).w.toVar();
         const ps  = sPS.element(i).toVar();
         const sv  = sSV.element(i);
         const ex  = sEx.element(i);
@@ -1149,26 +1121,25 @@ export function createModifierComputeUpdate(
         });
 
         // 5. Modifiers — oracle semantics.
-        // 5a. Linear velocity over lifetime: per-axis source is either the
-        // baked curve table or the per-particle value written at birth
-        // (constant or fresh random sample kept for this particle).
-        if (flags.linearVelocity && hasAxes && sAxes) {
-          const ax = sAxes.element(i);
-          const lvx = simAxis(linAxes[0], ax.x, lifePct);
-          const lvy = simAxis(linAxes[1], ax.y, lifePct);
-          const lvz = simAxis(linAxes[2], ax.z, lifePct);
+        // 5a. Linear velocity over lifetime: per-axis value is either the
+        // baked curve table (`lookupCurve`) or derived from the immutable
+        // birth seed in `startColorsExt.w` (constant direct, range via a
+        // fixed salt). position.w / velocity.w are plain padding 0.
+        if (flags.linearVelocity) {
+          const lvx = simAxis(linAxes[0], lifePct, ex.w, 11.17);
+          const lvy = simAxis(linAxes[1], lifePct, ex.w, 23.41);
+          const lvz = simAxis(linAxes[2], lifePct, ex.w, 37.73);
           pos.assign(pos.add(vec3(lvx, lvy, lvz).mul(uDelta)));
         }
-        if (flags.orbitalVelocity && hasAxes && sAxes) {
+        if (flags.orbitalVelocity) {
           // Pivot + offset mirror the oracle `positionOffset`: subtract it,
           // rotate the offset by the Euler, add it back (offset mutation is
-          // stored in oia.xyz).
+          // stored in oia.xyz). Axis speeds derive from the birth seed.
           const offset = vec3(oiaVec.x, oiaVec.y, oiaVec.z).toVar();
           pos.assign(pos.sub(offset));
-          const ax = sAxes.element(i);
-          const oX = hasAxes ? simAxis(orbAxes[0], ax.w, lifePct) : float(0.0);
-          const oY = hasAxes ? simAxis(orbAxes[1], posW, lifePct) : float(0.0);
-          const oZ = hasAxes ? simAxis(orbAxes[2], velW, lifePct) : float(0.0);
+          const oX = simAxis(orbAxes[0], lifePct, ex.w, 51.19);
+          const oY = simAxis(orbAxes[1], lifePct, ex.w, 67.31);
+          const oZ = simAxis(orbAxes[2], lifePct, ex.w, 83.47);
           // Oracle: Euler(speedX*dt, speedZ*dt, speedY*dt) with order 'XYZ' —
           // intrinsic XYZ. Its matrix is Rx·Ry·Rz, so the vector product
           // applies Z FIRST, then Y, then X (extrinsic Z→Y→X). Keep the
@@ -1226,10 +1197,14 @@ export function createModifierComputeUpdate(
         // (t,0,0) / (t,t,0) / (t,t,t); per-octave input scaling
         // t -> t*frequency*2^k with amplitude 0.5^k, divided by
         // fbmMax = 2 - 2^-octaves. uNoisePower carries the single
-        // 0.15*strength (per-channel amounts applied below).
+        // 0.15*strength (per-channel amounts applied below). Random offset
+        // comes from the STABLE birth seed (never the frame seed).
         if (flags.noise) {
+          const noiseOffset = shapeParams.noiseUseRandomOffset
+            ? rand(ex.w.add(float(97.13))).mul(float(100.0))
+            : float(0.0);
           const np = lifePct
-            .add(ex.w)
+            .add(noiseOffset)
             .mul(float(10.0))
             .mul(uNoiseStrength)
             .mul(uNoiseFrequency);
@@ -1303,8 +1278,9 @@ export function createModifierComputeUpdate(
           });
         }
 
-        sPos.element(i).assign(vec4(pos, posW));
-        sVel.element(i).assign(vec4(vel, velW));
+        // Position/velocity vec4 padding stays plain 0 (axes are seed-derived).
+        sPos.element(i).assign(vec4(pos, float(0.0)));
+        sVel.element(i).assign(vec4(vel, float(0.0)));
         sPS.element(i).assign(ps);
         sOIA.element(i).assign(oiaVec);
 
@@ -1469,8 +1445,8 @@ export function createSubEmitterInitUpdate(
   const cFrMin = uniform(float(childParams.startFrameMin));
   const cFrMax = uniform(float(childParams.startFrameMax));
 
-  // Child pool (bindings 1..7) + its own ring allocator (binding 8) + the
-  // optional per-axis table.
+  // Child pool (bindings 1..7) + its own ring allocator (binding 8). The
+  // per-particle velocity axes are seed-derived (no per-axis table buffer).
   const cPos = storage(child.position, 'vec4', childMax);
   const cVel = storage(child.velocity, 'vec4', childMax);
   const cCol = storage(child.color, 'vec4', childMax);
@@ -1484,24 +1460,6 @@ export function createSubEmitterInitUpdate(
     Math.max(1, childMax + 1)
   ).toAtomic();
   const cRingMod = float(childMax);
-  const cHasAxes = child.axes !== null;
-  const cAxes = cHasAxes
-    ? storage(child.axes as StorageBufferAttribute, 'vec4', childMax)
-    : null;
-  // Read-mostly parent pool — only bound when the child needs the live
-  // parent arrays (currently neither: positions/velocities travel inside
-  // the FIFO payload records).
-  const cOrbOn =
-    childVelValues &&
-    (childVelValues.orbital[0] !== undefined ||
-      childVelValues.orbital[1] !== undefined ||
-      childVelValues.orbital[2] !== undefined);
-  const cLinOn =
-    childVelValues &&
-    (childVelValues.linear[0] !== undefined ||
-      childVelValues.linear[1] !== undefined ||
-      childVelValues.linear[2] !== undefined);
-  const cCurve = cHasAxes && (cLinOn || cOrbOn);
   // Read-mostly parent pool + the event FIFO (u32 counters + plain f32
   // payload — no atomic floats).
   const pPos = storage(parent.position, 'vec4', parentMax);
@@ -1515,9 +1473,6 @@ export function createSubEmitterInitUpdate(
     fifo.payload,
     'float',
     Math.max(1, (fifo.payload.array as Float32Array).length)
-  );
-  const cNoiseOffsetScale = float(
-    childParams.noiseUseRandomOffset ? 100.0 : 0.0
   );
 
   // Child velocity-over-lifetime axes (parity with the main emit kernel).
@@ -1542,11 +1497,7 @@ export function createSubEmitterInitUpdate(
   };
   const cLin = [0, 1, 2].map((k) => cParseAxis(cVv.linear[k], -1));
   const cOrb = [0, 1, 2].map((k) => cParseAxis(cVv.orbital[k], -1));
-  const cSample = (
-    a: { min: number; max: number; isRange: boolean },
-    r: ShaderNodeObject<Node>
-  ): ShaderNodeObject<Node> =>
-    a.isRange ? mix(float(a.min), float(a.max), r) : float(a.min);
+  void cLin; void cOrb; // seed-derived in the child sim kernel (no axis buffer)
 
   // The *other* window's counter is cleared by a dedicated 1-invocation
   // pass so the next frame's writers start from 0 (no race with this frame).
@@ -1660,42 +1611,25 @@ export function createSubEmitterInitUpdate(
             rRotSpeed
           );
 
-          cPos.element(slot).assign(
-            vec4(
-              px,
-              py,
-              pz,
-              cOrbOn ? cSample(cOrb[1], rC) : float(0.0)
-            )
+          // Stable per-child-particle seed (same contract as the main
+          // emission kernel: startColorsExt.w).
+          const particleSeed = rand(
+            uSeed.add(rBase.add(float(15.73)))
           );
-          cVel.element(slot).assign(
-            vec4(
-              rvx,
-              rvy,
-              rvz,
-              cOrbOn ? cSample(cOrb[2], rA) : float(0.0)
-            )
-          );
+
+          cPos.element(slot).assign(vec4(px, py, pz, float(0.0)));
+          cVel.element(slot).assign(vec4(rvx, rvy, rvz, float(0.0)));
           cCol.element(slot).assign(vec4(clR, clG, clB, opac));
           cPS.element(slot).assign(
             vec4(float(0.0), ssize, srot, startFrame)
           );
           cSV.element(slot).assign(vec4(slife, ssize, opac, clR));
+          // ext = (colorG, colorB, rotSpeed, particleSeed)
           cEx.element(slot).assign(
-            vec4(clG, clB, rotSpeed, rNoise.mul(cNoiseOffsetScale))
+            vec4(clG, clB, rotSpeed, particleSeed)
           );
           // Orbital pivot = rotated child shape offset (oracle parity).
           cOIA.element(slot).assign(vec4(rx, ry, rz, float(1.0)));
-          if (cHasAxes && cAxes) {
-            cAxes.element(slot).assign(
-              vec4(
-                cSample(cLin[0], rA),
-                cSample(cLin[1], rB),
-                cSample(cLin[2], rC),
-                cOrbOn ? cSample(cOrb[0], rB) : float(0.0)
-              )
-            );
-          }
         }
       }
     });

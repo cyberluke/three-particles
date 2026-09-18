@@ -2017,6 +2017,7 @@ export type ParticleSystem = {
     passNames?: string[];
     allPassNames?: string[];
     storageBindingCount?: number;
+    passBindingCounts?: Array<[string, number]>;
     lastEmitCount: () => number;
     snapshot?: () => Record<string, unknown>;
   };

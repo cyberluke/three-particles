@@ -1353,6 +1353,18 @@ export const createParticleSystem = (
         'three-particles: allocator capacity must equal maxParticles + 1.'
       );
     }
+    // Hard storage-budget assertion: the WebGPU guaranteed per-stage limit
+    // is 8 storage buffers. The base pool is exactly bindings 1..8
+    // (position, velocity, color, particleState, startValues,
+    // startColorsExt, orbitalIsActive, allocator); trail adds 2 and every
+    // sub-emitter FIFO channel adds 2 more.
+    const storageBindingCount =
+      8 + (trailDesc ? 2 : 0) + fifos.length * 2;
+    if (storageBindingCount > 8) {
+      throw new Error(
+        `three-particles: compute pass requires ${storageBindingCount} storage buffers; guaranteed WebGPU limit is 8`
+      );
+    }
     if (trailDesc && trailDesc.meta !== pipeline.trailMeta) {
       throw new Error('three-particles: trail ring meta buffer mismatch.');
     }
@@ -1606,6 +1618,27 @@ export const createParticleSystem = (
   }
   createdParticleSystems.push(props);
 
+  // Binding budget per compute pass. The base pool is exactly the 8
+  // guaranteed WebGPU per-stage storage slots (position, velocity, color,
+  // particleState, startValues, startColorsExt, orbitalIsActive,
+  // allocator). Trail adds 2, each sub-emitter channel adds 2. No 9th
+  // `axes` buffer anymore: velocity-axis values are derived from the stable
+  // birth seed in `startColorsExt.w`.
+  const _dbgMainCount = 8 + (trailDesc ? 2 : 0) + fifos.length * 2;
+  const _dbgPassCounts: Array<[string, number]> = [
+    ['emit', _dbgMainCount],
+    ['simulate', _dbgMainCount],
+    ...(ribbonPipeline ? ([['trail-ribbon', 7]] as Array<[string, number]>) : []),
+    ...subEntries.flatMap(
+      (_, ei): Array<[string, number]> => [
+        [`sub${ei}:init`, 11],
+        [`sub${ei}:counter-clear`, 1],
+        [`sub${ei}:child-emit`, _dbgMainCount],
+        [`sub${ei}:child-sim`, _dbgMainCount],
+      ]
+    ),
+  ];
+
   // ?? One-shot construction diagnostics (visible without DevTools commands) ??
   // `[PS:create]`, `[PS:config]` and `[PS:pipeline]` are logged exactly once
   // per system; the milestone probes themselves live in the examples harness.
@@ -1668,12 +1701,20 @@ export const createParticleSystem = (
       subEmitterCount: (normalizedConfig.subEmitters ?? []).length,
       trailEnabled: !!trailDesc,
       modifiers: {
-        linearVelocity: !!(pipeline as unknown as { buffers: { axes?: unknown } })
-          .buffers.axes ||
-          u.linearVelX !== undefined,
+        linearVelocity:
+          !!logCfg.velocityOverLifetime?.isActive &&
+          (u.linearVelX !== undefined ||
+            u.axisLinXMin !== undefined ||
+            !!(logCfg.velocityOverLifetime?.linear &&
+              Object.values(logCfg.velocityOverLifetime.linear).some(
+                (value: any) => value !== undefined && value !== 0
+              ))),
         orbitalVelocity:
-          !(pipeline as unknown as { buffers: { axes?: unknown } })
-            .buffers.axes === false || !!logCfg.velocityOverLifetime?.orbital,
+          !!logCfg.velocityOverLifetime?.isActive &&
+          !!(logCfg.velocityOverLifetime?.orbital &&
+            Object.values(logCfg.velocityOverLifetime.orbital).some(
+              (value: any) => value !== undefined && value !== 0
+            )),
         sizeOverLifetime: !!normalizedConfig.sizeOverLifetime?.isActive,
         opacityOverLifetime: !!normalizedConfig.opacityOverLifetime?.isActive,
         colorOverLifetime: !!normalizedConfig.colorOverLifetime?.isActive,
@@ -1684,7 +1725,7 @@ export const createParticleSystem = (
     console.log(
       `[PS:pipeline] system #${generalData.particleSystemId}: ` +
         `${((props.passNames ?? []) as string[]).join(' -> ') || 'emit -> simulate'}` +
-        ` | storageBindings=${8 + (pipeline.buffers.axes ? 1 : 0) + (trailDesc ? 2 : 0) + fifos.length * 2}` +
+        ` | storageBindings=${_dbgPassCounts.map((p) => `${p[0]}=${p[1]}≤8`).join(' ')}` +
         ` | packedFloats=${(pipeline.buffers.packedData as unknown as { length?: number })?.length ?? 0}`
     );
   }
@@ -1743,8 +1784,8 @@ export const createParticleSystem = (
       simNode: pipeline.computeNodes![1],
       passNames: (pipeline.passNames ?? ['emit', 'simulate']) as string[],
       allPassNames: (props.passNames ?? []) as string[],
-      storageBindingCount:
-        8 + (pipeline.buffers.axes ? 1 : 0) + (trailDesc ? 2 : 0) + fifos.length * 2,
+      storageBindingCount: _dbgMainCount,
+      passBindingCounts: _dbgPassCounts,
       lastEmitCount: () =>
         (pipeline.uniforms.emitCount as { value: number }).value as number,
       /** Decode summary for the `[PS:config]` / `[PS:pipeline]` logs. */
