@@ -919,8 +919,13 @@ export const createParticleSystem = (
         : new THREE.BufferGeometry();
     if (rrType !== RendererType.MESH || !meshGeometry) {
       const quad = new Float32Array([-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0]);
+      const quadUV = new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]);
+      const quadNormal = new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1]);
       const idx = new Uint16Array([0, 1, 2, 0, 2, 3]);
       baseGeometry.setAttribute('position', new THREE.BufferAttribute(quad, 3));
+      // MESH node materials sample the sprite map via `uv` and read `normal`.
+      baseGeometry.setAttribute('uv', new THREE.BufferAttribute(quadUV, 2));
+      baseGeometry.setAttribute('normal', new THREE.BufferAttribute(quadNormal, 3));
       baseGeometry.setIndex(new THREE.BufferAttribute(idx, 1));
     }
     g.setAttribute('position', baseGeometry.getAttribute('position'));
@@ -942,6 +947,27 @@ export const createParticleSystem = (
     g.setDrawRange(0, maxParticles);
     geometry = g;
     (g as unknown as { instanceCount: number }).instanceCount = maxParticles;
+  }
+
+  // ?? Construction-time attribute-contract assertion (development only) ????
+  // Runs once per particle system; no per-frame work and no particle scan.
+  if ((import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV !== false) {
+    const required = useInstancing
+      ? [
+          'position', // quad / mesh vertex positions
+          'instanceOffset', // GPU particle position
+          'instanceColor', // GPU particle RGBA
+          'instanceParticleState', // GPU packed state vec4
+          'instanceStartValues' // GPU packed initial-state vec4
+        ]
+      : ['position', 'color', 'particleState', 'startValues'];
+    for (const name of required) {
+      if (!geometry.getAttribute(name)) {
+        throw new Error(
+          'three-particles: ' + (useInstancing ? 'instanced' : 'POINTS') + ' geometry ' + name + ' is missing its required contract attribute.'
+        );
+      }
+    }
   }
 
   const particleSystem: THREE.Points | THREE.Mesh = useInstancing
@@ -1008,9 +1034,13 @@ export const createParticleSystem = (
       rotation: buffers.particleState as unknown as THREE.BufferAttribute,
       color: buffers.color as unknown as THREE.BufferAttribute,
     },
-    scalarArray: new Float32Array(maxParticles * SCALAR_STRIDE),
+    // ?? Deprecated zero-size sentinels (GPU-only v4) ????
+    // These legacy CPU particle-state fields are not authoritative anymore: the
+    // compute kernels own the state in GPU storage. Only the TRAIL path (which
+    // throws in v4) consumed them, so they are 0-length placeholders.
+    scalarArray: new Float32Array(0),
     scalarInterleavedBuffer: new THREE.InterleavedBuffer(
-      new Float32Array(maxParticles * SCALAR_STRIDE),
+      new Float32Array(0),
       SCALAR_STRIDE
     ),
     elapsedUniform,
@@ -1074,7 +1104,13 @@ export const createParticleSystem = (
     dispose,
     update,
     updateConfig,
-    getActiveParticleCount: () => maxParticles,
+    /**
+     * ?? Deprecated synchronous active count ????
+     * Returns -1 (= unsupported) in the GPU-only engine: the authoritative count
+     * is `maxParticles - allocator[0]` which lives in GPU storage and is only
+     * available through an explicit (throttled) `getArrayBufferAsync` read-back.
+     */
+    getActiveParticleCount: () => -1,
     computeNode: pipeline.computeNodes ?? pipeline.computeNode,
   } as ParticleSystem;
 };
