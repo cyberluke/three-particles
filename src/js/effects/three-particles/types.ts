@@ -1900,6 +1900,16 @@ export type ParticleSystemInstance = {
     allocatorCount?: number;
     /** Non-atomic f32 uniform-table node (baked curves + force fields + collision planes). */
     packedDataNode?: unknown;
+    /**
+     * Emitter-pose uniforms written per frame by the update loop:
+     * `positionW` = (x, y, z, isWorldFlag), `wrapperQuat` = (x, y, z, w),
+     * `worldScale` = (sx, sy, sz).
+     */
+    emitterPose?: {
+      positionW: unknown;
+      wrapperQuat: unknown;
+      worldScale: unknown;
+    };
     forceFieldInfo: { offset: number; countUniform: unknown } | null;
     /** Optional for backwards compat with the older single-forceFieldInfo shape. */
     collisionPlaneInfo?: { offset: number; countUniform: unknown } | null;
@@ -1918,6 +1928,33 @@ export type ParticleSystemInstance = {
   rrType?: "POINTS" | "INSTANCED" | "MESH" | "TRAIL";
   /** Cached TSL shared uniform table. */
   sharedUniforms?: { [k: string]: { value: unknown } };
+  /**
+   * Every compute node of this system in dispatch order:
+   * `[emit, sim, ribbon?, (init, childEmit, childSim)?]`.
+   */
+  allComputeNodes?: unknown[];
+  /** Per-system sub-emitter child kernels + their own scalar state. */
+  subEntries?: {
+    fifo: { capacity: number; windowSize: number };
+    pipeline: Record<string, any> | undefined;
+    init: { initNode: unknown; uniforms: Record<string, { value: unknown }> };
+    gravity: number;
+    noise: GeneralData['noise'] | null;
+    rate: number;
+    acc: number;
+    isWorld: 0 | 1;
+    quat: [number, number, number, number];
+    scale: [number, number, number];
+    position: [number, number, number];
+  }[];
+  /** Shared ping-pong window stride of the FIFO buffers. */
+  fifoBaseStride?: number;
+  /** Trail ribbon kernel uniforms (`nowMs`), present for RendererType.TRAIL. */
+  ribbonUniforms?: { [k: string]: { value: unknown } };
+  /** Trail ribbon storage attributes (first-frame upload only). */
+  ribbonBuffers?: { [k: string]: THREE.BufferAttribute };
+  /** Frame parity counter (0/1) driving the FIFO ping-pong windows. */
+  frameParity?: number;
 };
 
 /**

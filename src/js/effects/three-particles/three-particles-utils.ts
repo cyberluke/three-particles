@@ -420,6 +420,23 @@ export const getCurveFunctionFromConfig = (
     return lifetimeCurve.curveFunction; // Easing curve
   }
 
+  // Serialized (type-elided) configs: infer from the present payload. The
+  // shared JSON examples omit `type` because the editor converters normally
+  // fill it in; the runtime accepts both forms.
+  const raw = lifetimeCurve as unknown as {
+    bezierPoints?: unknown;
+    curveFunction?: unknown;
+  };
+  if (Array.isArray(raw.bezierPoints)) {
+    return createBezierCurveFunction(
+      particleSystemId,
+      raw.bezierPoints as Parameters<typeof createBezierCurveFunction>[1]
+    );
+  }
+  if (typeof raw.curveFunction === 'function') {
+    return raw.curveFunction as (t: number) => number;
+  }
+
   throw new Error(`Unsupported value type: ${lifetimeCurve}`);
 };
 

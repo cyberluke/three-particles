@@ -140,12 +140,19 @@ export function createTrailRibbonTSLMaterial(
 
   // ── Per-vertex attributes ────────────────────────────────────────────────
 
-  const aTrailAlpha = attribute('trailAlpha');
-  const aTrailColor = attribute('trailColor', 'vec4');
-  const aTrailOffset = attribute('trailOffset');
-  const aTrailHalfWidth = attribute('trailHalfWidth');
-  const aTrailNext = attribute('trailNext', 'vec3');
-  const aTrailUV = attribute('trailUV', 'vec2');
+  const aPosPacked = attribute('position', 'vec4');
+  const aNextPacked = attribute('trailNext', 'vec4');
+  const aUvColorA = attribute('trailUVColor', 'vec4');
+  const aColorBA = attribute('trailColorBA', 'vec4');
+
+  // Derived per-vertex values (see the contract above): the ribbon side offset
+  // comes from uv.x (0 -> -0.5, 1 -> +0.5), so no extra attribute is needed.
+  const aTrailAlpha = aNextPacked.w;
+  const aTrailColor = vec4(aUvColorA.z, aUvColorA.w, aColorBA.x, aColorBA.y);
+  const aTrailOffset = aUvColorA.x.sub(float(0.5));
+  const aTrailHalfWidth = aPosPacked.w;
+  const aTrailNext = vec3(aNextPacked.x, aNextPacked.y, aNextPacked.z);
+  const aTrailUV = vec2(aUvColorA.x, aUvColorA.y);
 
   // ── Varyings ─────────────────────────────────────────────────────────────
 
@@ -171,7 +178,7 @@ export function createTrailRibbonTSLMaterial(
     vColor.assign(aTrailColor);
     vUv.assign(aTrailUV);
 
-    const current = vec3(positionLocal);
+    const current = vec3(aPosPacked.x, aPosPacked.y, aPosPacked.z);
     const next = vec3(aTrailNext);
 
     // Tangent: direction from current to next sample

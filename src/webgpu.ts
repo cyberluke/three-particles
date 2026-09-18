@@ -5,6 +5,12 @@ import {
   createTSLParticleMaterial,
   createTSLTrailMaterial,
   createComputePipeline,
+  createModifierStorageBuffers,
+  createSubEmitterInitUpdate,
+  createSubEmitterFifoAttribute,
+  createTrailRibbonUpdate,
+  encodeShapeEmitParams,
+  subEmitterWindowSize,
 } from './js/effects/three-particles/webgpu/tsl-materials.js';
 
 // Re-export individual functions for power users who do not want the factory.
@@ -12,6 +18,12 @@ export {
   createTSLParticleMaterial,
   createTSLTrailMaterial,
   createComputePipeline,
+  createModifierStorageBuffers,
+  createSubEmitterInitUpdate,
+  createSubEmitterFifoAttribute,
+  createTrailRibbonUpdate,
+  encodeShapeEmitParams,
+  subEmitterWindowSize,
   encodeForceFieldsForGPU,
   encodeCollisionPlanesForGPU,
 };
@@ -30,6 +42,10 @@ export function enableWebGPU(renderer?: unknown): boolean {
     createComputePipeline: createComputePipeline as never,
     encodeForceFieldsForGPU,
     encodeCollisionPlanesForGPU,
+    createSubEmitterFifoAttribute: createSubEmitterFifoAttribute as never,
+    createSubEmitterInitUpdate: createSubEmitterInitUpdate as never,
+    createTrailRibbonUpdate: createTrailRibbonUpdate as never,
+    encodeShapeEmitParams: encodeShapeEmitParams as never,
   };
   return registerTSLMaterialFactory(
     factory,
