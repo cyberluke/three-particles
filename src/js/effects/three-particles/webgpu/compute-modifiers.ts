@@ -42,12 +42,10 @@ import {
   mix,
   floor,
   fract,
-  abs,
   sin,
   cos,
   sqrt,
   min as tslMin,
-  max as tslMax,
   rand,
   storage,
   buffer,
@@ -58,7 +56,6 @@ import {
   instanceIndex,
   uniform,
   If,
-  Else,
   compute,
   type ShaderNodeObject,
   type Node,
@@ -68,6 +65,7 @@ import {
   StorageInstancedBufferAttribute,
 } from 'three/webgpu';
 import { CURVE_RESOLUTION, type BakedCurveMap } from './curve-bake.js';
+import { snoise3D } from './tsl-noise.js';
 import {
   FORCE_FIELD_DATA_SIZE,
   createForceFieldTSL,
@@ -562,9 +560,9 @@ export function createModifierComputeUpdate(
         }
         if (flags.colorOverLifetime) {
           const col = sCol.element(i).toVar();
-          const cr = lookupCurve({ curveIndex: float(curveMap.colorOverLifetimeR), t: lifePct }).mix(col.x, lifePct);
-          const cg = lookupCurve({ curveIndex: float(curveMap.colorOverLifetimeG), t: lifePct }).mix(col.y, lifePct);
-          const cb = lookupCurve({ curveIndex: float(curveMap.colorOverLifetimeB), t: lifePct }).mix(col.z, lifePct);
+          const cr = lookupCurve({ curveIndex: float(curveMap.colorR), t: lifePct }).mix(col.x, lifePct);
+          const cg = lookupCurve({ curveIndex: float(curveMap.colorG), t: lifePct }).mix(col.y, lifePct);
+          const cb = lookupCurve({ curveIndex: float(curveMap.colorB), t: lifePct }).mix(col.z, lifePct);
           col.assign(vec4(cr, cg, cb, col.w));
           sCol.element(i).assign(col);
         }
@@ -575,9 +573,30 @@ export function createModifierComputeUpdate(
           const freq = uNoiseFrequency;
           const p3 = pos.mul(freq);
           const seed = ex.w;
-          const nx = fbm3(p3.x, p3.y, p3.z, seed);
-          const ny = fbm3(p3.y + float(31.41), p3.z - float(17.53), p3.x + float(23.07), seed);
-          const nz = fbm3(p3.z - float(51.07), p3.x + float(13.11), p3.y + float(41.79), seed);
+          // Single shared simplex implementation (`tsl-noise.ts` `snoise3D`).
+          // Each axis is sampled at a decorrelated offset so the three
+          // components differ; the per-particle `noiseOffset` (startColorsExt.w)
+          // keeps the deterministic per-slot seed semantics.
+          const noiseSample = (
+            x: ShaderNodeObject<Node>,
+            y: ShaderNodeObject<Node>,
+            z: ShaderNodeObject<Node>,
+            offset: ShaderNodeObject<Node>
+          ) => snoise3D({ v: vec3(x.add(offset), y.add(offset), z.add(offset)) });
+
+          const nx = noiseSample(p3.x, p3.y, p3.z, seed);
+          const ny = noiseSample(
+            p3.y.add(float(31.41)),
+            p3.z.sub(float(17.53)),
+            p3.x.add(float(23.07)),
+            seed
+          );
+          const nz = noiseSample(
+            p3.z.sub(float(51.07)),
+            p3.x.add(float(13.11)),
+            p3.y.add(float(41.79)),
+            seed
+          );
           const noiseVec = vec3(nx, ny, nz).mul(uNoisePower);
           If(uNoisePosAmount.greaterThan(float(0.001)), () => {
             pos.assign(pos.add(noiseVec.mul(uNoisePosAmount)));
@@ -644,75 +663,19 @@ export function createModifierComputeUpdate(
   };
 }
 
-// Small `select` helpers so all three kinds fit inside a single `Fn`.
-function select01(kind: ShaderNodeObject<Node>, cone: ShaderNodeObject<Node>, sphere: ShaderNodeObject<Node>, planeVal: ShaderNodeObject<Node>) {
-  const isCone = floor(kind).equal(float(0.0));
-  const isSph  = floor(kind).equal(float(1.0));
-  const tmp = mix(cone, sphere, 0.0);
-  const r0 = isCone.toVar(); (r0 as any);
-  const r = mix(planeVal, tmp, abs(isCone.sub(float(1.0))).min(abs(isSph.sub(float(1.0)))));
-  return r;
-}
-
-// 3D simplex FBM helper reused for 3 axes; must exactly match previous kernel.
-function simplex3(xa: ShaderNodeObject<Node>, ya: ShaderNodeObject<Node>, za: ShaderNodeObject<Node>) {
-  const x = float(xa).toVar();
-  const y = float(ya).toVar();
-  const z = float(za).toVar();
-  const F = float(1.0).div(float(3.0));
-  const G = float(1.0).div(float(6.0));
-  const s = x.add(y).add(z).mul(F);
-  const i = floor(x.add(s));
-  const j = floor(y.add(s));
-  const k = floor(z.add(s));
-  const t = i.add(j).add(k).mul(G);
-  const X0 = i.sub(t);
-  const Y0 = j.sub(t);
-  const Z0 = k.sub(t);
-  const x0 = x.sub(X0);
-  const y0 = y.sub(Y0);
-  const z0 = z.sub(Z0);
-  const sel1a = x0.greaterThan(y0).toVar();
-  const sel1b = y0.greaterThan(z0).toVar();
-  let i1: ShaderNodeObject<Node>;
-  let j1: ShaderNodeObject<Node>;
-  let k1: ShaderNodeObject<Node>;
-  i1 = sel1a.greaterThan(float(0.5)).mul(float(1.0)).add(sel1a.lessThan(float(0.5)).sel(float(0.0), float(0.0)));
-  i1 = If(i1.greaterThan(float(0.5)), () => i1).sel(i1, float(0.0));
-  j1 = sel1b.greaterThan(float(0.5)).sel(float(1.0), float(0.0));
-  k1 = float(1.0).sub(i1).sub(j1);
-  const x1 = x0.sub(i1).add(float(1.0).div(float(3.0)));
-  const y1 = y0.sub(j1).add(float(1.0).div(float(3.0)));
-  const z1 = z0.sub(k1).add(float(1.0).div(float(3.0)));
-  const x2 = x0.sub(float(2.0).div(float(3.0))).add(i1.mul(float(2.0).div(float(3.0))));
-  const y2 = y0.sub(float(2.0).div(float(3.0))).add(j1.mul(float(2.0).div(float(3.0))));
-  const z2 = z0.sub(float(2.0).div(float(3.0))).add(k1.mul(float(2.0).div(float(3.0))));
-  const x3 = x0.sub(float(1.0)).add(float(1.0));
-  const y3 = y0.sub(float(1.0)).add(float(1.0));
-  const z3 = z0.sub(float(1.0)).add(float(1.0));
-  const n = (px: ShaderNodeObject<Node>, py: ShaderNodeObject<Node>, pz: ShaderNodeObject<Node>) => px.mul(px).add(py.mul(py)).add(pz.mul(pz));
-  const nn0 = tslMax(float(0.6).sub(n(x0, y0, z0)), float(0.0));
-  const nn1 = tslMax(float(0.6).sub(n(x1, y1, z1)), float(0.0));
-  const nn2 = tslMax(float(0.6).sub(n(x2, y2, z2)), float(0.0));
-  const nn3 = tslMax(float(0.6).sub(n(x3, y3, z3)), float(0.0));
-  const g = (xx: ShaderNodeObject<Node>, yy: ShaderNodeObject<Node>, zz: ShaderNodeObject<Node>, gx: number, gy: number, gz: number) => xx.mul(gx).add(yy.mul(gy)).add(zz.mul(gz)).mul(tslMax(nn0, nn1).mul(tslMax(nn2, nn3)));
-  const v = g(x0, y0, z0, 1, 0, 0).add(g(x1, y1, z1, -1, 1, 0)).add(g(x2, y2, z2, 0, -1, 1)).add(g(x3, y3, z3, 0, -1, 1));
-  return v.mul(float(2.0));
-}
-
-function fbm3(x0: ShaderNodeObject<Node>, y0: ShaderNodeObject<Node>, z0: ShaderNodeObject<Node>, offset: ShaderNodeObject<Node>) {
-  const nx = x0.add(offset);
-  const ny = y0.add(offset);
-  const nz = z0.add(offset);
-  const freq  = float(0.0).toVar();
-  const amp   = float(0.0).toVar();
-  const v     = float(0.0).toVar();
-  const step  = float(2.0);
-  const ampDec= float(0.5);
-  const f1 = float(1.0); const f2 = freq.add(f1); const a1 = amp.add(ampDec);
-  const n1 = simplex3(nx.mul(f1), ny.mul(f1), nz.mul(f1));
-  v.assign(v.add(n1.mul(ampDec)));
-  return v;
+// Canonical r186 conditional selection: shape kind 0 = cone, 1 = sphere,
+// 2 (anything else) = plane. `.select(ifTrue, ifFalse)` on boolean nodes only.
+function select01(
+  kind: ShaderNodeObject<Node>,
+  cone: ShaderNodeObject<Node>,
+  sphere: ShaderNodeObject<Node>,
+  planeVal: ShaderNodeObject<Node>
+) {
+  const k = floor(kind);
+  return k.equal(float(0.0)).select(
+    cone,
+    k.equal(float(1.0)).select(sphere, planeVal)
+  );
 }
 
 
