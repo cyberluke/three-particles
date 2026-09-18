@@ -35,7 +35,6 @@ import { Vector3 } from 'three';
 import {
   Fn,
   float,
-  int,
   vec3,
   vec4,
   uint as tuint,
@@ -302,7 +301,9 @@ export function createModifierComputeUpdate(
   const uDeltaMs = uniform(float(0));
   const uGravityVelocity = uniform(new Vector3(0, 0, 0));
   const uSeed = uniform(float(0));
-  const uEmitCount = uniform(int(0));
+  // Declared u32 so it matches instanceIndex exactly in the WGSL guard and in
+  // If(i.lessThan(uEmitCount), ...); the CPU writes the integer count per frame.
+  const uEmitCount = uniform(0, 'uint');
   const uNoiseStrength = uniform(float(0));
   const uNoisePower = uniform(float(0));
   const uNoiseFrequency = uniform(float(1));
@@ -387,6 +388,9 @@ export function createModifierComputeUpdate(
   //   4) writes vec4 slots on pos/vel/color/particleState/startValues/ext/orbital.
   const emitKernel = Fn(() => {
     const i = instanceIndex;
+    // Explicit count guard: the host dispatches max(1, emitCount) invocations, so the
+    // kernel itself must skip the extra one when emitCount === 0.
+    If(i.lessThan(uEmitCount), () => {
     // Pop: `oldTop` = freeCount *before* the decrement (integer atomic).
     const oldTop = atomicSub(sAllocator.element(0), tuint(1)).toVar();
     If(oldTop.greaterThan(tuint(0)), () => {
@@ -481,6 +485,7 @@ export function createModifierComputeUpdate(
       // Orbital offset = current local position (rotation pivots around it).
       // isActive = 1.
       sOIA.element(slotIdx).assign(vec4(ox, oy.add(lenOffset), oz, float(1.0)));
+    });
     });
   });
 

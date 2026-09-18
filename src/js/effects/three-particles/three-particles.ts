@@ -1112,6 +1112,21 @@ export const createParticleSystem = (
      */
     getActiveParticleCount: () => -1,
     computeNode: pipeline.computeNodes ?? pipeline.computeNode,
+    /**
+     * ?? Temporary one-shot GPU debug handle (deprecated, no per-frame cost) ????
+     * getActiveParticleCount() stays -1; this object is the raw material for an
+     * explicit enderer.getArrayBufferAsync(...) read-back (bytes, multiples of 4).
+     * lastEmitCount() mirrors uEmitCount, the u32 count written per frame.
+     */
+    gpuDebug: {
+      maxParticles,
+      allocatorCount: pipeline.allocatorCount as number,
+      buffers: pipeline.buffers as unknown as Record<string, THREE.BufferAttribute>,
+      emitNode: pipeline.computeNodes![0],
+      simNode: pipeline.computeNodes![1],
+      lastEmitCount: () =>
+        (pipeline.uniforms.emitCount as { value: number }).value as number,
+    },
   } as ParticleSystem;
 };
 
@@ -1223,7 +1238,10 @@ const updateParticleSystemInstance = (
   (u.emitCount as { value: number }).value = emitCount;
   // Dynamic emit dispatch: the numeric `ComputeNode.count` is the real dispatch
   // size and also feeds the generated `instanceIndex >= count` bound guard.
-  (pipeline.emitNode as unknown as { count: number }).count = emitCount;
+  // Never dispatch 0 workgroups (r186 warns about it): the host always runs at
+  // least one invocation and uEmitCount (u32) bounds the useful work inside
+  // the kernel. See If(i.lessThan(uEmitCount), ...) in the emit kernel.
+  (pipeline.emitNode as unknown as { count: number }).count = Math.max(1, emitCount);
   (u.seed as { value: number }).value = now * 0.001;
   const n = generalData.noise;
   if (u.noiseStrength) (u.noiseStrength as { value: number }).value = n.strength;

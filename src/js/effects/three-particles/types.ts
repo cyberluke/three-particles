@@ -1947,12 +1947,27 @@ export type ParticleSystem = {
   dispose: () => void;
   update: (cycleData: CycleData) => void;
   /**
-   * Returns the number of currently active (alive) particles. O(1) ??? derived
-   * from the internal free list, no buffer scan.
+   * ?? Deprecated synchronous count ???? Returns `-1` (unsupported) on the
+   * GPU-only engine. Authoritative value: `maxParticles - allocator[0]`, read
+   * on demand through `renderer.getArrayBufferAsync` + `gpuDebug`.
    */
   getActiveParticleCount?: () => number;
+  /**
+   * ?? Temporary / deprecated one-shot GPU debug handle ????
+   * Raw material for an explicit `renderer.getArrayBufferAsync(...)` read-back
+   * (byte offset + byte count, multiples of 4). No per-frame cost.
+   */
+  gpuDebug?: {
+    maxParticles: number;
+    allocatorCount: number;
+    buffers: Record<string, unknown>;
+    emitNode: unknown;
+    simNode: unknown;
+    lastEmitCount: () => number;
+  };
   /** Ordered WebGPU compute nodes, dispatched in order. `renderer.compute(...)` accepts a single `Node` or an array; the GPU-only engine returns the [emitNode, simNode] pair. */
   computeNode: unknown | unknown[] | null;
+
   /**
    * Updates the particle system configuration at runtime without recreating the system.
    *
