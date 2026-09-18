@@ -239,6 +239,9 @@ export function createModifierStorageBuffers(
   packedData.set(curveData, 0);
 
   // Allocator stack (uint atomics): [0] = freeCount, [1..maxParticles] = slot ids.
+  // TODO(r186 follow-up): `atomicSub` wraps at 0 when the stack is exhausted
+  // (freeCount 0 -> 4294967295). Needs a race-safe clamp (e.g. a second
+  // counter or a modulo-`maxParticles+1` fold) - deliberately not changed here.
   const allocatorCount = maxParticles + 1;
   const allocatorData  = new Uint32Array(allocatorCount);
   allocatorData[0] = maxParticles;
