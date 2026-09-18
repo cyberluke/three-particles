@@ -176,57 +176,80 @@ export type ShapeEmitParams = {
   colorBMax: number;
   startFrameMin: number;
   startFrameMax: number;
-  rotationCurveActive: boolean;
+rotationCurveActive: boolean;
   rotationalXCurve: number; // index or -1
   rotationalYCurve: number;
   rotationalZCurve: number;
   linearXCurve: number;
   linearYCurve: number;
   linearZCurve: number;
+  /** rotationOverLifetime speed range (SEPARATE from startRotation rotMin/rotMax). */
+  rotOverLifeMin: number;
+  rotOverLifeMax: number;
+  /** noise.octaves (FBM octave count; 1 = single snoise sample). */
+  noiseOctaves: number;
+  /** noise.useRandomOffset — per-particle random offset in [0,100). */
+  noiseUseRandomOffset: boolean;
 };
 
 /**
- * One GPU sub-emitter event channel. Storage layout (atomic f32, itemSize 1):
- *   [0]                  event count written this cycle
- *   [1 + 6*k + 0..5]     event k = (x, y, z, velX, velY, velZ)
+ * One GPU sub-emitter event channel, split into integer metadata + plain
+ * float payload (WGSL integer atomics only):
+ *   counter  : `array<atomic<u32>, 2>` — ping-pong window counters (event
+ *              counts written this cycle; slot = window index 0/1).
+ *   payload  : ordinary f32 storage; window w starts at `w * 6 * capacity`,
+ *              event k lives at `windowBase + 6*k + 0..5 =
+ *              (x, y, z, velX, velY, velZ)`.
  * The parent kernels append events; the child init kernel consumes them.
  */
 export type SubEmitterFifo = {
-  attribute: StorageBufferAttribute;
+  /** `atomic<u32>` ping-pong counters (itemSize 1, 2 elements). */
+  counter: StorageBufferAttribute;
+  /** 6 floats per event, 2 ping-pong windows, plain f32 storage. */
+  payload: StorageBufferAttribute;
   /** 0 = BIRTH (written by the emission kernel), 1 = DEATH (sim kernel). */
   trigger: 0 | 1;
   /** Event capacity == `maxInstances` of the sub-emitter config. */
   capacity: number;
-  /** Floats per window: 1 counter + 6 per event. */
+  /** Floats per window: 6 per event in the payload buffer. */
   windowSize: number;
 };
 
 /** Floats stored per sub-emitter event (position xyz + velocity xyz). */
 export const SUB_EMITTER_EVENT_STRIDE = 6;
 
-/** Floats in one FIFO window (1 counter + 6 per event). */
+/** Floats in one FIFO payload window. */
 export const subEmitterWindowSize = (capacity: number): number =>
-  1 + SUB_EMITTER_EVENT_STRIDE * Math.max(1, capacity);
+  SUB_EMITTER_EVENT_STRIDE * Math.max(1, capacity);
 
 /**
- * Allocates the atomic f32 FIFO for one sub-emitter channel. Two ping-pong
- * windows so the reader (init kernel) can zero the *other* window in the same
- * dispatch without racing the writers.
+ * Allocates the FIFO buffers for one sub-emitter channel: an integer
+ * `atomic<u32>` counter pair (ping-pong) plus two ordinary f32 payload
+ * windows. Float payload never goes through an atomic; counters are integer.
  */
-export const createSubEmitterFifoAttribute = (
-  capacity: number
-): StorageBufferAttribute =>
-  new StorageBufferAttribute(
-    new Float32Array(
-      2 * (1 + SUB_EMITTER_EVENT_STRIDE * Math.max(1, capacity))
+export const createSubEmitterFifoAttribute = (capacity: number): SubEmitterFifo =>
+  ({
+    counter: new StorageBufferAttribute(new Uint32Array(2), 1),
+    payload: new StorageBufferAttribute(
+      new Float32Array(
+        2 * SUB_EMITTER_EVENT_STRIDE * Math.max(1, capacity)
+      ),
+      1
     ),
-    1
-  );
+    trigger: 1,
+    capacity: Math.max(1, capacity),
+    windowSize: subEmitterWindowSize(capacity),
+  }) as SubEmitterFifo;
 
 /** Trail-history descriptor consumed by the simulation kernel. */
 export type TrailHistoryDesc = {
-  /** atomic f32, itemSize 4: `(L+1)` rows per particle; row L = (cursor, count). */
+  /** Ordinary (non-atomic) vec4 f32 history ring: `(L+1)` rows per particle. */
   attribute: StorageBufferAttribute;
+  /**
+   * Integer ring metadata, `array<atomic<u32>>`, 2 words per particle:
+   * word 2i = cursor, word 2i+1 = valid sample count (no float atomics).
+   */
+  meta: StorageBufferAttribute;
   /** Ring length `L` (`trail.length`). */
   length: number;
   /** Adaptive sampling threshold in world units (`trail.minVertexDistance`). */
@@ -245,8 +268,10 @@ export type TrailRibbonDesc = {
   uvColorA: StorageBufferAttribute;
   /** vec4 * (maxParticles*2L): (colorB, colorA, 0, 0). */
   colorB: StorageBufferAttribute;
-  /** Shared trail history buffer (same attribute as {@link TrailHistoryDesc}). */
+  /** Shared trail history buffer: ordinary vec4 f32 storage (same as {@link TrailHistoryDesc}). */
   history: StorageBufferAttribute;
+  /** Shared integer ring metadata (atomic<u32>, 2 words per particle). */
+  meta: StorageBufferAttribute;
   /** Particle RGBA pool of the owning system (read-mostly). */
   particleColor: StorageBufferAttribute | StorageInstancedBufferAttribute;
   /** Curve functions along the trail (t = 0 head \u2192 1 tail); omitted = identity. */
@@ -295,8 +320,17 @@ export type ModifierStorageBuffers = {
   startValues: StorageBufferAttribute | StorageInstancedBufferAttribute;
   startColorsExt: StorageBufferAttribute | StorageInstancedBufferAttribute;
   orbitalIsActive: StorageBufferAttribute | StorageInstancedBufferAttribute;
-  /** 8th storage binding: `array<atomic<u32>, maxParticles + 1>` slot allocator. */
+  /** `array<atomic<u32>, 1>` ring-allocation counter (integer atomic only). */
   allocator: StorageBufferAttribute;
+  /**
+   * Per-particle velocity-axis values (linear xyz + orbital.x). Present only
+   * when velocityOverLifetime is active (`axes == null` otherwise, so the base
+   * pool stays at the 8 guaranteed storage slots). orbital.y lives in
+   * `position.w`, orbital.z in `velocity.w`.
+   */
+  axes: StorageBufferAttribute | null;
+  /** Trail ring integer metadata (`atomic<u32>`, 2 words per particle), or null. */
+  trailMeta: StorageBufferAttribute | null;
   /** Packed read-mostly f32 tables (curves + force fields + collision planes), uniform-backed. */
   packedData: Float32Array;
 };
@@ -319,14 +353,17 @@ export type ModifierComputePipeline = {
   allocatorCount: number;
   /** Non-atomic f32 uniform-table node (baked curves + force fields + collision planes). */
   packedDataNode: ShaderNodeObject<Node>;
-  /** Emitter pose uniforms, written once per frame by the CPU. */
+  /** Semantic compute-pass names in dispatch order (for `[PS:pipeline]` logging). */
+  passNames: string[];
+  /** Trail ring integer meta attribute (null when the system has no trail). */
+  trailMeta: StorageBufferAttribute | null;
+
+  /** Emitter-pose uniform values for sub-emitter init kernel. */
   emitterPose: {
     /** (x, y, z, isWorldFlag) ? translation only in WORLD simulation. */
-    positionW: ShaderNodeObject<Node>;
-    /** Wrapper quaternion (x, y, z, w): identity LOCAL, world rot WORLD. */
-    wrapperQuat: ShaderNodeObject<Node>;
-    /** Emitter world scale, applied per axis to the rotated offset in WORLD. */
-    worldScale: ShaderNodeObject<Node>;
+    positionW: ShaderNodeObject<Node> | null;
+    wrapperQuat: ShaderNodeObject<Node> | null;
+    worldScale: ShaderNodeObject<Node> | null;
   };
   /** Force field offset + count uniform (null when disabled). */
   forceFieldInfo: {
@@ -358,7 +395,9 @@ export function createModifierStorageBuffers(
   instanced: boolean,
   curveData: Float32Array,
   hasForceFields = false,
-  hasCollisionPlanes = false
+  hasCollisionPlanes = false,
+  hasVelocityAxes = false,
+  trailLength = 0
 ): { buffers: ModifierStorageBuffers; allocatorCount: number } {
   const Cls = instanced
     ? StorageInstancedBufferAttribute
@@ -374,14 +413,24 @@ export function createModifierStorageBuffers(
   const packedData = new Float32Array(curveLen + ffSize + cpSize);
   packedData.set(curveData, 0);
 
-  // Allocator stack (uint atomics): [0] = freeCount, [1..maxParticles] = slot ids.
-  // TODO(r186 follow-up): `atomicSub` wraps at 0 when the stack is exhausted
-  // (freeCount 0 -> 4294967295). Needs a race-safe clamp (e.g. a second
-  // counter or a modulo-`maxParticles+1` fold) - deliberately not changed here.
+  // Ring allocator: ONE integer `atomic<u32>` counter (index 0 of the binding,
+  // the tail padding keeps the binding size identical to legacy). Allocation
+  // is `slot = fetchAdd(counter) % (maxParticles + 1)`, so the counter can
+  // never underflow and every slot index is always in range (a plain
+  // atomicSub stack wraps 0 -> 0xffffffff and indexes out of bounds).
   const allocatorCount = maxParticles + 1;
   const allocatorData  = new Uint32Array(allocatorCount);
-  allocatorData[0] = maxParticles;
+  allocatorData[0] = 0;
   for (let i = 0; i < maxParticles; i++) allocatorData[i + 1] = i;
+
+  // Trail ring metadata: integer atomic words only (cursor, count per slot).
+  const trailMeta =
+    trailLength > 0
+      ? new StorageBufferAttribute(
+          new Uint32Array(Math.max(1, maxParticles) * 2),
+          1
+        )
+      : null;
 
   return {
     buffers: {
@@ -393,6 +442,10 @@ export function createModifierStorageBuffers(
       startColorsExt:  new StorageBufferAttribute(new Float32Array(maxParticles * 4), 4),
       orbitalIsActive: new StorageBufferAttribute(new Float32Array(maxParticles * 4), 4),
       allocator:       new StorageBufferAttribute(allocatorData, 1),
+      axes: hasVelocityAxes
+        ? new StorageBufferAttribute(new Float32Array(maxParticles * 4), 4)
+        : null,
+      trailMeta,
       packedData,
     },
     allocatorCount,
@@ -578,9 +631,12 @@ function shapeEmitNodes(
   const planeX = isRectKind.select(pRx, pBX);
   const planeY = isRectKind.select(pRy, pBY);
   const planeZ = isRectKind.select(pRz, pBZ);
-  const discX = isConeKind.select(pBx, planeX); // CIRCLE falls through
-  const discY = isConeKind.select(pBy, planeY);
-  const discZ = isConeKind.select(pBz, planeZ);
+  // CONE and CIRCLE both use the base-disc position; only RECT/BOX take the
+  // planar branch (CIRCLE no longer "falls through" to the BOX lattice).
+  const isDiscKind = isConeKind.or(isCircleKind);
+  const discX = isDiscKind.select(pBx, planeX);
+  const discY = isDiscKind.select(pBy, planeY);
+  const discZ = isDiscKind.select(pBz, planeZ);
   const px = isSphereKind.select(pSx, discX);
   const py = isSphereKind.select(pSy, discY);
   const pz = isSphereKind.select(pSz, discZ);
@@ -622,6 +678,22 @@ function quatRotateNodes(
   ];
 }
 
+/** Raw velocity-over-lifetime axis values (constant / range / curve). */
+export type VelocityAxisValues = {
+  linear: Array<
+    | import('../types.js').Constant
+    | import('../types.js').RandomBetweenTwoConstants
+    | import('../types.js').LifetimeCurve
+    | undefined
+  >;
+  orbital: Array<
+    | import('../types.js').Constant
+    | import('../types.js').RandomBetweenTwoConstants
+    | import('../types.js').LifetimeCurve
+    | undefined
+  >;
+};
+
 export function createModifierComputeUpdate(
   buffers: ModifierStorageBuffers,
   maxParticles: number,
@@ -631,7 +703,8 @@ export function createModifierComputeUpdate(
   forceFieldCount = 0,
   collisionPlaneCount = 0,
   subFifos: SubEmitterFifo[] = [],
-  trailDesc?: TrailHistoryDesc
+  trailDesc?: TrailHistoryDesc,
+  velocityValues?: VelocityAxisValues
 ): ModifierComputePipeline {
   // ?? Per-frame uniforms ??
   const uDelta = uniform(float(0));
@@ -684,6 +757,10 @@ export function createModifierComputeUpdate(
   const uSizeMax = sh('sizeMax', shapeParams.sizeMax);
   const uRotMin = sh('rotMin', shapeParams.rotMin);
   const uRotMax = sh('rotMax', shapeParams.rotMax);
+  // rotationOverLifetime has its OWN range (oracle: separate
+  // lifetimeValues.rotationOverLifetime, never startRotation's min/max).
+  const uRotOLMin = sh('rotOverLifeMin', shapeParams.rotOverLifeMin);
+  const uRotOLMax = sh('rotOverLifeMax', shapeParams.rotOverLifeMax);
   const uOpMin = sh('opacityMin', shapeParams.opacityMin);
   const uOpMax = sh('opacityMax', shapeParams.opacityMax);
   const uLifeMin = sh('lifeMin', shapeParams.lifeMin);
@@ -706,12 +783,19 @@ export function createModifierComputeUpdate(
   const sEx   = storage(buffers.startColorsExt, 'vec4', maxParticles);
   const sOIA  = storage(buffers.orbitalIsActive, 'vec4', maxParticles);
 
-  // ?? Binding 8: the uint atomic allocator stack ??
-  // `array<atomic<u32>, maxParticles + 1>` with [0] = freeCount and
-  // [1 .. maxParticles] = free slot ids, so addressing is 0-based and needs no
-  // float base offset any more.
+  // ?? Binding 8 + optional 9: integer ring-allocator counter + axes ?
+  // `array<atomic<u32>, 1>` (only index 0 is live): a monotonic birth counter,
+  // slot = counter mod maxParticles, so allocation can never underflow.
   const allocatorCount = maxParticles + 1;
-  const sAllocator     = storage(buffers.allocator, 'uint', allocatorCount).toAtomic();
+  const ringMod = float(maxParticles);
+  const sAllocator     = storage(buffers.allocator, 'uint', Math.max(1, allocatorCount)).toAtomic();
+  // Per-particle velocity-axis values (linear.xyz + orbital.x); exists only
+  // when velocityOverLifetime is active; orbital.y / orbital.z ride in the
+  // unused vec4 padding of `position.w` / `velocity.w`.
+  const hasAxes = buffers.axes !== null;
+  const sAxes = hasAxes
+    ? storage(buffers.axes as StorageBufferAttribute, 'vec4', maxParticles)
+    : null;
 
   // ?? Read-mostly f32 tables: uniform buffer binding, non-atomic ??
   // Baked curve samples plus optional force-field / collision-plane records.
@@ -719,21 +803,33 @@ export function createModifierComputeUpdate(
   // `atomic<f32>`, so curve sampling stays a straight `f32` load.
   const sCD = buffer(buffers.packedData, 'float', buffers.packedData.length);
 
-  // ?? Sub-emitter FIFO channels (one atomic f32 storage binding each) ??
-  const uFifoBase = uniform(float(0));
+  // ?? Sub-emitter FIFO channels: integer `atomic<u32>` counters + f32 payloads ??
+  // The CPU writes the window index (0/1 frame parity) into uFifoBase; each
+  // channel's payload window starts at `window * 6 * capacity`.
+  const uFifoBase = uniform(float(0), 'uint');
   const fifoNodes = subFifos.map((f) => ({
     trigger: f.trigger,
     capacity: Math.max(1, f.capacity),
-    node: storage(
-      f.attribute,
-      'float',
-      (f.attribute.array as Float32Array).length
+    windowSize: subEmitterWindowSize(Math.max(1, f.capacity)),
+    count: storage(
+      f.counter,
+      'uint',
+      Math.max(1, (f.counter.array as Uint32Array).length)
     ).toAtomic(),
+    payload: storage(
+      f.payload,
+      'float',
+      Math.max(1, (f.payload.array as Float32Array).length)
+    ),
   }));
 
   const writeFifoEvent = (
-    n: ShaderNodeObject<Node>,
-    capacity: number,
+    f: {
+      capacity: number;
+      windowSize: number;
+      count: ShaderNodeObject<Node>;
+      payload: ShaderNodeObject<Node>;
+    },
     x: ShaderNodeObject<Node>,
     y: ShaderNodeObject<Node>,
     z: ShaderNodeObject<Node>,
@@ -741,27 +837,32 @@ export function createModifierComputeUpdate(
     vy: ShaderNodeObject<Node>,
     vz: ShaderNodeObject<Node>
   ): void => {
-    // Ping-pong window base comes from the CPU (frame parity). `atomicAdd` on
-    // the counter slot returns the pre-increment count, so event k lives at
-    // base + 1 + 6*k.
-    const base = uFifoBase.toVar();
-    const oldCount = atomicAdd(n.element(base), float(1.0)).toVar();
-    If(oldCount.lessThan(float(capacity)), () => {
-      const b = base.add(float(1.0)).add(oldCount.mul(float(SUB_EMITTER_EVENT_STRIDE)));
-      n.element(b).assign(x);
-      n.element(b.add(float(1.0))).assign(y);
-      n.element(b.add(float(2.0))).assign(z);
-      n.element(b.add(float(3.0))).assign(vx);
-      n.element(b.add(float(4.0))).assign(vy);
-      n.element(b.add(float(5.0))).assign(vz);
+    // `atomicAdd` on the integer counter gives the pre-increment event index;
+    // indices beyond `capacity` are the explicitly dropped events.
+    const winBase = uFifoBase.mul(float(f.windowSize)).toVar();
+    const oldCount = float(
+      atomicAdd(f.count.element(uFifoBase), tuint(1))
+    ).toVar();
+    If(oldCount.lessThan(float(f.capacity)), () => {
+      const b = winBase.add(oldCount.mul(float(SUB_EMITTER_EVENT_STRIDE)));
+      f.payload.element(b).assign(x);
+      f.payload.element(b.add(float(1.0))).assign(y);
+      f.payload.element(b.add(float(2.0))).assign(z);
+      f.payload.element(b.add(float(3.0))).assign(vx);
+      f.payload.element(b.add(float(4.0))).assign(vy);
+      f.payload.element(b.add(float(5.0))).assign(vz);
     });
   };
 
-  // ?? Trail history ring (vec4 rows: L samples + 1 meta row per particle) ??
+  // ?? Trail history ring: plain vec4 f32 samples + integer atomic metadata ??
   const trailRows = trailDesc ? trailDesc.length + 1 : 0;
   const sTrail: ShaderNodeObject<Node> | null = trailDesc
-    ? storage(trailDesc.attribute, 'vec4', trailRows * maxParticles).toAtomic()
+    ? storage(trailDesc.attribute, 'vec4', trailRows * maxParticles)
     : null;
+  const sTrailMeta: ShaderNodeObject<Node> | null =
+    trailDesc && buffers.trailMeta
+      ? storage(buffers.trailMeta, 'uint', maxParticles * 2).toAtomic()
+      : null;
 
   const curveLen = Math.max(curveMap.data.length, 1);
 
@@ -774,9 +875,84 @@ export function createModifierComputeUpdate(
   const cpNodes = flags.collisionPlanes
     ? createCollisionPlaneTSL(sCD, collisionOffset, collisionPlaneCount) : null;
 
-  const lookupCurve = createCurveLookup(sCD);
+  // Per-axis raw velocity-over-lifetime values (constant / random-range /
+  // curve) — oracle parity: random ranges are sampled PER PARTICLE at birth.
+  // The per-particle destination slots are:
+  //   linear  -> `axes.xyz`        orbital.x -> `axes.w`
+  //   orbital.y -> `position.w`    orbital.z -> `velocity.w`
+  type AxisSpec = {
+    /** -1 = not a lifetime curve; >= 0 = baked curve table index. */
+    ci: number;
+    min: number;
+    max: number;
+    /** true when the config value is a random-between-two range. */
+    isRange: boolean;
+  };
+  const parseAxis = (
+    rawAxis:
+      | import('../types.js').Constant
+      | import('../types.js').RandomBetweenTwoConstants
+      | import('../types.js').LifetimeCurve
+      | undefined,
+    curveIdx: number
+  ): AxisSpec => {
+    if (curveIdx >= 0) {
+      return { ci: curveIdx, min: 0, max: 0, isRange: false };
+    }
+    if (rawAxis && typeof rawAxis === 'object' && 'min' in rawAxis && 'max' in rawAxis) {
+      const mn = Number(rawAxis.min) || 0;
+      const mx = Number(rawAxis.max) || 0;
+      return { ci: -1, min: mn, max: mx, isRange: mn !== mx };
+    }
+    const c = typeof rawAxis === 'number' ? rawAxis : 0;
+    return { ci: -1, min: c, max: c, isRange: false };
+  };
+  const vv = velocityValues ?? {
+    linear: [undefined, undefined, undefined],
+    orbital: [undefined, undefined, undefined],
+  };
+  const linAxes: AxisSpec[] = [
+    parseAxis(vv.linear[0], curveMap.linearVelX),
+    parseAxis(vv.linear[1], curveMap.linearVelY),
+    parseAxis(vv.linear[2], curveMap.linearVelZ),
+  ];
+  const orbAxes: AxisSpec[] = [
+    parseAxis(vv.orbital[0], curveMap.orbitalVelX),
+    parseAxis(vv.orbital[1], curveMap.orbitalVelY),
+    parseAxis(vv.orbital[2], curveMap.orbitalVelZ),
+  ];
+  const axisUniforms = new Map<
+    AxisSpec,
+    [ShaderNodeObject<Node>, ShaderNodeObject<Node>]
+  >();
+  for (const a of [...linAxes, ...orbAxes]) {
+    if (a.isRange) {
+      axisUniforms.set(a, [uniform(float(a.min)), uniform(float(a.max))]);
+    }
+  }
+  const sampleAxis = (
+    a: AxisSpec,
+    r: ShaderNodeObject<Node>
+  ): ShaderNodeObject<Node> => {
+    if (a.isRange) {
+      const [mn, mx] = axisUniforms.get(a)!;
+      return mix(mn, mx, r);
+    }
+    return float(a.min);
+  };
 
-  // ????? Emission kernel ?????
+  // Per-particle axis value used by the simulation pass: curve axes look up
+  // the baked table at the lifetime percentage; the others read the slot
+  // written by the emission kernel (per-particle constant or fresh random).
+  const simAxis = (
+    a: AxisSpec,
+    stored: ShaderNodeObject<Node>,
+    lifePct: ShaderNodeObject<Node>
+  ): ShaderNodeObject<Node> =>
+    a.ci >= 0
+      ? lookupCurve({ curveIndex: float(a.ci), t: lifePct })
+      : stored;
+
   //
   // `i` = invocation index (0 .. emitCount-1). Each invocation:
   //   1) atomically pops one uint slot id off the allocator stack,
@@ -784,18 +960,21 @@ export function createModifierComputeUpdate(
   //   3) builds the shape position + velocity (5 shape kinds, oracle math),
   //   4) rotates them by the emitter wrapper quaternion,
   //   5) writes vec4 slots on pos/vel/color/particleState/startValues/ext/orbital.
+  // Random noise phase offset scale: `Math.random() * 100` only with
+  // `useRandomOffset`, else the deterministic 0 (oracle parity).
+  const noiseOffsetScale = float(shapeParams.noiseUseRandomOffset ? 100.0 : 0.0);
   const emitKernel = Fn(() => {
     const i = instanceIndex;
     // Explicit count guard: the host dispatches max(1, emitCount) invocations, so the
     // kernel itself must skip the extra one when emitCount === 0.
     If(i.lessThan(uEmitCount), () => {
-    // Pop: `oldTop` = freeCount *before* the decrement (integer atomic).
-    const oldTop = atomicSub(sAllocator.element(0), tuint(1)).toVar();
-    If(oldTop.greaterThan(tuint(0)), () => {
-      // The wanted slot id sits at index 1 + (oldTop - 1) === oldTop.
-      const slotIdx = atomicLoad(sAllocator.element(oldTop)).toVar();
+      // Race-safe ring allocation (never underflows): slot = birthNo mod N.
+      const birthNo = float(atomicAdd(sAllocator.element(0), tuint(1))).toVar();
+      const slotIdx = birthNo
+        .sub(floor(birthNo.div(ringMod)).mul(ringMod))
+        .toVar();
       // 14 independent randoms per particle (stride 16 keeps them unique).
-      const base2 = i.mul(float(16.0));
+      const base2 = float(i).mul(float(16.0));
       const rnd = (k: number) => rand(uSeed.add(base2.add(float(k + 0.13))));
       const rNoise = rnd(0);
       const rA = rnd(1); // 1st angular / x / axis-1
@@ -866,42 +1045,86 @@ export function createModifierComputeUpdate(
       const ssize = mix(uSizeMin, uSizeMax, rSize);
       const srot = mix(uRotMin, uRotMax, rRot);
       const startFrame = floor(mix(uFrMin, uFrMax, rSheet)).toVar();
-      const rotSpeed = mix(uRotMin, uRotMax, rRotSpeed);
+      // Separate per-particle rotationOverLifetime speed (oracle keeps its own
+      // min/max, distinct from startRotation's rotMin/rotMax).
+      const rotSpeed = mix(uRotOLMin, uRotOLMax, rRotSpeed);
+      // Random noise phase offset only with `useRandomOffset` (oracle
+      // `Math.random() * 100`, else 0).
+      const noiseOff = rNoise.mul(noiseOffsetScale);
 
-      sPos.element(slotIdx).assign(vec4(ox, oy, oz, float(0.0)));
-      sVel.element(slotIdx).assign(vec4(rotVX, rotVY, rotVZ, float(0.0)));
+      sPos.element(slotIdx).assign(
+        vec4(
+          ox,
+          oy,
+          oz,
+          flags.orbitalVelocity ? sampleAxis(orbAxes[1], rC) : float(0.0)
+        )
+      );
+      sVel.element(slotIdx).assign(
+        vec4(
+          rotVX,
+          rotVY,
+          rotVZ,
+          flags.orbitalVelocity ? sampleAxis(orbAxes[2], rA) : float(0.0)
+        )
+      );
       sCol.element(slotIdx).assign(vec4(clR, clG, clB, opac));
       // lifetime=0, size, rotation, startFrame
       sPS.element(slotIdx).assign(vec4(float(0.0), ssize, srot, startFrame));
       // startValues = (startLife, size, opacity, colorR)
       sSV.element(slotIdx).assign(vec4(slife, ssize, opac, clR));
       // ext = (colorG, colorB, rotSpeed, noiseOffset)
-      sEx.element(slotIdx).assign(
-        vec4(clG, clB, rotSpeed, rNoise.mul(float(100.0)))
-      );
-      // Orbital offset = birth position in pool space (rotation pivot), w=1.
-      sOIA.element(slotIdx).assign(vec4(ox, oy, oz, float(1.0)));
+      sEx.element(slotIdx).assign(vec4(clG, clB, rotSpeed, noiseOff));
+      // Orbital pivot = rotated shape offset (oracle positionOffset), w=1.
+      sOIA.element(slotIdx).assign(vec4(rotPX, rotPY, rotPZ, float(1.0)));
+
+      // Per-particle velocity-axis values: (linear.x, linear.y, linear.z,
+      // orbital.x); orbital.y/.z ride `position.w` / `velocity.w` (written
+      // above). Curve axes keep their baked table lookup.
+      if (hasAxes && sAxes) {
+        sAxes.element(slotIdx).assign(
+          vec4(
+            sampleAxis(linAxes[0], rA),
+            sampleAxis(linAxes[1], rB),
+            sampleAxis(linAxes[2], rC),
+            flags.orbitalVelocity ? sampleAxis(orbAxes[0], rB) : float(0.0)
+          )
+        );
+      }
 
       // BIRTH events for the configured sub-emitter channels.
       for (const f of fifoNodes) {
         if (f.trigger === 0) {
-          writeFifoEvent(f.node, f.capacity, ox, oy, oz, rotVX, rotVY, rotVZ);
+          writeFifoEvent(f, ox, oy, oz, rotVX, rotVY, rotVZ);
         }
       }
-    });
     });
   });
 
   const emitNode = compute(emitKernel(), maxParticles);
 
-  // ????? Simulation kernel (identical physics to the previous engine) ?????
+  // Simulation kernel — physics + modifier order mirrors the oracle CPU
+  // `updateParticleSystems` inner loop exactly:
+  //   gravity -> force fields -> integrate -> collisions -> modifiers ->
+  //   lifetime += dt -> trail sample -> write back -> death.
+  const noiseOctavesCount = Math.max(1, Math.round(shapeParams.noiseOctaves || 1));
+  // three-noise FBm divides the accumulated octaves by
+  // `max = 1 + 0.5 + ... + 0.5^octaves = 2 - 2^-octaves` (the sum includes
+  // the trailing 0.5^n exactly like the oracle's `fbmMax` constant).
+  const noiseFbmMax = 2 - Math.pow(2, -noiseOctavesCount);
+  const noiseOctDiv = Array.from(
+    { length: noiseOctavesCount },
+    () => float(noiseFbmMax)
+  );
   const simKernel = Fn(() => {
     const i = instanceIndex;
     If(float(i).lessThan(float(maxParticles)), () => {
       const oiaVec = sOIA.element(i).toVar();
       If(oiaVec.w.greaterThanEqual(float(0.5)), () => {
         const pos = sPos.element(i).xyz.toVar();
+        const posW = sPos.element(i).w.toVar();
         const vel = sVel.element(i).xyz.toVar();
+        const velW = sVel.element(i).w.toVar();
         const ps  = sPS.element(i).toVar();
         const sv  = sSV.element(i);
         const ex  = sEx.element(i);
@@ -925,37 +1148,50 @@ export function createModifierComputeUpdate(
           particleIdx: i, sOrbitalIsActiveNode: sOIA,
         });
 
-        // 5. Modifiers (curves + noise) ? mirror of previous engine.
-        if (flags.linearVelocity) {
-          const lvx = curveMap.linearVelX >= 0 ? lookupCurve({ curveIndex: float(curveMap.linearVelX), t: lifePct }) : float(0.0);
-          const lvy = curveMap.linearVelY >= 0 ? lookupCurve({ curveIndex: float(curveMap.linearVelY), t: lifePct }) : float(0.0);
-          const lvz = curveMap.linearVelZ >= 0 ? lookupCurve({ curveIndex: float(curveMap.linearVelZ), t: lifePct }) : float(0.0);
+        // 5. Modifiers — oracle semantics.
+        // 5a. Linear velocity over lifetime: per-axis source is either the
+        // baked curve table or the per-particle value written at birth
+        // (constant or fresh random sample kept for this particle).
+        if (flags.linearVelocity && hasAxes && sAxes) {
+          const ax = sAxes.element(i);
+          const lvx = simAxis(linAxes[0], ax.x, lifePct);
+          const lvy = simAxis(linAxes[1], ax.y, lifePct);
+          const lvz = simAxis(linAxes[2], ax.z, lifePct);
           pos.assign(pos.add(vec3(lvx, lvy, lvz).mul(uDelta)));
         }
-        if (flags.orbitalVelocity && (curveMap.orbitalVelX >= 0 || curveMap.orbitalVelY >= 0 || curveMap.orbitalVelZ >= 0)) {
+        if (flags.orbitalVelocity && hasAxes && sAxes) {
+          // Pivot + offset mirror the oracle `positionOffset`: subtract it,
+          // rotate the offset by the Euler, add it back (offset mutation is
+          // stored in oia.xyz).
           const offset = vec3(oiaVec.x, oiaVec.y, oiaVec.z).toVar();
           pos.assign(pos.sub(offset));
-          const ovx = curveMap.orbitalVelX >= 0 ? lookupCurve({ curveIndex: float(curveMap.orbitalVelX), t: lifePct }) : float(0.0);
-          const ovy = curveMap.orbitalVelY >= 0 ? lookupCurve({ curveIndex: float(curveMap.orbitalVelY), t: lifePct }) : float(0.0);
-          const ovz = curveMap.orbitalVelZ >= 0 ? lookupCurve({ curveIndex: float(curveMap.orbitalVelZ), t: lifePct }) : float(0.0);
-          // Mirror the CPU 'XYZ Euler (x, z, y)' intrinsic rotation. Apply
-          // z-rot = ovy*dt, y-rot = ovz*dt, x-rot = ovx*dt around the offset.
-          const angX = ovx.mul(uDelta);
-          const angY = ovz.mul(uDelta);
-          const angZ = ovy.mul(uDelta);
-          const c1 = cos(angX), s1 = sin(angX);
-          const c2 = cos(angY), s2 = sin(angY);
+          const ax = sAxes.element(i);
+          const oX = hasAxes ? simAxis(orbAxes[0], ax.w, lifePct) : float(0.0);
+          const oY = hasAxes ? simAxis(orbAxes[1], posW, lifePct) : float(0.0);
+          const oZ = hasAxes ? simAxis(orbAxes[2], velW, lifePct) : float(0.0);
+          // Oracle: Euler(speedX*dt, speedZ*dt, speedY*dt) with order 'XYZ' —
+          // intrinsic XYZ. Its matrix is Rx·Ry·Rz, so the vector product
+          // applies Z FIRST, then Y, then X (extrinsic Z→Y→X). Keep the
+          // per-axis mapping: Euler.x = oX, Euler.y = oZ, Euler.z = oY.
+          const angX = oX.mul(uDelta);
+          const angY = oZ.mul(uDelta);
+          const angZ = oY.mul(uDelta);
           const c3 = cos(angZ), s3 = sin(angZ);
-          const ny = offset.y.mul(c1).sub(offset.z.mul(s1));
-          const nz = offset.y.mul(s1).add(offset.z.mul(c1));
-          const nx1 = offset.x.mul(c2).add(nz.mul(s2));
-          const nz1 = offset.x.mul(s2).negate().add(nz.mul(c2));
-          const fx = nx1.mul(c3).sub(ny.mul(s3));
-          const fy = nx1.mul(s3).add(ny.mul(c3));
-          const fz = nz1;
+          const zx = offset.x.mul(c3).sub(offset.y.mul(s3));
+          const zy = offset.x.mul(s3).add(offset.y.mul(c3));
+          const zz = offset.z;
+          const c2 = cos(angY), s2 = sin(angY);
+          const yx = zx.mul(c2).add(zz.mul(s2));
+          const yz = zx.mul(s2).negate().add(zz.mul(c2));
+          const yy = zy;
+          const c1 = cos(angX), s1 = sin(angX);
+          const fx = yx;
+          const fy = yy.mul(c1).sub(yz.mul(s1));
+          const fz = yy.mul(s1).add(yz.mul(c1));
           pos.assign(pos.add(vec3(fx, fy, fz)));
           oiaVec.assign(vec4(fx, fy, fz, oiaVec.w));
         }
+        // 5b. Size / opacity / color over lifetime — start value * multiplier.
         if (flags.sizeOverLifetime) {
           const s = lookupCurve({ curveIndex: float(curveMap.sizeOverLifetime), t: lifePct });
           ps.y.assign(s.mul(sv.y));
@@ -967,68 +1203,77 @@ export function createModifierComputeUpdate(
           sCol.element(i).assign(col);
         }
         if (flags.colorOverLifetime) {
+          // Oracle: final = startChannel * curveMultiplier (NO mix
+          // interpolation against the current color).
           const col = sCol.element(i).toVar();
-          const cr = lookupCurve({ curveIndex: float(curveMap.colorR), t: lifePct }).mix(col.x, lifePct);
-          const cg = lookupCurve({ curveIndex: float(curveMap.colorG), t: lifePct }).mix(col.y, lifePct);
-          const cb = lookupCurve({ curveIndex: float(curveMap.colorB), t: lifePct }).mix(col.z, lifePct);
-          col.assign(vec4(cr, cg, cb, col.w));
+          const sce = sEx.element(i);
+          if (curveMap.colorR >= 0) {
+            col.x.assign(sv.w.mul(lookupCurve({ curveIndex: float(curveMap.colorR), t: lifePct })));
+          }
+          if (curveMap.colorG >= 0) {
+            col.y.assign(sce.x.mul(lookupCurve({ curveIndex: float(curveMap.colorG), t: lifePct })));
+          }
+          if (curveMap.colorB >= 0) {
+            col.z.assign(sce.y.mul(lookupCurve({ curveIndex: float(curveMap.colorB), t: lifePct })));
+          }
           sCol.element(i).assign(col);
         }
+        // 5c. Rotation over lifetime: speed * delta * 0.02 (oracle factor).
         if (flags.rotationOverLifetime) {
-          ps.z.assign(ps.z.add(ex.z.mul(uDelta)));
+          ps.z.assign(ps.z.add(ex.z.mul(uDelta).mul(float(0.02))));
         }
+        // 5d. Noise — oracle FBM on a scalar input: per-axis coordinates
+        // (t,0,0) / (t,t,0) / (t,t,t); per-octave input scaling
+        // t -> t*frequency*2^k with amplitude 0.5^k, divided by
+        // fbmMax = 2 - 2^-octaves. uNoisePower carries the single
+        // 0.15*strength (per-channel amounts applied below).
         if (flags.noise) {
-          const freq = uNoiseFrequency;
-          const p3 = pos.mul(freq);
-          const seed = ex.w;
-          // Single shared simplex implementation (`tsl-noise.ts` `snoise3D`).
-          // Each axis is sampled at a decorrelated offset so the three
-          // components differ; the per-particle `noiseOffset` (startColorsExt.w)
-          // keeps the deterministic per-slot seed semantics.
-          const noiseSample = (
-            x: ShaderNodeObject<Node>,
-            y: ShaderNodeObject<Node>,
-            z: ShaderNodeObject<Node>,
-            offset: ShaderNodeObject<Node>
-          ) => snoise3D({ v: vec3(x.add(offset), y.add(offset), z.add(offset)) });
-
-          const nx = noiseSample(p3.x, p3.y, p3.z, seed);
-          const ny = noiseSample(
-            p3.y.add(float(31.41)),
-            p3.z.sub(float(17.53)),
-            p3.x.add(float(23.07)),
-            seed
-          );
-          const nz = noiseSample(
-            p3.z.sub(float(51.07)),
-            p3.x.add(float(13.11)),
-            p3.y.add(float(41.79)),
-            seed
-          );
-          const noiseVec = vec3(nx, ny, nz).mul(uNoisePower);
+          const np = lifePct
+            .add(ex.w)
+            .mul(float(10.0))
+            .mul(uNoiseStrength)
+            .mul(uNoiseFrequency);
+          let noiseX = float(0.0).toVar();
+          let noiseY = float(0.0).toVar();
+          let noiseZ = float(0.0).toVar();
+          let amp = 1.0;
+          let lac = 1.0;
+          for (let o = 0; o < noiseOctavesCount; o++) {
+            const t = np.mul(float(lac));
+            const sc = float(amp / noiseOctDiv[0]);
+            noiseX.assign(noiseX.add(snoise3D({ v: vec3(t, float(0), float(0)) }).mul(sc)));
+            noiseY.assign(noiseY.add(snoise3D({ v: vec3(t, t, float(0)) }).mul(sc)));
+            noiseZ.assign(noiseZ.add(snoise3D({ v: vec3(t, t, t) }).mul(sc)));
+            amp *= 0.5;
+            lac *= 2.0;
+          }
           If(uNoisePosAmount.greaterThan(float(0.001)), () => {
-            pos.assign(pos.add(noiseVec.mul(uNoisePosAmount)));
+            pos.assign(
+              pos.add(vec3(noiseX, noiseY, noiseZ).mul(uNoisePower).mul(uNoisePosAmount))
+            );
           });
           If(uNoiseRotAmount.greaterThan(float(0.001)), () => {
-            ps.z.assign(ps.z.add(nx.mul(uNoisePower).mul(uNoiseRotAmount)));
+            ps.z.assign(ps.z.add(noiseX.mul(uNoisePower).mul(uNoiseRotAmount)));
           });
           If(uNoiseSizeAmount.greaterThan(float(0.001)), () => {
-            ps.y.assign(ps.y.add(nx.mul(uNoisePower).mul(uNoiseSizeAmount)));
+            ps.y.assign(ps.y.add(noiseX.mul(uNoisePower).mul(uNoiseSizeAmount)));
           });
         }
 
         ps.x.assign(ps.x.add(uDeltaMs));
 
-        // ?? Trail history: adaptive ring sample (oracle minVertexDistance) ??
-        if (sTrail && trailDesc) {
+        // Trail history: adaptive ring sample (oracle minVertexDistance).
+        // Metadata = integer atomics (cursor,count); samples = plain f32.
+        if (sTrail && sTrailMeta && trailDesc) {
           const L = float(trailDesc.length);
           const tr = float(trailRows);
-          const metaIdx = i.mul(tr).add(tr.sub(float(1)));
-          const meta = atomicLoad(sTrail.element(metaIdx)).toVar();
-          const cursor = meta.x;
-          const count = meta.y;
-          const base = i.mul(tr);
-          const prev = atomicLoad(sTrail.element(base.add(cursor))).toVar();
+          const curIdx = i.mul(tuint(2));
+          const cursor = float(atomicLoad(sTrailMeta.element(curIdx))).toVar();
+          const count = float(
+            atomicLoad(sTrailMeta.element(curIdx.add(tuint(1))))
+          ).toVar();
+          const baseI = i.mul(float(trailRows));
+          const prev = sTrail.element(baseI.add(cursor)).toVar();
           const ddx = pos.x.sub(prev.x);
           const ddy = pos.y.sub(prev.y);
           const ddz = pos.z.sub(prev.z);
@@ -1044,42 +1289,37 @@ export function createModifierComputeUpdate(
             const newCursor = cursor
               .greaterThanEqual(L.sub(float(1)))
               .select(float(0), cursor.add(float(1)));
-            sTrail.element(base.add(newCursor)).assign(
+            sTrail.element(baseI.add(newCursor)).assign(
               vec4(pos.x, pos.y, pos.z, uNowMs)
             );
-            sTrail.element(metaIdx).assign(
-              vec4(
-                newCursor,
-                tslMin(count.add(float(1)), float(trailDesc.length)),
-                float(0),
-                float(0)
-              )
+            atomicStore(
+              sTrailMeta.element(curIdx),
+              newCursor.toUint()
+            );
+            atomicStore(
+              sTrailMeta.element(curIdx.add(tuint(1))),
+              tslMin(count.add(float(1)), float(trailDesc.length)).toUint()
             );
           });
         }
 
-        sPos.element(i).assign(vec4(pos, float(0.0)));
-        sVel.element(i).assign(vec4(vel, float(0.0)));
+        sPos.element(i).assign(vec4(pos, posW));
+        sVel.element(i).assign(vec4(vel, velW));
         sPS.element(i).assign(ps);
         sOIA.element(i).assign(oiaVec);
 
-        // ??? Death: push the uint slot id back onto the atomic allocator stack ???
+        // Death: ring allocator needs no push (the monotonically increasing
+        // birth counter owns recycling); mark the slot inactive + zero color.
         If(ps.x.greaterThan(startLife), () => {
           const inactive = sOIA.element(i).toVar();
           sOIA.element(i).assign(vec4(inactive.x, inactive.y, inactive.z, float(0.0)));
           sCol.element(i).assign(vec4(float(0.0), float(0.0), float(0.0), float(0.0)));
-          // Only pushed once: `atomicAdd` hands back the pre-increment count, and
-          // inactive slots are skipped by the w >= 0.5 branch, so the sim pass
-          // cannot double-push. Stack item index = 1 + oldCount.
-          const oldTop = atomicAdd(sAllocator.element(0), tuint(1)).toVar();
-          atomicStore(sAllocator.element(oldTop.add(tuint(1))), tuint(i));
 
           // DEATH events for the configured sub-emitter channels.
           for (const f of fifoNodes) {
             if (f.trigger === 1) {
               writeFifoEvent(
-                f.node,
-                f.capacity,
+                f,
                 pos.x,
                 pos.y,
                 pos.z,
@@ -1113,13 +1353,20 @@ export function createModifierComputeUpdate(
       noiseSizeAmount: uNoiseSizeAmount,
       emitCount: uEmitCount,
       seed: uSeed,
-      /** Ping-pong FIFO window base for this frame (0 or `windowSize`). */
+      /** Ping-pong FIFO window index for this frame (0 or 1). */
       fifoBase: uFifoBase,
     },
     shapeUniforms,
     buffers,
     allocatorCount,
     packedDataNode: sCD as ShaderNodeObject<Node>,
+    passNames: [
+      'emit',
+      'simulate',
+      ...(sTrail ? ['trail-history(sample)'] : []),
+      ...fifoNodes.map((f) => (f.trigger === 0 ? 'sub-birth(events)' : 'sub-death(events)')),
+    ],
+    trailMeta: buffers.trailMeta,
     // Emitter-pose uniforms, refreshed once per frame by the CPU (scalar only).
     emitterPose: {
       positionW: uEmitterPos,
@@ -1141,6 +1388,10 @@ export function createModifierComputeUpdate(
 export type SubEmitterInitPipeline = {
   /** Consumer node; dispatch it directly after the parent kernels. */
   initNode: unknown;
+  /** 1-invocation pass that zeroes the *other* ping-pong counter. */
+  counterClearNode: unknown;
+  passName: string;
+  counterClearPassName: string;
   /** Per-frame scalar uniforms. */
   uniforms: {
     seed: ShaderNodeObject<Node>;
@@ -1171,7 +1422,8 @@ export function createSubEmitterInitUpdate(
   parentMax: number,
   fifo: SubEmitterFifo,
   inheritVelocity: number,
-  particlesPerEvent: number
+  particlesPerEvent: number,
+  childVelValues?: VelocityAxisValues
 ): SubEmitterInitPipeline {
   const capacity = Math.max(1, fifo.capacity);
   const perEvent = Math.max(1, particlesPerEvent);
@@ -1217,7 +1469,8 @@ export function createSubEmitterInitUpdate(
   const cFrMin = uniform(float(childParams.startFrameMin));
   const cFrMax = uniform(float(childParams.startFrameMax));
 
-  // Child pool (bindings 1..7) + its own allocator (binding 8).
+  // Child pool (bindings 1..7) + its own ring allocator (binding 8) + the
+  // optional per-axis table.
   const cPos = storage(child.position, 'vec4', childMax);
   const cVel = storage(child.velocity, 'vec4', childMax);
   const cCol = storage(child.color, 'vec4', childMax);
@@ -1228,31 +1481,94 @@ export function createSubEmitterInitUpdate(
   const cAlloc = storage(
     child.allocator,
     'uint',
-    childMax + 1
+    Math.max(1, childMax + 1)
   ).toAtomic();
-
-  // Read-mostly parent pool + the event FIFO.
+  const cRingMod = float(childMax);
+  const cHasAxes = child.axes !== null;
+  const cAxes = cHasAxes
+    ? storage(child.axes as StorageBufferAttribute, 'vec4', childMax)
+    : null;
+  // Read-mostly parent pool — only bound when the child needs the live
+  // parent arrays (currently neither: positions/velocities travel inside
+  // the FIFO payload records).
+  const cOrbOn =
+    childVelValues &&
+    (childVelValues.orbital[0] !== undefined ||
+      childVelValues.orbital[1] !== undefined ||
+      childVelValues.orbital[2] !== undefined);
+  const cLinOn =
+    childVelValues &&
+    (childVelValues.linear[0] !== undefined ||
+      childVelValues.linear[1] !== undefined ||
+      childVelValues.linear[2] !== undefined);
+  const cCurve = cHasAxes && (cLinOn || cOrbOn);
+  // Read-mostly parent pool + the event FIFO (u32 counters + plain f32
+  // payload — no atomic floats).
   const pPos = storage(parent.position, 'vec4', parentMax);
   const pVel = storage(parent.velocity, 'vec4', parentMax);
-  const fifoNode = storage(
-    fifo.attribute,
-    'float',
-    (fifo.attribute.array as Float32Array).length
+  const fifoCounter = storage(
+    fifo.counter,
+    'uint',
+    Math.max(1, (fifo.counter.array as Uint32Array).length)
   ).toAtomic();
+  const fifoPayload = storage(
+    fifo.payload,
+    'float',
+    Math.max(1, (fifo.payload.array as Float32Array).length)
+  );
+  const cNoiseOffsetScale = float(
+    childParams.noiseUseRandomOffset ? 100.0 : 0.0
+  );
+
+  // Child velocity-over-lifetime axes (parity with the main emit kernel).
+  const cParseAxis = (
+    rawAxis:
+      | import('../types.js').Constant
+      | import('../types.js').RandomBetweenTwoConstants
+      | undefined,
+    ci: number
+  ): { min: number; max: number; isRange: boolean } => {
+    if (rawAxis && typeof rawAxis === 'object' && 'min' in rawAxis) {
+      const mn = Number(rawAxis.min) || 0;
+      const mx = Number(rawAxis.max) || 0;
+      return { min: mn, max: mx, isRange: mn !== mx };
+    }
+    const c = typeof rawAxis === 'number' ? rawAxis : 0;
+    return { min: c, max: c, isRange: false };
+  };
+  const cVv = childVelValues ?? {
+    linear: [undefined, undefined, undefined],
+    orbital: [undefined, undefined, undefined],
+  };
+  const cLin = [0, 1, 2].map((k) => cParseAxis(cVv.linear[k], -1));
+  const cOrb = [0, 1, 2].map((k) => cParseAxis(cVv.orbital[k], -1));
+  const cSample = (
+    a: { min: number; max: number; isRange: boolean },
+    r: ShaderNodeObject<Node>
+  ): ShaderNodeObject<Node> =>
+    a.isRange ? mix(float(a.min), float(a.max), r) : float(a.min);
+
+  // The *other* window's counter is cleared by a dedicated 1-invocation
+  // pass so the next frame's writers start from 0 (no race with this frame).
+  const otherIdx = uFifoBase.equal(float(0)).select(tuint(1), tuint(0));
+  const counterClearKernel = Fn(() => {
+    atomicStore(fifoCounter.element(otherIdx), tuint(0));
+  });
+  const counterClearNode = compute(counterClearKernel(), 1);
 
   const kernel = Fn(() => {
     const i = instanceIndex;
-    const base = uFifoBase.toVar();
-    const count = atomicLoad(fifoNode.element(base)).toVar();
+    const winBase = uFifoBase.mul(float(windowSize)).toVar();
+    const count = float(atomicLoad(fifoCounter.element(uFifoBase))).toVar();
 
     If(float(i).lessThan(count), () => {
-      const eb = base.add(float(1)).add(float(i).mul(float(SUB_EMITTER_EVENT_STRIDE)));
-      const eX = atomicLoad(fifoNode.element(eb)).toVar();
-      const eY = atomicLoad(fifoNode.element(eb.add(float(1)))).toVar();
-      const eZ = atomicLoad(fifoNode.element(eb.add(float(2)))).toVar();
-      const vX = atomicLoad(fifoNode.element(eb.add(float(3)))).toVar();
-      const vY = atomicLoad(fifoNode.element(eb.add(float(4)))).toVar();
-      const vZ = atomicLoad(fifoNode.element(eb.add(float(5)))).toVar();
+      const eb = winBase.add(float(i).mul(float(SUB_EMITTER_EVENT_STRIDE)));
+      const eX = fifoPayload.element(eb).toVar();
+      const eY = fifoPayload.element(eb.add(float(1))).toVar();
+      const eZ = fifoPayload.element(eb.add(float(2))).toVar();
+      const vX = fifoPayload.element(eb.add(float(3))).toVar();
+      const vY = fifoPayload.element(eb.add(float(4))).toVar();
+      const vZ = fifoPayload.element(eb.add(float(5))).toVar();
 
       // Oracle: startSpeed += |parentVelocity| * inheritVelocity
       const parentSpeed = sqrt(
@@ -1262,10 +1578,13 @@ export function createSubEmitterInitUpdate(
 
       // Unrolled per-event particle loop (particlesPerEvent is a host constant).
       for (let jj = 0; jj < perEvent; jj++) {
-        const oldTop = atomicSub(cAlloc.element(0), tuint(1)).toVar();
-        If(oldTop.greaterThan(tuint(0)), () => {
-          const slot = atomicLoad(cAlloc.element(oldTop)).toVar();
-          const rBase = i.mul(float(16 * perEvent)).add(float(jj * 16));
+        // Ring slot (race-safe, never underflows).
+        const birthNo = float(atomicAdd(cAlloc.element(0), tuint(1))).toVar();
+        const slot = birthNo
+          .sub(floor(birthNo.div(cRingMod)).mul(cRingMod))
+          .toVar();
+        {
+          const rBase = float(i).mul(float(16 * perEvent)).add(float(jj * 16));
           const rnd = (k: number) => rand(uSeed.add(rBase.add(float(k + 0.13))));
           const rNoise = rnd(0);
           const rA = rnd(1);
@@ -1334,31 +1653,51 @@ export function createSubEmitterInitUpdate(
           const ssize = mix(cSizeMin, cSizeMax, rSize);
           const srot = mix(cRotMin, cRotMax, rRot);
           const startFrame = floor(mix(cFrMin, cFrMax, rSheet)).toVar();
-          const rotSpeed = mix(cRotMin, cRotMax, rRotSpeed);
+          // Separate rotationOverLifetime speed (own min/max, oracle parity).
+          const rotSpeed = mix(
+            float(childParams.rotOverLifeMin),
+            float(childParams.rotOverLifeMax),
+            rRotSpeed
+          );
 
-          cPos.element(slot).assign(vec4(px, py, pz, float(0.0)));
-          cVel.element(slot).assign(vec4(rvx, rvy, rvz, float(0.0)));
+          cPos.element(slot).assign(
+            vec4(
+              px,
+              py,
+              pz,
+              cOrbOn ? cSample(cOrb[1], rC) : float(0.0)
+            )
+          );
+          cVel.element(slot).assign(
+            vec4(
+              rvx,
+              rvy,
+              rvz,
+              cOrbOn ? cSample(cOrb[2], rA) : float(0.0)
+            )
+          );
           cCol.element(slot).assign(vec4(clR, clG, clB, opac));
           cPS.element(slot).assign(
             vec4(float(0.0), ssize, srot, startFrame)
           );
           cSV.element(slot).assign(vec4(slife, ssize, opac, clR));
           cEx.element(slot).assign(
-            vec4(clG, clB, rotSpeed, rNoise.mul(float(100.0)))
+            vec4(clG, clB, rotSpeed, rNoise.mul(cNoiseOffsetScale))
           );
-          cOIA.element(slot).assign(vec4(px, py, pz, float(1.0)));
-        });
+          // Orbital pivot = rotated child shape offset (oracle parity).
+          cOIA.element(slot).assign(vec4(rx, ry, rz, float(1.0)));
+          if (cHasAxes && cAxes) {
+            cAxes.element(slot).assign(
+              vec4(
+                cSample(cLin[0], rA),
+                cSample(cLin[1], rB),
+                cSample(cLin[2], rC),
+                cOrbOn ? cSample(cOrb[0], rB) : float(0.0)
+              )
+            );
+          }
+        }
       }
-
-      // The first invocation clears the *other* ping-pong window counter, so
-      // the next frame's writers start from 0 without a separate dispatch.
-      If(i.equal(float(0)), () => {
-        const otherBase = uFifoBase.equal(float(0)).select(
-          float(windowSize),
-          float(0)
-        );
-        atomicStore(fifoNode.element(otherBase), float(0));
-      });
     });
   });
 
@@ -1366,6 +1705,9 @@ export function createSubEmitterInitUpdate(
 
   return {
     initNode,
+    counterClearNode,
+    passName: fifo.trigger === 0 ? 'sub-birth-init' : 'sub-death-init',
+    counterClearPassName: 'fifo-counter-clear',
     uniforms: {
       seed: uSeed,
       fifoBase: uFifoBase,
@@ -1426,6 +1768,11 @@ export function createTrailRibbonUpdate(
   const aUVA = storage(desc.uvColorA, 'vec4', vertexCount * 2);
   const aColB = storage(desc.colorB, 'vec4', vertexCount * 2);
   const hist = storage(desc.history, 'vec4', rows * desc.maxParticles);
+  const sMeta = storage(
+    desc.meta,
+    'uint',
+    Math.max(1, (desc.meta.array as Uint32Array).length)
+  ).toAtomic();
   const pColor = storage(desc.particleColor, 'vec4', desc.maxParticles);
   const sCD = buffer(curveData, 'float', curveData.length);
   const lookupCurve = createCurveLookup(sCD);
@@ -1441,18 +1788,21 @@ export function createTrailRibbonUpdate(
 
     If(i.lessThan(float(desc.maxParticles)), () => {
       const base = i.mul(rowF);
-      const meta = atomicLoad(hist.element(base.add(lf))).toVar();
-      const cursor = meta.x;
-      const count = meta.y;
+      const cursor = float(
+        atomicLoad(sMeta.element(i.mul(float(2))))
+      ).toVar();
+      const count = float(
+        atomicLoad(sMeta.element(i.mul(float(2)).add(float(1))))
+      ).toVar();
 
       If(count.greaterThan(float(0.5)), () => {
         // Ring sample of slot s: (cursor - s) mod L, oldest -> newest order.
         const raw = cursor.sub(s).add(lf);
         const si = raw.sub(floor(raw.div(lf)).mul(lf));
-        const sample = atomicLoad(hist.element(base.add(si))).toVar();
+        const sample = hist.element(base.add(si)).toVar();
         const nextRaw = si.add(float(1));
         const ni = nextRaw.sub(floor(nextRaw.div(lf)).mul(lf));
-        const nextSample = atomicLoad(hist.element(base.add(ni))).toVar();
+        const nextSample = hist.element(base.add(ni)).toVar();
 
         // Along-trail parameter: head (newest) = 0, tail = 1.
         const t = count
@@ -1474,7 +1824,7 @@ export function createTrailRibbonUpdate(
 
         // Particle colour (RGBA, already modifier-shaped) modulated by the
         // along-trail colour curves; the current particle is slot `i`.
-        const pcol = atomicLoad(pColor.element(i)).toVar();
+        const pcol = pColor.element(i).toVar();
 
         // Age expiry (trail.maxTime) and unused-slot masking.
         const inRange = s.lessThan(count);

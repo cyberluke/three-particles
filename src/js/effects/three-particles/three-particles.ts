@@ -884,38 +884,36 @@ export const createParticleSystem = (
       : null;
   const trailDesc: {
     attribute: StorageBufferAttribute;
+    meta: StorageBufferAttribute | null;
     length: number;
     minVertexDistance: number;
     maxTime: number;
   } | null = trailHistoryAttribute
     ? {
         attribute: trailHistoryAttribute,
+        meta: null,
         length: trailLength,
         minVertexDistance: trailConfig?.minVertexDistance ?? 0,
         maxTime: (trailConfig?.maxTime ?? 0) * 1000,
       }
     : null;
 
-  // ?? 1c. Sub-emitter event FIFOs (parent kernels append BIRTH / DEATH) ??
-  const fifoWindow = (capacity: number): number =>
-    1 + 6 * Math.max(1, capacity);
+  // ?? 1c. Sub-emitter event FIFOs (integer counters + plain f32 payloads) ??
   const subEmitterConfigs = normalizedConfig.subEmitters ?? [];
   type FifoEntry = {
-    attribute: StorageBufferAttribute;
+    counter: StorageBufferAttribute;
+    payload: StorageBufferAttribute;
     trigger: 0 | 1;
     capacity: number;
     windowSize: number;
   };
   const fifos: FifoEntry[] = subEmitterConfigs.map((se) => {
     const capacity = Math.max(1, Math.round(se.maxInstances ?? 32));
-    return {
-      attribute: factory.createSubEmitterFifoAttribute!(capacity),
-      trigger: (se.trigger === 'BIRTH' ? 0 : 1) as 0 | 1,
-      capacity,
-      windowSize: fifoWindow(capacity),
-    };
+    const f = factory.createSubEmitterFifoAttribute!(capacity) as FifoEntry;
+    f.trigger = (se.trigger === 'BIRTH' ? 0 : 1) as 0 | 1;
+    return f;
   });
-  // One shared ping-pong window size per system (single `fifoBase` uniform).
+  // One shared ping-pong window size per system (single `fifoBase` index).
   const fifoBaseStride = fifos.reduce((m, f) => Math.max(m, f.windowSize), 0);
 
   const forceFields = normalizeForceFields(normalizedConfig.forceFields);
@@ -957,6 +955,7 @@ export const createParticleSystem = (
           4
         ),
         history: trailDesc.attribute,
+        meta: trailDesc.meta as StorageBufferAttribute,
         particleColor: pipeline.buffers.color as StorageBufferAttribute,
         curveFns: {
           width: trailConfig?.widthOverTrail
@@ -988,6 +987,9 @@ export const createParticleSystem = (
     pipeline: NonNullable<ParticleSystemInstance['computePipeline']>;
     init: {
       initNode: unknown;
+      counterClearNode: unknown;
+      passName: string;
+      counterClearPassName: string;
       uniforms: Record<string, { value: unknown }>;
     };
     instanced: boolean;
@@ -1044,6 +1046,7 @@ export const createParticleSystem = (
       childCfg,
       _particleSystemId + 1 + fi
     );
+    const childVel = childCfg.velocityOverLifetime;
     const init = factory.createSubEmitterInitUpdate!(
       childPipeline.buffers,
       childMax,
@@ -1052,8 +1055,18 @@ export const createParticleSystem = (
       maxParticles,
       fifo,
       se.inheritVelocity ?? 0,
-      perEvent
-    ) as { initNode: unknown; uniforms: Record<string, { value: unknown }> };
+      perEvent,
+      {
+        linear: [childVel?.linear?.x as never, childVel?.linear?.y as never, childVel?.linear?.z as never],
+        orbital: [childVel?.orbital?.x as never, childVel?.orbital?.y as never, childVel?.orbital?.z as never],
+      }
+    ) as {
+      initNode: unknown;
+      counterClearNode: unknown;
+      passName: string;
+      counterClearPassName: string;
+      uniforms: Record<string, { value: unknown }>;
+    };
 
     // Child render object is built after `rendererConfig` exists (below).
     subEntries.push({
@@ -1069,9 +1082,8 @@ export const createParticleSystem = (
         ? {
             isActive: true,
             strength: childCfg.noise.strength,
-            noisePower:
-              (0.15 * childCfg.noise.strength) /
-              Math.max(1e-6, 2 - Math.pow(2, -childCfg.noise.octaves)),
+             noisePower:
+               0.15 * childCfg.noise.strength,
             frequency: childCfg.noise.frequency,
             positionAmount: childCfg.noise.positionAmount,
             rotationAmount: childCfg.noise.rotationAmount,
@@ -1304,6 +1316,60 @@ export const createParticleSystem = (
         );
       }
     }
+    // Attribute identity: the renderer attributes must point at the SAME
+    // GPU storage buffers the compute kernels own (no mirror copies).
+    const contractIdentity: Array<[string, unknown]> = useInstancing
+      ? [
+          ['instanceOffset', buffers.position],
+          ['instanceColor', buffers.color],
+          ['instanceParticleState', buffers.particleState],
+          ['instanceStartValues', buffers.startValues],
+        ]
+      : [
+          ['position', buffers.position],
+          ['color', buffers.color],
+          ['particleState', buffers.particleState],
+          ['startValues', buffers.startValues],
+        ];
+    for (const [name, buf] of contractIdentity) {
+      if (geometry.getAttribute(name) !== buf) {
+        throw new Error(
+          `three-particles: attribute "${name}" is not the compute-owned storage buffer.`
+        );
+      }
+    }
+    const kind = (pipeline.shapeUniforms as Record<string, { value: number }>)
+      .shapeKind.value;
+    if (!(kind >= 0 && kind <= 4)) {
+      throw new Error(
+        `three-particles: gpuShapeKind ${kind} outside 0..4 (SPHERE..BOX).`
+      );
+    }
+    if (!(maxParticles > 0)) {
+      throw new Error('three-particles: maxParticles must be > 0.');
+    }
+    if (pipeline.allocatorCount !== maxParticles + 1) {
+      throw new Error(
+        'three-particles: allocator capacity must equal maxParticles + 1.'
+      );
+    }
+    if (trailDesc && trailDesc.meta !== pipeline.trailMeta) {
+      throw new Error('three-particles: trail ring meta buffer mismatch.');
+    }
+    for (const f of fifos) {
+      const n = (f.counter.array as Uint32Array).length;
+      if (n !== 2) {
+        throw new Error(
+          'three-particles: sub-emitter FIFO must expose exactly 2 ping-pong counter slots.'
+        );
+      }
+      const p = (f.payload.array as Float32Array).length;
+      if (p !== 2 * 6 * f.capacity) {
+        throw new Error(
+          'three-particles: sub-emitter FIFO payload length must be 2 * 6 * capacity.'
+        );
+      }
+    }
   }
 
   // ?? Emitter transform ??
@@ -1372,7 +1438,9 @@ export const createParticleSystem = (
     noise: {
       isActive: normalizedConfig.noise.isActive,
       strength: normalizedConfig.noise.strength,
-      noisePower: 0.15 * normalizedConfig.noise.strength / Math.max(1e-6, 2 - Math.pow(2, -normalizedConfig.noise.octaves)),
+      // Oracle `0.15 * strength`; the single fbmMax division happens when the
+      // uniform is written below (the FBM octave sum also divides by it).
+      noisePower: 0.15 * normalizedConfig.noise.strength,
       frequency: normalizedConfig.noise.frequency,
       positionAmount: normalizedConfig.noise.positionAmount,
       rotationAmount: normalizedConfig.noise.rotationAmount,
@@ -1445,7 +1513,21 @@ export const createParticleSystem = (
       ...(ribbonPipeline ? [ribbonPipeline.ribbonNode] : []),
       ...subEntries.flatMap((e) => [
         e.init.initNode,
+        ...(e.init.counterClearNode != null
+          ? [e.init.counterClearNode]
+          : []),
         ...(((e.pipeline.computeNodes ?? []) as unknown[])),
+      ]),
+    ],
+    passNames: [
+      'emit',
+      'simulate',
+      ...(ribbonPipeline ? ['trail-ribbon'] : []),
+      ...subEntries.flatMap((e, ei) => [
+        `sub${ei}:${e.init.passName ?? 'init'}`,
+        `sub${ei}:${e.init.counterClearPassName ?? 'counter-clear'}`,
+        `sub${ei}:child-emit`,
+        `sub${ei}:child-sim`,
       ]),
     ],
     fifoBaseStride,
@@ -1524,6 +1606,89 @@ export const createParticleSystem = (
   }
   createdParticleSystems.push(props);
 
+  // ?? One-shot construction diagnostics (visible without DevTools commands) ??
+  // `[PS:create]`, `[PS:config]` and `[PS:pipeline]` are logged exactly once
+  // per system; the milestone probes themselves live in the examples harness.
+  if (typeof console !== 'undefined' && console.log) {
+    const logCfg = normalizedConfig as unknown as Record<string, any>;
+    const shpU = pipeline.shapeUniforms as unknown as Record<
+      string,
+      { value: number } | undefined
+    >;
+    const sv = logCfg.startValues as Record<string, unknown> | undefined;
+    const u = pipeline.uniforms as unknown as Record<
+      string,
+      { value: number } | undefined
+    >;
+    console.log(`[PS:create] system #${generalData.particleSystemId}`, {
+      rendererType: rrType,
+      simulationSpace: normalizedConfig.simulationSpace,
+      maxParticles,
+      useInstancing,
+    });
+    console.log(`[PS:config] system #${generalData.particleSystemId}`, {
+      shape: {
+        publicKind: logCfg.shape?.shape ?? null,
+        gpuShapeKind: shpU.shapeKind?.value ?? 0,
+        radius: shpU.radius?.value ?? logCfg.shape?.radius ?? null,
+        radiusThickness: shpU.radiusThickness?.value ?? null,
+        arcDeg: shpU.arcDeg?.value ?? null,
+        coneAngleDeg: shpU.coneAngleDeg?.value ?? null,
+        rectScale: [shpU.rectScaleX?.value, shpU.rectScaleY?.value],
+        rectRotationDeg: [shpU.rectRotXDeg?.value, shpU.rectRotYDeg?.value],
+        boxScale: [shpU.boxSX?.value, shpU.boxSY?.value, shpU.boxSZ?.value],
+        boxEmitFrom: shpU.boxEmitFrom?.value ?? null,
+      },
+      transform: {
+        position: xform?.position ?? null,
+        rotation: xform?.rotation ?? null,
+        scale: xform?.scale ?? null,
+      },
+      emission: {
+        rateOverTime: logCfg.emission?.rateOverTime ?? 0,
+        rateOverDistance: logCfg.emission?.rateOverDistance ?? 0,
+        bursts: logCfg.emission?.bursts?.length ?? 0,
+      },
+      startValues: {
+        lifetime: sv?.startLifetime ?? null,
+        speed: sv?.startSpeed ?? null,
+        size: sv?.startSize ?? null,
+        rotation: sv?.startRotation ?? null,
+        color: sv?.startColor ?? null,
+        opacity: sv?.startOpacity ?? null,
+      },
+      textureId:
+        (config as { textureId?: string }).textureId ??
+        (config as { _editorData?: { textureId?: string } })._editorData
+          ?.textureId ??
+        null,
+      textureResolved: !!normalizedConfig.map,
+      forceFieldCount: forceFields.length,
+      collisionPlaneCount: collisionPlanes.length,
+      subEmitterCount: (normalizedConfig.subEmitters ?? []).length,
+      trailEnabled: !!trailDesc,
+      modifiers: {
+        linearVelocity: !!(pipeline as unknown as { buffers: { axes?: unknown } })
+          .buffers.axes ||
+          u.linearVelX !== undefined,
+        orbitalVelocity:
+          !(pipeline as unknown as { buffers: { axes?: unknown } })
+            .buffers.axes === false || !!logCfg.velocityOverLifetime?.orbital,
+        sizeOverLifetime: !!normalizedConfig.sizeOverLifetime?.isActive,
+        opacityOverLifetime: !!normalizedConfig.opacityOverLifetime?.isActive,
+        colorOverLifetime: !!normalizedConfig.colorOverLifetime?.isActive,
+        rotationOverLifetime: !!normalizedConfig.rotationOverLifetime?.isActive,
+        noise: !!normalizedConfig.noise?.isActive,
+      },
+    });
+    console.log(
+      `[PS:pipeline] system #${generalData.particleSystemId}: ` +
+        `${((props.passNames ?? []) as string[]).join(' -> ') || 'emit -> simulate'}` +
+        ` | storageBindings=${8 + (pipeline.buffers.axes ? 1 : 0) + (trailDesc ? 2 : 0) + fifos.length * 2}` +
+        ` | packedFloats=${(pipeline.buffers.packedData as unknown as { length?: number })?.length ?? 0}`
+    );
+  }
+
   // Emission count scratch so bursts + rate-over-distance don't allocate
   // closures / objects per frame.
   let lastSeed = Math.random();
@@ -1576,8 +1741,65 @@ export const createParticleSystem = (
       buffers: pipeline.buffers as unknown as Record<string, THREE.BufferAttribute>,
       emitNode: pipeline.computeNodes![0],
       simNode: pipeline.computeNodes![1],
+      passNames: (pipeline.passNames ?? ['emit', 'simulate']) as string[],
+      allPassNames: (props.passNames ?? []) as string[],
+      storageBindingCount:
+        8 + (pipeline.buffers.axes ? 1 : 0) + (trailDesc ? 2 : 0) + fifos.length * 2,
       lastEmitCount: () =>
         (pipeline.uniforms.emitCount as { value: number }).value as number,
+      /** Decode summary for the `[PS:config]` / `[PS:pipeline]` logs. */
+      snapshot: () => {
+        const shp = normalizedConfig.shape as ShapeConfig & {
+          sphere?: { radius?: number; radiusThickness?: number; arc?: number };
+          cone?: { radius?: number; radiusThickness?: number; arc?: number; angle?: number };
+          circle?: { radius?: number; radiusThickness?: number; arc?: number };
+          rectangle?: { scale?: { x?: number; y?: number }; rotation?: { x?: number; y?: number } };
+          box?: { scale?: unknown; emitFrom?: string };
+        };
+        const branch =
+          shp.shape === 'CONE'
+            ? shp.cone
+            : shp.shape === 'CIRCLE'
+              ? shp.circle
+              : shp.sphere;
+        const tex = normalizedConfig.map as unknown as
+          | { image?: { width?: number; height?: number } | null }
+          | undefined;
+        return {
+          systemId: generalData.particleSystemId,
+          rendererType: rrType,
+          simulationSpace: normalizedConfig.simulationSpace,
+          maxParticles,
+          shape: {
+            publicShape: shp.shape,
+            gpuShapeKind:
+              (pipeline.shapeUniforms as Record<string, { value: number }>)
+                ?.shapeKind?.value ?? 0,
+            radius: branch?.radius ?? null,
+            radiusThickness: branch?.radiusThickness ?? null,
+            arcDeg: branch?.arc ?? null,
+            coneAngleDeg: shp.shape === 'CONE' ? shp.cone?.angle ?? null : null,
+            rectScale: shp.rectangle?.scale ?? null,
+            rectRotation: shp.rectangle?.rotation ?? null,
+            boxScale: shp.box?.scale ?? null,
+            boxEmitFrom: shp.box?.emitFrom ?? null,
+          },
+          textureId:
+            (config as { textureId?: string }).textureId ??
+            (config as { _editorData?: { textureId?: string } })._editorData
+              ?.textureId ??
+            null,
+          textureResolved: !!normalizedConfig.map,
+          textureDimensions: tex?.image
+            ? [tex.image.width ?? 0, tex.image.height ?? 0]
+            : null,
+          forceFieldCount: (normalizedConfig.forceFields ?? []).length,
+          collisionPlaneCount: (normalizedConfig.collisionPlanes ?? []).length,
+          subEmitterCount: (normalizedConfig.subEmitters ?? []).length,
+          trailEnabled: !!(normalizedConfig.renderer as { trail?: unknown })
+            .trail,
+        };
+      },
     },
   } as ParticleSystem;
 };
@@ -1614,16 +1836,43 @@ const updateParticleSystemInstance = (
   generalData.normalizedLifetimePercentage = Math.max(Math.min((iterationTimeMs / 1000) / dur, 1), 0);
   (elapsedUniform as { value: number }).value = elapsed;
 
-  // Gravity in the right reference frame.
+  // Emitter pose + gravity reference frame (oracle parity, scalar-only work).
+  // WORLD: decompose the parent-composed source matrix; buffer is world space.
+  // LOCAL: query matrixWorld; gravity is rotated by the inverse world
+  // rotation and divided PER AXIS by the world scale.
   const gv = generalData.gravityVelocity;
   gv.set(0, normalizedConfig.gravity, 0);
-  if (normalizedConfig.simulationSpace === SimulationSpace.LOCAL && particleSystem.parent) {
-    // Convert world gravity into the emitter's local space.
-    generalData.worldQuaternion.copy(particleSystem.getWorldQuaternion(_tmpQ1));
-    gv.applyQuaternion(_tmpQ1.invert());
-    const scY = particleSystem.getWorldScale(_tmpV1).y || 1;
-    gv.divideScalar(scY);
+  if (normalizedConfig.simulationSpace === SimulationSpace.WORLD) {
+    particleSystem.updateMatrix();
+    _tmpM1.copy(particleSystem.matrix);
+    if (particleSystem.parent) {
+      particleSystem.parent.updateMatrixWorld();
+      _tmpM1.premultiply(particleSystem.parent.matrixWorld);
+    }
+    _tmpM1.decompose(
+      generalData.currentWorldPosition,
+      generalData.worldQuaternion,
+      generalData.worldScale
+    );
+  } else {
+    particleSystem.updateMatrixWorld();
+    particleSystem.getWorldPosition(generalData.currentWorldPosition);
+    particleSystem.getWorldQuaternion(generalData.worldQuaternion);
+    particleSystem.getWorldScale(generalData.worldScale);
+    _tmpQ1.copy(generalData.worldQuaternion).invert();
+    gv.applyQuaternion(_tmpQ1);
+    gv.x /= generalData.worldScale.x || 1;
+    gv.y /= generalData.worldScale.y || 1;
+    gv.z /= generalData.worldScale.z || 1;
   }
+
+  // Rate-over-distance travel (same world-position delta the oracle uses).
+  if (generalData.lastWorldPosition.x !== -99999) {
+    _lastWorldPositionSnapshot.copy(generalData.lastWorldPosition);
+    generalData.distanceFromLastEmitByDistance +=
+      _lastWorldPositionSnapshot.distanceTo(generalData.currentWorldPosition);
+  }
+  generalData.lastWorldPosition.copy(generalData.currentWorldPosition);
 
   // Emission scalar count (rate over time + rate over distance + bursts).
   let emitCount = 0;
@@ -1738,9 +1987,11 @@ const updateParticleSystemInstance = (
     }
   }
 
-  // ?? FIFO ping-pong window + trail clock ??
+  // ?? FIFO ping-pong window index + trail clock ??
+  // The integer counter attribute has exactly two slots (window 0/1); the
+  // payload base is `index * channelWindowSize` computed inside the kernels.
   const parity = (props.frameParity ?? 0) % 2;
-  const fifoBase = parity * fifoBaseStride;
+  const fifoBase = parity;
   if (u.fifoBase) (u.fifoBase as { value: number }).value = fifoBase;
   if (u.nowMs) (u.nowMs as { value: number }).value = now;
   if (ribbonUniforms?.nowMs) ribbonUniforms.nowMs.value = now;

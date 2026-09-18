@@ -188,7 +188,7 @@ export function encodeShapeEmitParams(
         : shp.shape === 'CIRCLE'
           ? num(circ?.arc, 360)
           : num(sph?.arc, 360),
-    coneAngleDeg: num(cone?.angle, 25),
+    coneAngleDeg: num(cone?.angle, 90),
     rectangleRotXDeg: num(rect?.rotation?.x, 0),
     rectangleRotYDeg: num(rect?.rotation?.y, 0),
     rectangleScaleX: num(rect?.scale?.x, 1),
@@ -215,6 +215,21 @@ export function encodeShapeEmitParams(
     colorBMax: cMax.b,
     startFrameMin: sfPair[0],
     startFrameMax: sfPair[1],
+    // Separate rotationOverLifetime range (never the startRotation pair).
+    rotOverLifeMin: (() => {
+      const rol = normalizedConfig.rotationOverLifetime as unknown as
+        | { min?: number; max?: number }
+        | undefined;
+      return typeof rol?.min === 'number' && Number.isFinite(rol.min) ? rol.min : 0;
+    })(),
+    rotOverLifeMax: (() => {
+      const rol = normalizedConfig.rotationOverLifetime as unknown as
+        | { min?: number; max?: number }
+        | undefined;
+      return typeof rol?.max === 'number' && Number.isFinite(rol.max) ? rol.max : 0;
+    })(),
+    noiseOctaves: num(normalizedConfig.noise?.octaves, 1),
+    noiseUseRandomOffset: !!normalizedConfig.noise?.useRandomOffset,
     rotationCurveActive: normalizedConfig.rotationOverLifetime.isActive,
     rotationalXCurve:
       (bakedCurves as unknown as Record<string, number>).orbitalVelX ?? -1,
@@ -279,14 +294,38 @@ export function createComputePipeline(
     particleSystemId
   );
 
+  // Raw axis values (constants / random ranges / curves) for the per-particle
+  // axis storage written by the emission kernel (oracle-parity randomness).
+  const velocityValues = {
+    linear: [v.linear.x as never, v.linear.y as never, v.linear.z as never],
+    orbital: [
+      v.orbital.x as never,
+      v.orbital.y as never,
+      v.orbital.z as never,
+    ],
+  } as const;
+  const hasVelocityAxes = flags.linearVelocity || flags.orbitalVelocity;
+
+  // Trail ring integer metadata (atomic<u32>): two cursor/count words.
+  if (trailDesc && !trailDesc.meta) {
+    trailDesc.meta = new StorageBufferAttribute(
+      new Uint32Array(Math.max(1, maxParticles) * 2),
+      1
+    );
+  }
 
   const built = createModifierStorageBuffers(
     maxParticles,
     instanced,
     bakedCurves.data,
     flags.forceFields,
-    flags.collisionPlanes
+    flags.collisionPlanes,
+    hasVelocityAxes,
+    trailDesc ? trailDesc.length : 0
   );
+  if (trailDesc && built.buffers.trailMeta) {
+    trailDesc.meta = built.buffers.trailMeta;
+  }
 
   return createModifierComputeUpdate(
     built.buffers,
@@ -297,7 +336,8 @@ export function createComputePipeline(
     forceFieldCount,
     collisionPlaneCount,
     subFifos ?? [],
-    trailDesc
+    trailDesc,
+    velocityValues
   );
 }
 

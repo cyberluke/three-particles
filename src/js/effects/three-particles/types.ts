@@ -1913,6 +1913,12 @@ export type ParticleSystemInstance = {
     forceFieldInfo: { offset: number; countUniform: unknown } | null;
     /** Optional for backwards compat with the older single-forceFieldInfo shape. */
     collisionPlaneInfo?: { offset: number; countUniform: unknown } | null;
+    /** Shape/start-value scalar uniforms for construction-time diagnostics. */
+    shapeUniforms?: Record<string, unknown>;
+    /** Semantic compute pass names in dispatch order. */
+    passNames?: string[];
+    /** Trail ring integer metadata attribute (null when there is no trail). */
+    trailMeta?: unknown;
   };
   /** Whether this system uses GPU compute for simulation. */
   useGPUCompute?: boolean;
@@ -1933,11 +1939,19 @@ export type ParticleSystemInstance = {
    * `[emit, sim, ribbon?, (init, childEmit, childSim)?]`.
    */
   allComputeNodes?: unknown[];
+  /** Semantic pass names in dispatch order (for `[PS:pipeline]` logging). */
+  passNames?: string[];
   /** Per-system sub-emitter child kernels + their own scalar state. */
   subEntries?: {
     fifo: { capacity: number; windowSize: number };
     pipeline: Record<string, any> | undefined;
-    init: { initNode: unknown; uniforms: Record<string, { value: unknown }> };
+    init: {
+      initNode: unknown;
+      counterClearNode?: unknown;
+      passName?: string;
+      counterClearPassName?: string;
+      uniforms: Record<string, { value: unknown }>;
+    };
     gravity: number;
     noise: GeneralData['noise'] | null;
     rate: number;
@@ -2000,7 +2014,11 @@ export type ParticleSystem = {
     buffers: Record<string, unknown>;
     emitNode: unknown;
     simNode: unknown;
+    passNames?: string[];
+    allPassNames?: string[];
+    storageBindingCount?: number;
     lastEmitCount: () => number;
+    snapshot?: () => Record<string, unknown>;
   };
   /** Ordered WebGPU compute nodes, dispatched in order. `renderer.compute(...)` accepts a single `Node` or an array; the GPU-only engine returns the [emitNode, simNode] pair. */
   computeNode: unknown | unknown[] | null;

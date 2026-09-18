@@ -13,7 +13,6 @@
  */
 
 import {
-  calculateValue,
   getCurveFunctionFromConfig,
   isLifeTimeCurve,
 } from '../three-particles-utils.js';
@@ -143,8 +142,10 @@ function bakeCurveIntoBuffer(
 }
 
 /**
- * Bakes a velocity axis value (constant, random, or curve) into the buffer.
- * Constants and random ranges are baked as flat curves using their mid-point.
+ * Bakes a velocity axis value into the buffer. Only lifetime curves take a
+ * table slot; constants and random ranges are NOT baked flat — they are
+ * stored PER PARTICLE by the emission kernel (oracle parity: a flat
+ * mid-point destroyed the per-particle random variance).
  */
 function bakeVelocityAxisIntoBuffer(
   buffer: Float32Array,
@@ -158,12 +159,7 @@ function bakeVelocityAxisIntoBuffer(
   if (isLifeTimeCurve(value)) {
     return bakeCurveIntoBuffer(buffer, writeOffset, particleSystemId, value);
   }
-  // Constant or RandomBetweenTwoConstants — bake as flat curve using mid-point
-  const constantValue = calculateValue(particleSystemId, value, 0.5);
-  for (let i = 0; i < CURVE_RESOLUTION; i++) {
-    buffer[writeOffset + i] = constantValue;
-  }
-  return writeOffset + CURVE_RESOLUTION;
+  return writeOffset;
 }
 
 // ─── Particle System Curve Baking ─────────────────────────────────────────────
@@ -217,34 +213,17 @@ export function bakeParticleSystemCurves(
   const hasOpacityOverLifetime = opacityOverLifetime.isActive;
   const hasColorOverLifetime = colorOverLifetime.isActive;
 
-  // For velocity axes, bake BOTH curves AND constant/random values.
-  // Constants/randoms are baked as flat curves using calculateValue (mid-point).
+  // Velocity axes: ONLY lifetime curves get flat-table slots now; constant
+  // and random-range axes are per-particle state written at emission.
   const isVelActive = velocityOverLifetime.isActive;
-  const hasLinearVelX =
-    isVelActive &&
-    velocityOverLifetime.linear.x !== undefined &&
-    velocityOverLifetime.linear.x !== 0;
-  const hasLinearVelY =
-    isVelActive &&
-    velocityOverLifetime.linear.y !== undefined &&
-    velocityOverLifetime.linear.y !== 0;
-  const hasLinearVelZ =
-    isVelActive &&
-    velocityOverLifetime.linear.z !== undefined &&
-    velocityOverLifetime.linear.z !== 0;
-
-  const hasOrbitalVelX =
-    isVelActive &&
-    velocityOverLifetime.orbital.x !== undefined &&
-    velocityOverLifetime.orbital.x !== 0;
-  const hasOrbitalVelY =
-    isVelActive &&
-    velocityOverLifetime.orbital.y !== undefined &&
-    velocityOverLifetime.orbital.y !== 0;
-  const hasOrbitalVelZ =
-    isVelActive &&
-    velocityOverLifetime.orbital.z !== undefined &&
-    velocityOverLifetime.orbital.z !== 0;
+  const isCurveAxis = (v: unknown): boolean =>
+    isVelActive && v !== undefined && isLifeTimeCurve(v as never);
+  const hasLinearVelX = isCurveAxis(velocityOverLifetime.linear.x);
+  const hasLinearVelY = isCurveAxis(velocityOverLifetime.linear.y);
+  const hasLinearVelZ = isCurveAxis(velocityOverLifetime.linear.z);
+  const hasOrbitalVelX = isCurveAxis(velocityOverLifetime.orbital.x);
+  const hasOrbitalVelY = isCurveAxis(velocityOverLifetime.orbital.y);
+  const hasOrbitalVelZ = isCurveAxis(velocityOverLifetime.orbital.z);
 
   if (hasSizeOverLifetime) curveCount++;
   if (hasOpacityOverLifetime) curveCount++;
