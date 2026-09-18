@@ -739,12 +739,12 @@ const _uploadFFAndCollisionTails = (
   const info = pipeline.forceFieldInfo;
   const cinfo = pipeline.collisionPlaneInfo;
   if (!info && !cinfo) return;
-  const cd = pipeline.buffers.curveData as {
-    array: Float32Array;
-    addUpdateRange(o: number, l: number): void;
+  // Packed read-mostly f32 table (uniform buffer, non-atomic).
+  const arr = pipeline.buffers.packedData as Float32Array;
+  const cd = pipeline.packedDataNode as {
+    addUpdateRange(start: number, count: number): void;
     needsUpdate: boolean;
   };
-  const arr = cd.array;
   if (info && config.forceFields.length > 0) {
     const encoded = _tslMaterialFactory!.encodeForceFieldsForGPU!(scratch.src, generalData.particleSystemId, generalData.normalizedLifetimePercentage);
     const off = info.offset;
@@ -1174,6 +1174,9 @@ const updateParticleSystemInstance = (
   (u.deltaMs as { value: number }).value = delta * 1000;
   ((u.gravityVelocity as { value: THREE.Vector3 }).value).copy(gv);
   (u.emitCount as { value: number }).value = emitCount;
+  // Dynamic emit dispatch: the numeric `ComputeNode.count` is the real dispatch
+  // size and also feeds the generated `instanceIndex >= count` bound guard.
+  (pipeline.emitNode as unknown as { count: number }).count = emitCount;
   (u.seed as { value: number }).value = now * 0.001;
   const n = generalData.noise;
   if (u.noiseStrength) (u.noiseStrength as { value: number }).value = n.strength;
@@ -1183,28 +1186,29 @@ const updateParticleSystemInstance = (
   if (u.noiseRotationAmount) (u.noiseRotationAmount as { value: number }).value = n.rotationAmount;
   if (u.noiseSizeAmount) (u.noiseSizeAmount as { value: number }).value = n.sizeAmount;
 
-  // Force-field / collision-plane tails in curveData.
+  // Force-field / collision-plane records in the packed f32 uniform table.
   const ffInfo = pipeline.forceFieldInfo as { offset: number; countUniform: { value: number } } | null;
   const cInfo = (pipeline.collisionPlaneInfo ?? null) as { offset: number; countUniform: { value: number } } | null;
   if ((ffInfo || cInfo) && _tslMaterialFactory) {
-    const cd = pipeline.buffers.curveData as {
-      array: Float32Array;
-      addUpdateRange(o: number, l: number): void;
+    // Read-mostly uniform buffer (non-atomic f32): the CPU owns these record
+    // regions, the kernels only load them.
+    const cdArr = pipeline.buffers.packedData as Float32Array;
+    const cdNode = pipeline.packedDataNode as unknown as {
+      addUpdateRange(start: number, count: number): void;
       needsUpdate: boolean;
     };
-    const cdArr = cd.array;
     if (ffInfo && normalizedForceFields.length > 0) {
       const encFF = _tslMaterialFactory.encodeForceFieldsForGPU!(normalizedForceFields, generalData.particleSystemId, generalData.normalizedLifetimePercentage);
       let changedFF = false;
       for (let k = 0; k < encFF.length; k++) if (cdArr[ffInfo.offset + k] !== encFF[k]) { changedFF = true; break; }
-      if (changedFF) { cdArr.set(encFF, ffInfo.offset); cd.addUpdateRange(ffInfo.offset, encFF.length); cd.needsUpdate = true; }
+      if (changedFF) { cdArr.set(encFF, ffInfo.offset); cdNode.addUpdateRange(ffInfo.offset, encFF.length); cdNode.needsUpdate = true; }
       ffInfo.countUniform.value = normalizedForceFields.length;
     }
     if (cInfo && normalizedCollisionPlanes.length > 0) {
       const encCP = _tslMaterialFactory.encodeCollisionPlanesForGPU!(normalizedCollisionPlanes);
       let changedCP = false;
       for (let k = 0; k < encCP.length; k++) if (cdArr[cInfo.offset + k] !== encCP[k]) { changedCP = true; break; }
-      if (changedCP) { cdArr.set(encCP, cInfo.offset); cd.addUpdateRange(cInfo.offset, encCP.length); cd.needsUpdate = true; }
+      if (changedCP) { cdArr.set(encCP, cInfo.offset); cdNode.addUpdateRange(cInfo.offset, encCP.length); cdNode.needsUpdate = true; }
       cInfo.countUniform.value = normalizedCollisionPlanes.length;
     }
   }

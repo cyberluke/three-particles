@@ -2,7 +2,7 @@
  * GPU force field computation for particle systems.
  *
  * Encodes force field configurations into a flat Float32Array that can be
- * written into the shared curveData storage buffer (avoiding an extra
+ * written into the packed read-mostly f32 uniform table (avoiding an extra
  * storage buffer binding that would exceed the WebGPU per-stage limit of 8).
  *
  * Provides a TSL helper function that iterates over the encoded fields
@@ -57,7 +57,7 @@ const FIELD_STRIDE = 12;
 /** Maximum force fields supported per particle system. */
 export const MAX_FORCE_FIELDS = 16;
 
-/** Total floats reserved for force field data in the curveData buffer. */
+/** Total floats reserved for force field data in the packed f32 uniform table. */
 export const FORCE_FIELD_DATA_SIZE = MAX_FORCE_FIELDS * FIELD_STRIDE;
 
 /** Sentinel value for "infinite" range on GPU (avoids Infinity in Float32). */
@@ -123,10 +123,10 @@ export function encodeForceFieldsForGPU(
  * Creates the TSL uniform and helper function for applying force fields
  * in a GPU compute shader.
  *
- * Force field data is read from the shared curveData storage buffer at a
+ * Force field data is read from the packed f32 uniform buffer at a
  * fixed offset, avoiding an additional storage buffer binding.
  *
- * @param sCurveData - The shared curveData storage node.
+ * @param sCurveData - The packed f32 uniform-buffer node (non-atomic).
  * @param forceFieldOffset - Float offset into curveData where force field data starts.
  * @param forceFieldCount - Number of active force fields (0 to MAX_FORCE_FIELDS).
  * @returns Object with the count uniform and the TSL apply function.

@@ -5,8 +5,9 @@
  * walks slots; it only writes 12 scalar uniforms per frame and issues
  * two `renderer.compute(...)` calls (emission, then simulation).
  *
- * Storage pool (8 bindings, within the per-stage `minBindingPerStageBuffer`
- * limit of `8` for compute):
+ * Storage pool (8 storage bindings = the WebGPU compute guarantee
+ * `minStorageBuffersPerStage = 8`; read-mostly tables live in uniform
+ * bindings, which are counted separately, `minUniformBuffersPerStage = 4`):
  *   1. position          : vec4 * maxParticles   (xyz, w = padding)
  *   2. velocity          : vec4 * maxParticles   (xyz, w = padding)
  *   3. color             : vec4 * maxParticles   (r, g, b, a)
@@ -14,14 +15,19 @@
  *   5. startValues       : vec4 * maxParticles   (startLife, startSize, startOpac, startColorR)
  *   6. startColorsExt    : vec4 * maxParticles   (startColorG, startColorB, rotSpeed, noiseOffset)
  *   7. orbitalIsActive   : vec4 * maxParticles   (orbitalOffset.xyz, isActive)
- *   8. curveData         : number[] with three tail regions:
- *        [0]                      : baked curve samples (curveLen floats)
- *        [curveLen + 0 ...]       : force-field data   (optional)
- *        [...]                    : collision-plane data (optional)
- *        [...]                    : free-list stack: [top: number=uint, idx0..idxMax: uint]
+ *   8. allocator         : atomic<u32> * (maxParticles + 1)   (UINT, not f32)
+ *        [0]                : freeCount (stack size)
+ *        [1 .. maxParticles]: free slot ids
  *
- * The free-list is managed entirely on the GPU with `atomicAdd` / `atomicSub`.
- * The CPU initialises it once at pipeline creation, then never touches it.
+ * One extra UNIFORM binding carries the read-mostly f32 tables (non-atomic,
+ * so the curve / force-field / collision hot path stays a plain `f32` load):
+ *        [0 .. curveLen-1]              baked curve samples
+ *        [curveLen ...]                 force-field records      (optional)
+ *        [...]                          collision-plane records (optional)
+ *
+ * The allocator is managed entirely on the GPU with integer `atomicAdd` /
+ * `atomicSub` / `atomicLoad` / `atomicStore`; the CPU initialises it once at
+ * pipeline creation and never touches it again.
  *
  * @module
  */
@@ -44,8 +50,11 @@ import {
   max as tslMax,
   rand,
   storage,
+  buffer,
   atomicAdd,
   atomicSub,
+  atomicLoad,
+  atomicStore,
   instanceIndex,
   uniform,
   If,
@@ -147,7 +156,7 @@ export type ModifierUniforms = {
   noisePositionAmount: ShaderNodeObject<Node>;
   noiseRotationAmount: ShaderNodeObject<Node>;
   noiseSizeAmount: ShaderNodeObject<Node>;
-  /** Scalar count of new particles to emit this frame. Drives `numWorkgroups` for the emit kernel. */
+  /** Scalar count of new particles for this frame; also written to `emitNode.count`. */
   emitCount: ShaderNodeObject<Node>;
   /** Seed for GPU-side randomness (updated per frame by CPU). */
   seed: ShaderNodeObject<Node>;
@@ -162,8 +171,10 @@ export type ModifierStorageBuffers = {
   startValues: StorageBufferAttribute | StorageInstancedBufferAttribute;
   startColorsExt: StorageBufferAttribute | StorageInstancedBufferAttribute;
   orbitalIsActive: StorageBufferAttribute | StorageInstancedBufferAttribute;
-  /** Combined curve samples + force-field + collision-plane + free-list tail. */
-  curveData: StorageBufferAttribute;
+  /** 8th storage binding: `array<atomic<u32>, maxParticles + 1>` slot allocator. */
+  allocator: StorageBufferAttribute;
+  /** Packed read-mostly f32 tables (curves + force fields + collision planes), uniform-backed. */
+  packedData: Float32Array;
 };
 
 /** The complete GPU-owned pipeline handle returned by `createComputePipeline`. */
@@ -180,8 +191,10 @@ export type ModifierComputePipeline = {
   shapeUniforms: Record<string, ShaderNodeObject<Node>>;
   /** Storage buffers (shared by both kernels). */
   buffers: ModifierStorageBuffers;
-  /** Byte offset in `curveData` where the free-list stack starts. */
-  freeListOffset: number;
+  /** Element count of the uint atomic allocator stack (`maxParticles + 1`). */
+  allocatorCount: number;
+  /** Non-atomic f32 uniform-table node (baked curves + force fields + collision planes). */
+  packedDataNode: ShaderNodeObject<Node>;
   /** Force field offset + count uniform (null when disabled). */
   forceFieldInfo: {
     offset: number;
@@ -196,10 +209,16 @@ export type ModifierComputePipeline = {
 
 // ??? Storage pool creation ??????????????????????????????????????????????????
 /**
- * Creates GPU storage buffers for one particle system. The CPU only fills
- * the `curveData` head (baked curves) + the free-list tail; every other
- * buffer starts as a fresh `Float32Array` and never has a CPU mirror beyond
- * the initial GPU upload.
+ * Creates GPU buffers for one particle system.
+ *
+ * 8 storage bindings: the 7 per-particle `vec4` state buffers plus one
+ * `uint`-typed atomic allocator; the read-mostly f32 tables (baked curves,
+ * force fields, collision planes) live in a plain `Float32Array` that is bound
+ * as a uniform buffer, so they do not consume a storage binding and stay
+ * non-atomic `f32` loads on the hot path.
+ *
+ * The CPU only fills the two CPU-owned buffers once; after the first upload
+ * the compute kernels own all changes.
  */
 export function createModifierStorageBuffers(
   maxParticles: number,
@@ -207,7 +226,7 @@ export function createModifierStorageBuffers(
   curveData: Float32Array,
   hasForceFields = false,
   hasCollisionPlanes = false
-): { buffers: ModifierStorageBuffers; freeListOffset: number } {
+): { buffers: ModifierStorageBuffers; allocatorCount: number } {
   const Cls = instanced
     ? StorageInstancedBufferAttribute
     : StorageBufferAttribute;
@@ -215,18 +234,18 @@ export function createModifierStorageBuffers(
   const curveLen = Math.max(curveData.length, 1);
   const ffSize  = hasForceFields     ? FORCE_FIELD_DATA_SIZE     : 0;
   const cpSize  = hasCollisionPlanes ? COLLISION_PLANE_DATA_SIZE : 0;
-  // Tail layout inside `curveData` (single-storage binding to fit inside 8):
-  //   [0 .. curveLen-1]                              baked curve samples
-  //   [curveLen + 0  .. + ffSize-1]                  force-field data   (if any)
-  //   [curveLen + ffSize .. + cpSize-1]              collision planes   (if any)
-  //   [freeListStart .. + maxParticles]              [top + slot indices]
-  const freeListStart = curveLen + ffSize + cpSize;
-  const totalLen      = freeListStart + maxParticles + 1;
-  const arr           = new Float32Array(totalLen);
-  arr.set(curveData, 0);
-  // Free-list seed: element 0 = current stack size, elements 1..N = slot ids.
-  arr[freeListStart] = maxParticles;
-  for (let i = 0; i < maxParticles; i++) arr[freeListStart + 1 + i] = i;
+  // Read-mostly f32 table layout (uniform-backed, non-atomic):
+  //   [0 .. curveLen-1]                        baked curve samples
+  //   [curveLen .. curveLen + ffSize - 1]      force-field records   (if any)
+  //   [... .. + cpSize - 1]                    collision-plane records (if any)
+  const packedData = new Float32Array(curveLen + ffSize + cpSize);
+  packedData.set(curveData, 0);
+
+  // Allocator stack (uint atomics): [0] = freeCount, [1..maxParticles] = slot ids.
+  const allocatorCount = maxParticles + 1;
+  const allocatorData  = new Uint32Array(allocatorCount);
+  allocatorData[0] = maxParticles;
+  for (let i = 0; i < maxParticles; i++) allocatorData[i + 1] = i;
 
   return {
     buffers: {
@@ -237,9 +256,10 @@ export function createModifierStorageBuffers(
       startValues:     new Cls(new Float32Array(maxParticles * 4), 4),
       startColorsExt:  new StorageBufferAttribute(new Float32Array(maxParticles * 4), 4),
       orbitalIsActive: new StorageBufferAttribute(new Float32Array(maxParticles * 4), 4),
-      curveData:       new StorageBufferAttribute(arr, 1),
+      allocator:       new StorageBufferAttribute(allocatorData, 1),
+      packedData,
     },
-    freeListOffset: freeListStart,
+    allocatorCount,
   };
 }
 
@@ -259,13 +279,16 @@ function createCurveLookup(sCurveData: ShaderNodeObject<Node>) {
 
 // ??? Kernel builder ????????????????????????????????????????????????????????
 /**
- * Builds two compute kernels sharing the same 8 storage bindings: a small
- * "emission" pass with count = `emitCount` (per-frame) and a full
- * "simulation" pass with count = `maxParticles`.
+ * Builds two compute kernels sharing the same buffers: a small "emission" pass
+ * (count = per-frame `emitCount`) and a full "simulation" pass (count =
+ * `maxParticles`). The emission pass is 1-based sized at creation and its
+ * `ComputeNode.count` is refreshed from `emitCount` every frame, which also
+ * regenerates the shader-side `instanceIndex >= count` bound guard.
  *
- * Both kernels access the same free stack (in the `curveData` tail) through
- * `atomicSub` / `atomicAdd`, so a slot returned by the sim kernel's death-
- * handling is immediately available to the emission kernel on the next frame.
+ * Both kernels address the same `uint` atomic allocator stack with
+ * `atomicSub` / `atomicAdd` / `atomicLoad` / `atomicStore`, so a slot returned
+ * by the sim kernel's death handling is immediately available to the emission
+ * kernel on the next frame.
  */
 export function createModifierComputeUpdate(
   buffers: ModifierStorageBuffers,
@@ -274,8 +297,7 @@ export function createModifierComputeUpdate(
   flags: ModifierFlags,
   shapeParams: ShapeEmitParams,
   forceFieldCount = 0,
-  collisionPlaneCount = 0,
-  freeListStart = 0
+  collisionPlaneCount = 0
 ): ModifierComputePipeline {
   // ?? Per-frame uniforms ??
   const uDelta = uniform(float(0));
@@ -323,7 +345,7 @@ export function createModifierComputeUpdate(
   const uFrMin = sh('startFrameMin', shapeParams.startFrameMin);
   const uFrMax = sh('startFrameMax', shapeParams.startFrameMax);
 
-  // ?? Storage buffer nodes (8 bindings) ??
+  // ?? Particle-state storage nodes (bindings 1-7) ??
   const sPos  = storage(buffers.position, 'vec4', maxParticles);
   const sVel  = storage(buffers.velocity, 'vec4', maxParticles);
   const sCol  = storage(buffers.color, 'vec4', maxParticles);
@@ -331,16 +353,25 @@ export function createModifierComputeUpdate(
   const sSV   = storage(buffers.startValues, 'vec4', maxParticles);
   const sEx   = storage(buffers.startColorsExt, 'vec4', maxParticles);
   const sOIA  = storage(buffers.orbitalIsActive, 'vec4', maxParticles);
-  const sCD   = storage(buffers.curveData, 'float', buffers.curveData.array.length);
+
+  // ?? Binding 8: the uint atomic allocator stack ??
+  // `array<atomic<u32>, maxParticles + 1>` with [0] = freeCount and
+  // [1 .. maxParticles] = free slot ids, so addressing is 0-based and needs no
+  // float base offset any more.
+  const allocatorCount = maxParticles + 1;
+  const sAllocator     = storage(buffers.allocator, 'uint', allocatorCount).toAtomic();
+
+  // ?? Read-mostly f32 tables: uniform buffer binding, non-atomic ??
+  // Baked curve samples plus optional force-field / collision-plane records.
+  // A plain uniform binding: it neither consumes a storage slot nor becomes
+  // `atomic<f32>`, so curve sampling stays a straight `f32` load.
+  const sCD = buffer(buffers.packedData, 'float', buffers.packedData.length);
 
   const curveLen = Math.max(curveMap.data.length, 1);
 
   // ?? Force-field + collision-plane TSL readers ??
   const forceFieldOffset  = curveLen;
   const collisionOffset   = forceFieldOffset + (flags.forceFields ? FORCE_FIELD_DATA_SIZE : 0);
-  const freeListBase      = collisionOffset + (flags.collisionPlanes ? COLLISION_PLANE_DATA_SIZE : 0) + freeListStart - ((flags.forceFields ? FORCE_FIELD_DATA_SIZE : 0) + (flags.collisionPlanes ? COLLISION_PLANE_DATA_SIZE : 0));
-  // Because `createModifierStorageBuffers` already returns the `freeListStart`, re-use it:
-  const flStart           = freeListStart;
 
   const ffNodes = flags.forceFields
     ? createForceFieldTSL(sCD, forceFieldOffset, forceFieldCount) : null;
@@ -352,15 +383,17 @@ export function createModifierComputeUpdate(
   // ????? Emission kernel ?????
   //
   // `i` = invocation index (0 .. emitCount-1). Each invocation:
-  //   1) atomically pops one slot id from the free stack in curveData tail,
+  //   1) atomically pops one uint slot id off the allocator stack,
   //   2) computes 8 random values from `uSeed + 64*i`,
   //   3) builds a shape-position + direction,
   //   4) writes vec4 slots on pos/vel/color/particleState/startValues/ext/orbital.
   const emitKernel = Fn(() => {
     const i = instanceIndex;
-    const oldTop = atomicSub(sCD.element(flStart), float(1)).toVar();
-    If(oldTop.greaterThan(float(0.0)), () => {
-      const slotIdx = sCD.element(flStart.add(oldTop)).toVar();
+    // Pop: `oldTop` = freeCount *before* the decrement (integer atomic).
+    const oldTop = atomicSub(sAllocator.element(0), tuint(1)).toVar();
+    If(oldTop.greaterThan(tuint(0)), () => {
+      // The wanted slot id sits at index 1 + (oldTop - 1) === oldTop.
+      const slotIdx = atomicLoad(sAllocator.element(oldTop)).toVar();
       // 8 deterministic randoms, one per particle.
       const base2 = i.mul(float(8.0));
       const r0 = rand(uSeed.add(base2.add(float(0.13))));
@@ -564,17 +597,16 @@ export function createModifierComputeUpdate(
         sPS.element(i).assign(ps);
         sOIA.element(i).assign(oiaVec);
 
-        // ??? Death: push slot id back to the atomic free stack ???
+        // ??? Death: push the uint slot id back onto the atomic allocator stack ???
         If(ps.x.greaterThan(startLife), () => {
           const inactive = sOIA.element(i).toVar();
           sOIA.element(i).assign(vec4(inactive.x, inactive.y, inactive.z, float(0.0)));
           sCol.element(i).assign(vec4(float(0.0), float(0.0), float(0.0), float(0.0)));
-          // Only push back once: guard on oldTop < maxParticles+1 is done via
-          // `atomicAdd` returning the pre-increment top. Since the sim kernel
-          // is dispatched in a single workgroup pass and inactive slots are
-          // skipped by the w < 0.5 branch, no double-push occurs.
-          const top = atomicAdd(sCD.element(flStart), float(1.0)).toVar();
-          sCD.element(flStart.add(top).add(float(1.0))).assign(float(i));
+          // Only pushed once: `atomicAdd` hands back the pre-increment count, and
+          // inactive slots are skipped by the w >= 0.5 branch, so the sim pass
+          // cannot double-push. Stack item index = 1 + oldCount.
+          const oldTop = atomicAdd(sAllocator.element(0), tuint(1)).toVar();
+          atomicStore(sAllocator.element(oldTop.add(tuint(1))), tuint(i));
         });
       });
     });
@@ -601,7 +633,8 @@ export function createModifierComputeUpdate(
     },
     shapeUniforms,
     buffers,
-    freeListOffset: flStart,
+    allocatorCount,
+    packedDataNode: sCD as ShaderNodeObject<Node>,
     forceFieldInfo: ffNodes
       ? { offset: forceFieldOffset, countUniform: ffNodes.countUniform }
       : null,
@@ -613,8 +646,8 @@ export function createModifierComputeUpdate(
 
 // Small `select` helpers so all three kinds fit inside a single `Fn`.
 function select01(kind: ShaderNodeObject<Node>, cone: ShaderNodeObject<Node>, sphere: ShaderNodeObject<Node>, planeVal: ShaderNodeObject<Node>) {
-  const isCone = floor(kind).equals(float(0.0));
-  const isSph  = floor(kind).equals(float(1.0));
+  const isCone = floor(kind).equal(float(0.0));
+  const isSph  = floor(kind).equal(float(1.0));
   const tmp = mix(cone, sphere, 0.0);
   const r0 = isCone.toVar(); (r0 as any);
   const r = mix(planeVal, tmp, abs(isCone.sub(float(1.0))).min(abs(isSph.sub(float(1.0)))));

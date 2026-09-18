@@ -2,7 +2,7 @@
  * GPU collision plane computation for particle systems.
  *
  * Encodes collision plane configurations into a flat Float32Array that can be
- * written into the shared curveData storage buffer (avoiding an extra
+ * written into the packed read-mostly f32 uniform table (avoiding an extra
  * storage buffer binding that would exceed the WebGPU per-stage limit of 8).
  *
  * Provides a TSL helper function that iterates over the encoded planes
@@ -51,7 +51,7 @@ const PLANE_STRIDE = 12;
 /** Maximum collision planes supported per particle system. */
 export const MAX_COLLISION_PLANES = 16;
 
-/** Total floats reserved for collision plane data in the curveData buffer. */
+/** Total floats reserved for collision plane data in the packed f32 uniform table. */
 export const COLLISION_PLANE_DATA_SIZE = MAX_COLLISION_PLANES * PLANE_STRIDE;
 
 /** Pre-allocated encoding buffer, reused every frame to avoid GC pressure. */
@@ -107,10 +107,10 @@ export function encodeCollisionPlanesForGPU(
  * Creates the TSL uniform and helper function for applying collision planes
  * in a GPU compute shader.
  *
- * Collision plane data is read from the shared curveData storage buffer at a
+ * Collision plane data is read from the packed f32 uniform buffer at a
  * fixed offset, avoiding an additional storage buffer binding.
  *
- * @param sCurveData - The shared curveData storage node.
+ * @param sCurveData - The packed f32 uniform-buffer node (non-atomic).
  * @param collisionPlaneOffset - Float offset into curveData where collision plane data starts.
  * @param collisionPlaneCount - Number of active collision planes (0 to MAX_COLLISION_PLANES).
  * @returns Object with the count uniform and the TSL apply function.

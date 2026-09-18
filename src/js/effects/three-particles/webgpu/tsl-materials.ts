@@ -181,7 +181,6 @@ export function createComputePipeline(
     flags,
     shapeParams,
     forceFieldCount,
-    collisionPlaneCount,
-    built.freeListOffset
+    collisionPlaneCount
   );
 }

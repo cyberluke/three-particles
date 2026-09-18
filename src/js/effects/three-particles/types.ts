@@ -1889,11 +1889,17 @@ export type ParticleSystemInstance = {
     computeNode: unknown;
     /** Ordered list of compute dispatches: [emitNode, simNode] on the GPU-only engine. */
     computeNodes?: unknown[];
+    /** Emission dispatch; its numeric `count` is refreshed from `emitCount` per frame. */
+    emitNode?: unknown;
+    /** Per-frame simulation dispatch (count = `maxParticles`). */
+    simNode?: unknown;
     uniforms: Record<string, unknown>;
     /** GPU storage buffers that are ALSO attached as geometry attributes. */
     buffers: Record<string, unknown>;
-    /** Float32 offset into `curveData` where the free-list stack starts. */
-    freeListOffset?: number;
+    /** Element count of the uint atomic allocator stack (`maxParticles + 1`). */
+    allocatorCount?: number;
+    /** Non-atomic f32 uniform-table node (baked curves + force fields + collision planes). */
+    packedDataNode?: unknown;
     forceFieldInfo: { offset: number; countUniform: unknown } | null;
     /** Optional for backwards compat with the older single-forceFieldInfo shape. */
     collisionPlaneInfo?: { offset: number; countUniform: unknown } | null;
