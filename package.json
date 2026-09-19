@@ -1,6 +1,6 @@
 {
   "name": "@cyberluke/three-particles",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "type": "module",
   "description": "Three.js-based high-performance particle system library designed for creating visually stunning particle effects with ease. Perfect for game developers and 3D applications.",
   "main": "./dist/index.js",
