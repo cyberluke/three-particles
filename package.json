@@ -28,7 +28,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/cyberluke/three-particles.git"
+    "url": "git+https://github.com/cyberluke/three-particles.git"
   },
   "keywords": [
     "three",
@@ -47,7 +47,10 @@
     "threejs effects"
   ],
   "author": "CyberLuke",
-  "license": "MIT",  "publishConfig": {    "access": "public"  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "bugs": {
     "url": "https://github.com/cyberluke/three-particles/issues"
   },
@@ -106,4 +109,3 @@
     "webpack-cli": "^7.0.2"
   }
 }
-
