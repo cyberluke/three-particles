@@ -10,7 +10,9 @@
 [![license](https://img.shields.io/npm/l/@cyberluke/three-particles.svg)](https://github.com/NewKrok/three-particles/blob/master/LICENSE)
 [![docs](https://img.shields.io/badge/docs-online-blue)](https://newkrok.github.io/three-particles/api/)
 
-Particle system for ThreeJS.
+Best-in-class particle framework for Three.js. Unity-style effects with a GPU-compute backbone: Three.js TSL kernels run gravity, orbital motion, Bézier over-lifetime curves, force fields and 3D simplex noise for 350K+ particles per system at full framerate — while the same configs still run on any WebGL renderer.
+
+Author: **CyberLuke** — the single maintained line since v4.
 
 # Features
 

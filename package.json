@@ -46,7 +46,7 @@
     "three-particles",
     "threejs effects"
   ],
-  "author": "Istvan Krisztian Somoracz",
+  "author": "CyberLuke",
   "license": "MIT",  "publishConfig": {    "access": "public"  },
   "bugs": {
     "url": "https://github.com/cyberluke/three-particles/issues"

@@ -12,7 +12,6 @@ import {
   float,
   modelViewMatrix,
   positionLocal,
-  pointUV,
   texture,
   cos,
   sin,
@@ -124,9 +123,18 @@ export function createPointSpriteTSLMaterial(
       uTiles: u.uTiles,
     });
 
-    // Apply 2D rotation to pointUV
+    // Apply 2D rotation around the quad centre.
+    //
+    // r186 note: the `pointUV` node serialises as the raw GLSL snippet
+    // `vec2(gl_PointCoord.x, 1.0 - gl_PointCoord.y)`, which the WGSL backend
+    // emits verbatim but never declares - Naga reports it as an unresolved
+    // value and the fragment pipeline fails to compile. WebGPU point
+    // primitives are always a single pixel, so the point-coord of every
+    // fragment is the centre of that pixel: `(0.5, 0.5)`. Use that constant,
+    // which equals the WebGL `gl_PointCoord` value for 1-px points and keeps
+    // the vertex/fragment pipeline identical on the GPU-only backend.
     const center = vec2(0.5, 0.5);
-    const centered = pointUV.sub(center);
+    const centered = vec2(0.0, 0.0); // `pointUV` (=0.5) minus its centre
     const cosR = cos(vRotation);
     const sinR = sin(vRotation);
     const rotated = vec2(

@@ -1,6 +1,6 @@
-import { AdditiveBlending as __WEBPACK_EXTERNAL_MODULE_three_AdditiveBlending__, AmbientLight as __WEBPACK_EXTERNAL_MODULE_three_AmbientLight__, AnimationClip as __WEBPACK_EXTERNAL_MODULE_three_AnimationClip__, Audio as __WEBPACK_EXTERNAL_MODULE_three_Audio__, AudioListener as __WEBPACK_EXTERNAL_MODULE_three_AudioListener__, AudioLoader as __WEBPACK_EXTERNAL_MODULE_three_AudioLoader__, Bone as __WEBPACK_EXTERNAL_MODULE_three_Bone__, Box3 as __WEBPACK_EXTERNAL_MODULE_three_Box3__, BufferAttribute as __WEBPACK_EXTERNAL_MODULE_three_BufferAttribute__, BufferGeometry as __WEBPACK_EXTERNAL_MODULE_three_BufferGeometry__, ClampToEdgeWrapping as __WEBPACK_EXTERNAL_MODULE_three_ClampToEdgeWrapping__, Color as __WEBPACK_EXTERNAL_MODULE_three_Color__, ColorManagement as __WEBPACK_EXTERNAL_MODULE_three_ColorManagement__, Curve as __WEBPACK_EXTERNAL_MODULE_three_Curve__, DataTexture as __WEBPACK_EXTERNAL_MODULE_three_DataTexture__, DirectionalLight as __WEBPACK_EXTERNAL_MODULE_three_DirectionalLight__, DoubleSide as __WEBPACK_EXTERNAL_MODULE_three_DoubleSide__, EquirectangularReflectionMapping as __WEBPACK_EXTERNAL_MODULE_three_EquirectangularReflectionMapping__, Euler as __WEBPACK_EXTERNAL_MODULE_three_Euler__, FileLoader as __WEBPACK_EXTERNAL_MODULE_three_FileLoader__, Float32BufferAttribute as __WEBPACK_EXTERNAL_MODULE_three_Float32BufferAttribute__, FrontSide as __WEBPACK_EXTERNAL_MODULE_three_FrontSide__, Group as __WEBPACK_EXTERNAL_MODULE_three_Group__, ImageBitmapLoader as __WEBPACK_EXTERNAL_MODULE_three_ImageBitmapLoader__, InstancedBufferAttribute as __WEBPACK_EXTERNAL_MODULE_three_InstancedBufferAttribute__, InstancedMesh as __WEBPACK_EXTERNAL_MODULE_three_InstancedMesh__, InterleavedBuffer as __WEBPACK_EXTERNAL_MODULE_three_InterleavedBuffer__, InterleavedBufferAttribute as __WEBPACK_EXTERNAL_MODULE_three_InterleavedBufferAttribute__, Interpolant as __WEBPACK_EXTERNAL_MODULE_three_Interpolant__, InterpolateDiscrete as __WEBPACK_EXTERNAL_MODULE_three_InterpolateDiscrete__, InterpolateLinear as __WEBPACK_EXTERNAL_MODULE_three_InterpolateLinear__, Line as __WEBPACK_EXTERNAL_MODULE_three_Line__, LineBasicMaterial as __WEBPACK_EXTERNAL_MODULE_three_LineBasicMaterial__, LineLoop as __WEBPACK_EXTERNAL_MODULE_three_LineLoop__, LineSegments as __WEBPACK_EXTERNAL_MODULE_three_LineSegments__, LinearFilter as __WEBPACK_EXTERNAL_MODULE_three_LinearFilter__, LinearMipmapLinearFilter as __WEBPACK_EXTERNAL_MODULE_three_LinearMipmapLinearFilter__, LinearMipmapNearestFilter as __WEBPACK_EXTERNAL_MODULE_three_LinearMipmapNearestFilter__, LinearSRGBColorSpace as __WEBPACK_EXTERNAL_MODULE_three_LinearSRGBColorSpace__, Loader as __WEBPACK_EXTERNAL_MODULE_three_Loader__, LoaderUtils as __WEBPACK_EXTERNAL_MODULE_three_LoaderUtils__, Material as __WEBPACK_EXTERNAL_MODULE_three_Material__, MathUtils as __WEBPACK_EXTERNAL_MODULE_three_MathUtils__, Matrix3 as __WEBPACK_EXTERNAL_MODULE_three_Matrix3__, Matrix4 as __WEBPACK_EXTERNAL_MODULE_three_Matrix4__, Mesh as __WEBPACK_EXTERNAL_MODULE_three_Mesh__, MeshBasicMaterial as __WEBPACK_EXTERNAL_MODULE_three_MeshBasicMaterial__, MeshLambertMaterial as __WEBPACK_EXTERNAL_MODULE_three_MeshLambertMaterial__, MeshPhongMaterial as __WEBPACK_EXTERNAL_MODULE_three_MeshPhongMaterial__, MeshPhysicalMaterial as __WEBPACK_EXTERNAL_MODULE_three_MeshPhysicalMaterial__, MeshStandardMaterial as __WEBPACK_EXTERNAL_MODULE_three_MeshStandardMaterial__, MirroredRepeatWrapping as __WEBPACK_EXTERNAL_MODULE_three_MirroredRepeatWrapping__, MultiplyBlending as __WEBPACK_EXTERNAL_MODULE_three_MultiplyBlending__, NearestFilter as __WEBPACK_EXTERNAL_MODULE_three_NearestFilter__, NearestMipmapLinearFilter as __WEBPACK_EXTERNAL_MODULE_three_NearestMipmapLinearFilter__, NearestMipmapNearestFilter as __WEBPACK_EXTERNAL_MODULE_three_NearestMipmapNearestFilter__, NoBlending as __WEBPACK_EXTERNAL_MODULE_three_NoBlending__, NoColorSpace as __WEBPACK_EXTERNAL_MODULE_three_NoColorSpace__, NormalBlending as __WEBPACK_EXTERNAL_MODULE_three_NormalBlending__, NumberKeyframeTrack as __WEBPACK_EXTERNAL_MODULE_three_NumberKeyframeTrack__, Object3D as __WEBPACK_EXTERNAL_MODULE_three_Object3D__, OrthographicCamera as __WEBPACK_EXTERNAL_MODULE_three_OrthographicCamera__, PerspectiveCamera as __WEBPACK_EXTERNAL_MODULE_three_PerspectiveCamera__, PointLight as __WEBPACK_EXTERNAL_MODULE_three_PointLight__, Points as __WEBPACK_EXTERNAL_MODULE_three_Points__, PointsMaterial as __WEBPACK_EXTERNAL_MODULE_three_PointsMaterial__, PositionalAudio as __WEBPACK_EXTERNAL_MODULE_three_PositionalAudio__, PropertyBinding as __WEBPACK_EXTERNAL_MODULE_three_PropertyBinding__, Quaternion as __WEBPACK_EXTERNAL_MODULE_three_Quaternion__, QuaternionKeyframeTrack as __WEBPACK_EXTERNAL_MODULE_three_QuaternionKeyframeTrack__, RepeatWrapping as __WEBPACK_EXTERNAL_MODULE_three_RepeatWrapping__, SRGBColorSpace as __WEBPACK_EXTERNAL_MODULE_three_SRGBColorSpace__, ShapeUtils as __WEBPACK_EXTERNAL_MODULE_three_ShapeUtils__, Skeleton as __WEBPACK_EXTERNAL_MODULE_three_Skeleton__, SkinnedMesh as __WEBPACK_EXTERNAL_MODULE_three_SkinnedMesh__, Sphere as __WEBPACK_EXTERNAL_MODULE_three_Sphere__, SphereGeometry as __WEBPACK_EXTERNAL_MODULE_three_SphereGeometry__, SpotLight as __WEBPACK_EXTERNAL_MODULE_three_SpotLight__, SubtractiveBlending as __WEBPACK_EXTERNAL_MODULE_three_SubtractiveBlending__, Texture as __WEBPACK_EXTERNAL_MODULE_three_Texture__, TextureLoader as __WEBPACK_EXTERNAL_MODULE_three_TextureLoader__, TriangleFanDrawMode as __WEBPACK_EXTERNAL_MODULE_three_TriangleFanDrawMode__, TriangleStripDrawMode as __WEBPACK_EXTERNAL_MODULE_three_TriangleStripDrawMode__, TrianglesDrawMode as __WEBPACK_EXTERNAL_MODULE_three_TrianglesDrawMode__, Uint16BufferAttribute as __WEBPACK_EXTERNAL_MODULE_three_Uint16BufferAttribute__, Vector2 as __WEBPACK_EXTERNAL_MODULE_three_Vector2__, Vector3 as __WEBPACK_EXTERNAL_MODULE_three_Vector3__, Vector4 as __WEBPACK_EXTERNAL_MODULE_three_Vector4__, VectorKeyframeTrack as __WEBPACK_EXTERNAL_MODULE_three_VectorKeyframeTrack__ } from "three";
-import { Continue as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_Continue__, Discard as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_Discard__, Fn as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_Fn__, If as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__, Loop as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_Loop__, abs as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_abs__, attribute as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_attribute__, cameraPosition as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_cameraPosition__, cameraProjectionMatrix as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_cameraProjectionMatrix__, cameraViewMatrix as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_cameraViewMatrix__, compute as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_compute__, cos as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_cos__, cross as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_cross__, dot as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_dot__, float as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__, floor as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_floor__, fract as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_fract__, instanceIndex as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_instanceIndex__, length as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_length__, max as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_max__, min as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_min__, mix as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__, mod as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mod__, modelViewMatrix as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_modelViewMatrix__, normalLocal as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_normalLocal__, normalize as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_normalize__, pointUV as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_pointUV__, positionLocal as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_positionLocal__, round as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_round__, screenUV as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_screenUV__, sin as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_sin__, smoothstep as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_smoothstep__, step as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_step__, storage as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__, texture as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_texture__, uniform as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__, uv as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uv__, varyingProperty as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_varyingProperty__, vec2 as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec2__, vec3 as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec3__, vec4 as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__ } from "three/tsl";
+import { AdditiveBlending as __WEBPACK_EXTERNAL_MODULE_three_AdditiveBlending__, AmbientLight as __WEBPACK_EXTERNAL_MODULE_three_AmbientLight__, AnimationClip as __WEBPACK_EXTERNAL_MODULE_three_AnimationClip__, Audio as __WEBPACK_EXTERNAL_MODULE_three_Audio__, AudioListener as __WEBPACK_EXTERNAL_MODULE_three_AudioListener__, AudioLoader as __WEBPACK_EXTERNAL_MODULE_three_AudioLoader__, Bone as __WEBPACK_EXTERNAL_MODULE_three_Bone__, Box3 as __WEBPACK_EXTERNAL_MODULE_three_Box3__, BufferAttribute as __WEBPACK_EXTERNAL_MODULE_three_BufferAttribute__, BufferGeometry as __WEBPACK_EXTERNAL_MODULE_three_BufferGeometry__, ClampToEdgeWrapping as __WEBPACK_EXTERNAL_MODULE_three_ClampToEdgeWrapping__, Color as __WEBPACK_EXTERNAL_MODULE_three_Color__, ColorManagement as __WEBPACK_EXTERNAL_MODULE_three_ColorManagement__, Curve as __WEBPACK_EXTERNAL_MODULE_three_Curve__, DataTexture as __WEBPACK_EXTERNAL_MODULE_three_DataTexture__, DirectionalLight as __WEBPACK_EXTERNAL_MODULE_three_DirectionalLight__, DoubleSide as __WEBPACK_EXTERNAL_MODULE_three_DoubleSide__, EquirectangularReflectionMapping as __WEBPACK_EXTERNAL_MODULE_three_EquirectangularReflectionMapping__, Euler as __WEBPACK_EXTERNAL_MODULE_three_Euler__, FileLoader as __WEBPACK_EXTERNAL_MODULE_three_FileLoader__, Float32BufferAttribute as __WEBPACK_EXTERNAL_MODULE_three_Float32BufferAttribute__, FrontSide as __WEBPACK_EXTERNAL_MODULE_three_FrontSide__, Group as __WEBPACK_EXTERNAL_MODULE_three_Group__, ImageBitmapLoader as __WEBPACK_EXTERNAL_MODULE_three_ImageBitmapLoader__, InstancedBufferAttribute as __WEBPACK_EXTERNAL_MODULE_three_InstancedBufferAttribute__, InstancedMesh as __WEBPACK_EXTERNAL_MODULE_three_InstancedMesh__, InterleavedBuffer as __WEBPACK_EXTERNAL_MODULE_three_InterleavedBuffer__, InterleavedBufferAttribute as __WEBPACK_EXTERNAL_MODULE_three_InterleavedBufferAttribute__, Interpolant as __WEBPACK_EXTERNAL_MODULE_three_Interpolant__, InterpolateDiscrete as __WEBPACK_EXTERNAL_MODULE_three_InterpolateDiscrete__, InterpolateLinear as __WEBPACK_EXTERNAL_MODULE_three_InterpolateLinear__, Line as __WEBPACK_EXTERNAL_MODULE_three_Line__, LineBasicMaterial as __WEBPACK_EXTERNAL_MODULE_three_LineBasicMaterial__, LineLoop as __WEBPACK_EXTERNAL_MODULE_three_LineLoop__, LineSegments as __WEBPACK_EXTERNAL_MODULE_three_LineSegments__, LinearFilter as __WEBPACK_EXTERNAL_MODULE_three_LinearFilter__, LinearMipmapLinearFilter as __WEBPACK_EXTERNAL_MODULE_three_LinearMipmapLinearFilter__, LinearMipmapNearestFilter as __WEBPACK_EXTERNAL_MODULE_three_LinearMipmapNearestFilter__, LinearSRGBColorSpace as __WEBPACK_EXTERNAL_MODULE_three_LinearSRGBColorSpace__, Loader as __WEBPACK_EXTERNAL_MODULE_three_Loader__, LoaderUtils as __WEBPACK_EXTERNAL_MODULE_three_LoaderUtils__, Material as __WEBPACK_EXTERNAL_MODULE_three_Material__, MathUtils as __WEBPACK_EXTERNAL_MODULE_three_MathUtils__, Matrix3 as __WEBPACK_EXTERNAL_MODULE_three_Matrix3__, Matrix4 as __WEBPACK_EXTERNAL_MODULE_three_Matrix4__, Mesh as __WEBPACK_EXTERNAL_MODULE_three_Mesh__, MeshBasicMaterial as __WEBPACK_EXTERNAL_MODULE_three_MeshBasicMaterial__, MeshLambertMaterial as __WEBPACK_EXTERNAL_MODULE_three_MeshLambertMaterial__, MeshPhongMaterial as __WEBPACK_EXTERNAL_MODULE_three_MeshPhongMaterial__, MeshPhysicalMaterial as __WEBPACK_EXTERNAL_MODULE_three_MeshPhysicalMaterial__, MeshStandardMaterial as __WEBPACK_EXTERNAL_MODULE_three_MeshStandardMaterial__, MirroredRepeatWrapping as __WEBPACK_EXTERNAL_MODULE_three_MirroredRepeatWrapping__, MultiplyBlending as __WEBPACK_EXTERNAL_MODULE_three_MultiplyBlending__, NearestFilter as __WEBPACK_EXTERNAL_MODULE_three_NearestFilter__, NearestMipmapLinearFilter as __WEBPACK_EXTERNAL_MODULE_three_NearestMipmapLinearFilter__, NearestMipmapNearestFilter as __WEBPACK_EXTERNAL_MODULE_three_NearestMipmapNearestFilter__, NoBlending as __WEBPACK_EXTERNAL_MODULE_three_NoBlending__, NormalBlending as __WEBPACK_EXTERNAL_MODULE_three_NormalBlending__, NumberKeyframeTrack as __WEBPACK_EXTERNAL_MODULE_three_NumberKeyframeTrack__, Object3D as __WEBPACK_EXTERNAL_MODULE_three_Object3D__, OrthographicCamera as __WEBPACK_EXTERNAL_MODULE_three_OrthographicCamera__, PerspectiveCamera as __WEBPACK_EXTERNAL_MODULE_three_PerspectiveCamera__, PointLight as __WEBPACK_EXTERNAL_MODULE_three_PointLight__, Points as __WEBPACK_EXTERNAL_MODULE_three_Points__, PointsMaterial as __WEBPACK_EXTERNAL_MODULE_three_PointsMaterial__, PositionalAudio as __WEBPACK_EXTERNAL_MODULE_three_PositionalAudio__, PropertyBinding as __WEBPACK_EXTERNAL_MODULE_three_PropertyBinding__, Quaternion as __WEBPACK_EXTERNAL_MODULE_three_Quaternion__, QuaternionKeyframeTrack as __WEBPACK_EXTERNAL_MODULE_three_QuaternionKeyframeTrack__, RepeatWrapping as __WEBPACK_EXTERNAL_MODULE_three_RepeatWrapping__, SRGBColorSpace as __WEBPACK_EXTERNAL_MODULE_three_SRGBColorSpace__, ShapeUtils as __WEBPACK_EXTERNAL_MODULE_three_ShapeUtils__, Skeleton as __WEBPACK_EXTERNAL_MODULE_three_Skeleton__, SkinnedMesh as __WEBPACK_EXTERNAL_MODULE_three_SkinnedMesh__, Sphere as __WEBPACK_EXTERNAL_MODULE_three_Sphere__, SphereGeometry as __WEBPACK_EXTERNAL_MODULE_three_SphereGeometry__, SpotLight as __WEBPACK_EXTERNAL_MODULE_three_SpotLight__, SubtractiveBlending as __WEBPACK_EXTERNAL_MODULE_three_SubtractiveBlending__, Texture as __WEBPACK_EXTERNAL_MODULE_three_Texture__, TextureLoader as __WEBPACK_EXTERNAL_MODULE_three_TextureLoader__, TriangleFanDrawMode as __WEBPACK_EXTERNAL_MODULE_three_TriangleFanDrawMode__, TriangleStripDrawMode as __WEBPACK_EXTERNAL_MODULE_three_TriangleStripDrawMode__, TrianglesDrawMode as __WEBPACK_EXTERNAL_MODULE_three_TrianglesDrawMode__, Uint16BufferAttribute as __WEBPACK_EXTERNAL_MODULE_three_Uint16BufferAttribute__, Vector2 as __WEBPACK_EXTERNAL_MODULE_three_Vector2__, Vector3 as __WEBPACK_EXTERNAL_MODULE_three_Vector3__, Vector4 as __WEBPACK_EXTERNAL_MODULE_three_Vector4__, VectorKeyframeTrack as __WEBPACK_EXTERNAL_MODULE_three_VectorKeyframeTrack__ } from "three";
 import { MeshBasicNodeMaterial as __WEBPACK_EXTERNAL_MODULE_three_webgpu_84e9d76f_MeshBasicNodeMaterial__, PointsNodeMaterial as __WEBPACK_EXTERNAL_MODULE_three_webgpu_84e9d76f_PointsNodeMaterial__, StorageBufferAttribute as __WEBPACK_EXTERNAL_MODULE_three_webgpu_84e9d76f_StorageBufferAttribute__, StorageInstancedBufferAttribute as __WEBPACK_EXTERNAL_MODULE_three_webgpu_84e9d76f_StorageInstancedBufferAttribute__ } from "three/webgpu";
+import { Continue as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_Continue__, Discard as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_Discard__, Fn as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_Fn__, If as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__, Loop as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_Loop__, abs as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_abs__, atomicAdd as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_atomicAdd__, atomicLoad as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_atomicLoad__, atomicStore as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_atomicStore__, attribute as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_attribute__, buffer as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_buffer__, cameraPosition as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_cameraPosition__, cameraProjectionMatrix as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_cameraProjectionMatrix__, cameraViewMatrix as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_cameraViewMatrix__, compute as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_compute__, cos as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_cos__, cross as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_cross__, dot as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_dot__, float as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__, floor as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_floor__, fract as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_fract__, instanceIndex as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_instanceIndex__, length as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_length__, max as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_max__, min as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_min__, mix as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__, mod as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mod__, modelViewMatrix as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_modelViewMatrix__, normalLocal as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_normalLocal__, normalize as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_normalize__, positionLocal as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_positionLocal__, round as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_round__, screenUV as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_screenUV__, sin as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_sin__, smoothstep as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_smoothstep__, sqrt as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_sqrt__, step as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_step__, storage as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__, texture as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_texture__, uint as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__, uniform as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__, uv as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uv__, varyingProperty as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_varyingProperty__, vec2 as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec2__, vec3 as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec3__, vec4 as __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__ } from "three/tsl";
 /******/ var __webpack_modules__ = ({
 
 /***/ 300
@@ -611,7 +611,7 @@ const formatTime = (timeInMS, pattern) => {
     return result;
 };
 
-;// ./node_modules/three/examples/jsm/libs/fflate.module.js
+;// ../../node_modules/three/examples/jsm/libs/fflate.module.js
 /*!
 fflate - fast JavaScript compression/decompression
 <https://101arrowz.github.io/fflate>
@@ -3285,7 +3285,7 @@ function unzipSync(data, opts) {
     return files;
 }
 
-;// ./node_modules/three/examples/jsm/curves/NURBSUtils.js
+;// ../../node_modules/three/examples/jsm/curves/NURBSUtils.js
 /* unused harmony import specifier */ var Vector4;
 
 
@@ -3806,7 +3806,7 @@ function calcVolumePoint( p, q, r, U, V, W, P, u, v, w, target ) {
 
 
 
-;// ./node_modules/three/examples/jsm/curves/NURBSCurve.js
+;// ../../node_modules/three/examples/jsm/curves/NURBSCurve.js
 
 
 
@@ -3959,7 +3959,7 @@ class NURBSCurve extends __WEBPACK_EXTERNAL_MODULE_three_Curve__ {
 
 
 
-;// ./node_modules/three/examples/jsm/loaders/FBXLoader.js
+;// ../../node_modules/three/examples/jsm/loaders/FBXLoader.js
 
 
 
@@ -4003,6 +4003,16 @@ class FBXLoader extends __WEBPACK_EXTERNAL_MODULE_three_Loader__ {
 	constructor( manager ) {
 
 		super( manager );
+
+		/**
+		 * Whether to trim animation clips to the time range of their
+		 * animation stacks and shift them to start at time zero. Useful
+		 * for assets that define multiple clips on a single timeline.
+		 *
+		 * @type {boolean}
+		 * @default false
+		 */
+		this.trimAnimationClips = false;
 
 	}
 
@@ -4090,7 +4100,7 @@ class FBXLoader extends __WEBPACK_EXTERNAL_MODULE_three_Loader__ {
 
 		const textureLoader = new __WEBPACK_EXTERNAL_MODULE_three_TextureLoader__( this.manager ).setPath( this.resourcePath || path ).setCrossOrigin( this.crossOrigin );
 
-		return new FBXTreeParser( textureLoader, this.manager ).parse( fbxTree );
+		return new FBXTreeParser( textureLoader, this.manager, this.trimAnimationClips ).parse( fbxTree );
 
 	}
 
@@ -4099,10 +4109,11 @@ class FBXLoader extends __WEBPACK_EXTERNAL_MODULE_three_Loader__ {
 // Parse the FBXTree object returned by the BinaryParser or TextParser and return a Group
 class FBXTreeParser {
 
-	constructor( textureLoader, manager ) {
+	constructor( textureLoader, manager, trimAnimationClips ) {
 
 		this.textureLoader = textureLoader;
 		this.manager = manager;
+		this.trimAnimationClips = trimAnimationClips;
 
 	}
 
@@ -4285,7 +4296,7 @@ class FBXTreeParser {
 		} else { // Binary Format
 
 			const array = new Uint8Array( content );
-			return window.URL.createObjectURL( new Blob( [ array ], { type: type } ) );
+			return URL.createObjectURL( new Blob( [ array ], { type: type } ) );
 
 		}
 
@@ -4519,7 +4530,8 @@ class FBXTreeParser {
 
 		}
 
-		// the transparency handling is implemented based on Blender/Unity's approach: https://github.com/sobotka/blender-addons/blob/7d80f2f97161fc8e353a657b179b9aa1f8e5280b/io_scene_fbx/import_fbx.py#L1444-L1459
+		// the transparency handling is implemented based on Blender's approach:
+		// https://github.com/blender/blender/blob/main/scripts/addons_core/io_scene_fbx/import_fbx.py
 
 		parameters.opacity = 1 - ( materialNode.TransparencyFactor ? parseFloat( materialNode.TransparencyFactor.value ) : 0 );
 
@@ -4529,7 +4541,10 @@ class FBXTreeParser {
 
 			if ( parameters.opacity === null ) {
 
-				parameters.opacity = 1 - ( materialNode.TransparentColor ? parseFloat( materialNode.TransparentColor.value[ 0 ] ) : 0 );
+				// Default to opaque. Some exporters (e.g. 3ds Max) define TransparentColor
+				// as white (1,1,1) without intending transparency, which makes the Unity-style
+				// fallback of `1 - TransparentColor.r` produce incorrect zero opacity.
+				parameters.opacity = 1;
 
 			}
 
@@ -4742,8 +4757,6 @@ class FBXTreeParser {
 				indices: [],
 				weights: [],
 				transformLink: new __WEBPACK_EXTERNAL_MODULE_three_Matrix4__().fromArray( boneNode.TransformLink.a ),
-				// transform: new Matrix4().fromArray( boneNode.Transform.a ),
-				// linkMode: boneNode.Mode,
 
 			};
 
@@ -4836,8 +4849,6 @@ class FBXTreeParser {
 
 		} );
 
-		this.bindSkeleton( deformers.skeletons, geometryMap, modelMap );
-
 		this.addGlobalSceneSettings();
 
 		sceneGraph.traverse( function ( node ) {
@@ -4860,17 +4871,94 @@ class FBXTreeParser {
 
 		} );
 
-		const animations = new AnimationParser().parse();
+		// Like Blender's FBX importer, use the BindPose section to set the
+		// rest pose for bones that are not part of a skin cluster. The BindPose
+		// provides a more authoritative rest pose than the Lcl properties which
+		// may represent an animation frame rather than the true rest state.
+		// Bones WITH clusters will get their bind pose from TransformLink
+		// (set via bindSkeleton below), which takes priority.
+		const bindPoseMatrices = this.parsePoseNodes();
+		const clusterBoneIDs = new Set();
+
+		for ( const ID in deformers.skeletons ) {
+
+			deformers.skeletons[ ID ].rawBones.forEach( function ( _, i ) {
+
+				const bone = deformers.skeletons[ ID ].bones[ i ];
+				if ( bone ) clusterBoneIDs.add( bone.ID );
+
+			} );
+
+		}
+
+		const tempMatrix = new __WEBPACK_EXTERNAL_MODULE_three_Matrix4__();
+
+		sceneGraph.traverse( function ( node ) {
+
+			if ( node.isBone && node.ID !== undefined && ! clusterBoneIDs.has( node.ID ) ) {
+
+				const bindPose = bindPoseMatrices[ node.ID ];
+
+				if ( bindPose !== undefined ) {
+
+					if ( node.parent ) {
+
+						tempMatrix.copy( node.parent.matrixWorld ).invert();
+						tempMatrix.multiply( bindPose );
+
+					} else {
+
+						tempMatrix.copy( bindPose );
+
+					}
+
+					tempMatrix.decompose( node.position, node.quaternion, node.scale );
+					node.updateMatrix();
+					node.matrixWorld.copy( bindPose );
+
+				}
+
+			}
+
+		} );
+
+		// Bind skeletons after transforms are applied so that bind matrices
+		// are computed from the final scene state. This ensures the rest pose
+		// is correct even when the FBX file's Cluster TransformLink matrices
+		// differ from the reconstructed bone transforms (common in files
+		// without a BindPose section).
+		this.bindSkeleton( deformers.skeletons, geometryMap, modelMap );
+
+		const animations = new AnimationParser( this.trimAnimationClips ).parse();
 
 		// if all the models where already combined in a single group, just return that
 		if ( sceneGraph.children.length === 1 && sceneGraph.children[ 0 ].isGroup ) {
 
 			sceneGraph.children[ 0 ].animations = animations;
+			Object.assign( sceneGraph.children[ 0 ].userData, sceneGraph.userData );
 			sceneGraph = sceneGraph.children[ 0 ];
 
 		}
 
 		sceneGraph.animations = animations;
+
+		// Apply coordinate system correction. FBX files can use different
+		// up-axis conventions (Y-up or Z-up). Three.js uses Y-up, so rotate
+		// the scene when the file uses Z-up (UpAxis === 2).
+
+		if ( 'GlobalSettings' in fbxTree && 'UpAxis' in fbxTree.GlobalSettings ) {
+
+			const upAxis = fbxTree.GlobalSettings.UpAxis.value;
+
+			if ( upAxis === 2 ) {
+
+				console.warn( 'THREE.FBXLoader: You are loading an asset with a Z-UP coordinate system. The loader just rotates the asset to transform it into Y-UP. The vertex data are not converted.' );
+
+				sceneGraph.rotation.set( - Math.PI / 2, 0, 0 );
+
+			}
+
+		}
 
 	}
 
@@ -5154,21 +5242,24 @@ class FBXTreeParser {
 
 				case 2: // Spot
 					let angle = Math.PI / 3;
-
-					if ( lightAttribute.InnerAngle !== undefined ) {
-
-						angle = __WEBPACK_EXTERNAL_MODULE_three_MathUtils__.degToRad( lightAttribute.InnerAngle.value );
-
-					}
-
 					let penumbra = 0;
+
 					if ( lightAttribute.OuterAngle !== undefined ) {
 
-						// TODO: this is not correct - FBX calculates outer and inner angle in degrees
-						// with OuterAngle > InnerAngle && OuterAngle <= Math.PI
-						// while three.js uses a penumbra between (0, 1) to attenuate the inner angle
-						penumbra = __WEBPACK_EXTERNAL_MODULE_three_MathUtils__.degToRad( lightAttribute.OuterAngle.value );
-						penumbra = Math.max( penumbra, 1 );
+						angle = __WEBPACK_EXTERNAL_MODULE_three_MathUtils__.degToRad( lightAttribute.OuterAngle.value );
+
+						if ( lightAttribute.InnerAngle !== undefined ) {
+
+							penumbra = 1 - ( lightAttribute.InnerAngle.value / lightAttribute.OuterAngle.value );
+							penumbra = Math.max( 0, penumbra ); // penumbra must be in the range [0,1]
+
+						}
+
+					} else if ( lightAttribute.InnerAngle !== undefined ) {
+
+						// fallback if only InnerAngle is defined
+
+						angle = __WEBPACK_EXTERNAL_MODULE_three_MathUtils__.degToRad( lightAttribute.InnerAngle.value );
 
 					}
 
@@ -5378,11 +5469,29 @@ class FBXTreeParser {
 
 	bindSkeleton( skeletons, geometryMap, modelMap ) {
 
-		const bindMatrices = this.parsePoseNodes();
-
 		for ( const ID in skeletons ) {
 
 			const skeleton = skeletons[ ID ];
+
+			// Compute bone inverses from TransformLink rather than from the
+			// bones' current matrixWorld. The TransformLink matrices represent
+			// each bone's global transform at the time the skin weights were
+			// painted, which may differ from the scene-reconstructed transforms.
+			const boneInverses = [];
+
+			for ( let i = 0, l = skeleton.bones.length; i < l; i ++ ) {
+
+				const inverse = new __WEBPACK_EXTERNAL_MODULE_three_Matrix4__();
+
+				if ( skeleton.bones[ i ] && skeleton.rawBones[ i ] ) {
+
+					inverse.copy( skeleton.rawBones[ i ].transformLink ).invert();
+
+				}
+
+				boneInverses.push( inverse );
+
+			}
 
 			const parents = connections.get( parseInt( skeleton.ID ) ).parents;
 
@@ -5399,7 +5508,16 @@ class FBXTreeParser {
 
 							const model = modelMap.get( geoConnParent.ID );
 
-							model.bind( new __WEBPACK_EXTERNAL_MODULE_three_Skeleton__( skeleton.bones ), bindMatrices[ geoConnParent.ID ] );
+							// Use the mesh's current matrixWorld as bind matrix.
+							// The BindPose section is intentionally not used here
+							// since it may contain scale/rotation from the model
+							// hierarchy that is inconsistent with the TransformLink-
+							// based bone inverses. Always provide a bind matrix to
+							// prevent bind() from calling calculateInverses() which
+							// would overwrite the bone inverses computed above.
+							model.updateMatrixWorld( true );
+
+							model.bind( new __WEBPACK_EXTERNAL_MODULE_three_Skeleton__( skeleton.bones, boneInverses ), model.matrixWorld );
 
 						}
 
@@ -5413,6 +5531,7 @@ class FBXTreeParser {
 
 	}
 
+	// Parse BindPose nodes and return a map of node ID to bind matrix.
 	parsePoseNodes() {
 
 		const bindMatrices = {};
@@ -6175,6 +6294,13 @@ class GeometryParser {
 		parentGeo.morphAttributes.position = [];
 		// parentGeo.morphAttributes.normal = []; // not implemented
 
+		// Morph attribute positions are stored as deltas (morphTargetsRelative = true), so the
+		// translation component of the geometric transform must not be applied to them — only the
+		// rotation/scale part. Otherwise every delta gets the geometric translation added, which
+		// shifts morphed vertices away from their intended position by `weight * translation` as
+		// the influence increases.
+		const morphPreTransform = preTransform.clone().setPosition( 0, 0, 0 );
+
 		const scope = this;
 		morphTargets.forEach( function ( morphTarget ) {
 
@@ -6184,7 +6310,7 @@ class GeometryParser {
 
 				if ( morphGeoNode !== undefined ) {
 
-					scope.genMorphGeometry( parentGeo, parentGeoNode, morphGeoNode, preTransform, rawTarget.name );
+					scope.genMorphGeometry( parentGeo, parentGeoNode, morphGeoNode, morphPreTransform, rawTarget.name );
 
 				}
 
@@ -6418,6 +6544,12 @@ class GeometryParser {
 // parse animation data from FBXTree
 class AnimationParser {
 
+	constructor( trimAnimationClips ) {
+
+		this.trimAnimationClips = trimAnimationClips;
+
+	}
+
 	// take raw animation clips and turn them into three.js animation clips
 	parse() {
 
@@ -6579,11 +6711,15 @@ class AnimationParser {
 
 							if ( layerCurveNodes[ i ] === undefined ) {
 
-								const modelID = connections.get( child.ID ).parents.filter( function ( parent ) {
+								const filteredParents = connections.get( child.ID ).parents.filter( function ( parent ) {
 
 									return parent.relationship !== undefined;
 
-								} )[ 0 ].ID;
+								} );
+
+								if ( filteredParents.length === 0 ) return;
+
+								const modelID = filteredParents[ 0 ].ID;
 
 								if ( modelID !== undefined ) {
 
@@ -6612,7 +6748,13 @@ class AnimationParser {
 
 											node.transform = child.matrix;
 
-											if ( child.userData.transformData ) node.eulerOrder = child.userData.transformData.eulerOrder;
+											if ( child.userData.transformData ) {
+
+												node.eulerOrder = child.userData.transformData.eulerOrder;
+
+												if ( child.userData.transformData.rotation ) node.initialRotation = child.userData.transformData.rotation;
+
+											}
 
 										}
 
@@ -6637,11 +6779,15 @@ class AnimationParser {
 
 							if ( layerCurveNodes[ i ] === undefined ) {
 
-								const deformerID = connections.get( child.ID ).parents.filter( function ( parent ) {
+								const filteredParents = connections.get( child.ID ).parents.filter( function ( parent ) {
 
 									return parent.relationship !== undefined;
 
-								} )[ 0 ].ID;
+								} );
+
+								if ( filteredParents.length === 0 ) return;
+
+								const deformerID = filteredParents[ 0 ].ID;
 
 								const morpherID = connections.get( deformerID ).parents[ 0 ].ID;
 								const geoID = connections.get( morpherID ).parents[ 0 ].ID;
@@ -6702,11 +6848,14 @@ class AnimationParser {
 			}
 
 			const layer = layersMap.get( children[ 0 ].ID );
+			const rawStack = rawStacks[ nodeID ];
 
 			rawClips[ nodeID ] = {
 
-				name: rawStacks[ nodeID ].attrName,
+				name: rawStack.attrName,
 				layer: layer,
+				localStart: rawStack.LocalStart !== undefined ? convertFBXTimeToSeconds( Number( rawStack.LocalStart.value ) ) : 0,
+				localStop: rawStack.LocalStop !== undefined ? convertFBXTimeToSeconds( Number( rawStack.LocalStop.value ) ) : 0,
 
 			};
 
@@ -6727,7 +6876,62 @@ class AnimationParser {
 
 		} );
 
+		if ( this.trimAnimationClips === true && rawClip.localStop > rawClip.localStart ) {
+
+			tracks = this.trimTracks( tracks, rawClip.localStart, rawClip.localStop );
+
+		}
+
 		return new __WEBPACK_EXTERNAL_MODULE_three_AnimationClip__( rawClip.name, - 1, tracks );
+
+	}
+
+	// trims the given tracks to the time range [ startTime, endTime ] and shifts
+	// them so they start at time zero. tracks without keyframes in the range are discarded
+	trimTracks( tracks, startTime, endTime ) {
+
+		// track times are stored as float32 so compare against float32 boundaries
+		// to keep keyframes lying exactly on the range limits
+
+		const start = Math.fround( startTime );
+		const end = Math.fround( endTime );
+
+		const trimmedTracks = [];
+
+		for ( let i = 0; i < tracks.length; i ++ ) {
+
+			const track = tracks[ i ];
+			const stride = track.getValueSize();
+
+			const times = [];
+			const values = [];
+
+			for ( let j = 0; j < track.times.length; j ++ ) {
+
+				const time = track.times[ j ];
+
+				if ( time < start || time > end ) continue;
+
+				times.push( time - start );
+
+				for ( let k = 0; k < stride; k ++ ) {
+
+					values.push( track.values[ j * stride + k ] );
+
+				}
+
+			}
+
+			if ( times.length === 0 ) continue;
+
+			track.times = new Float32Array( times );
+			track.values = new Float32Array( values );
+
+			trimmedTracks.push( track );
+
+		}
+
+		return trimmedTracks;
 
 	}
 
@@ -6752,7 +6956,7 @@ class AnimationParser {
 
 		if ( rawTracks.R !== undefined && Object.keys( rawTracks.R.curves ).length > 0 ) {
 
-			const rotationTrack = this.generateRotationTrack( rawTracks.modelName, rawTracks.R.curves, rawTracks.preRotation, rawTracks.postRotation, rawTracks.eulerOrder );
+			const rotationTrack = this.generateRotationTrack( rawTracks.modelName, rawTracks.R.curves, rawTracks.preRotation, rawTracks.postRotation, rawTracks.eulerOrder, rawTracks.initialRotation );
 			if ( rotationTrack !== undefined ) tracks.push( rotationTrack );
 
 		}
@@ -6784,17 +6988,33 @@ class AnimationParser {
 
 	}
 
-	generateRotationTrack( modelName, curves, preRotation, postRotation, eulerOrder ) {
+	generateRotationTrack( modelName, curves, preRotation, postRotation, eulerOrder, initialRotation ) {
 
 		let times;
 		let values;
 
-		if ( curves.x !== undefined && curves.y !== undefined && curves.z !== undefined ) {
+		if ( curves.x !== undefined || curves.y !== undefined || curves.z !== undefined ) {
 
-			const result = this.interpolateRotations( curves.x, curves.y, curves.z, eulerOrder );
+			// Get merged, sorted, unique times from all available curves
+			const mergedTimes = this.getTimesForAllAxes( curves );
 
-			times = result[ 0 ];
-			values = result[ 1 ];
+			if ( mergedTimes.length > 0 ) {
+
+				const initialRot = initialRotation || [ 0, 0, 0 ];
+
+				// Synchronize all curves to the merged time array.
+				// Missing axes are filled with constant values from the initial rotation (Lcl Rotation).
+				// Existing curves at different times are linearly interpolated.
+				const syncX = this.synchronizeCurve( curves.x, mergedTimes, initialRot[ 0 ] );
+				const syncY = this.synchronizeCurve( curves.y, mergedTimes, initialRot[ 1 ] );
+				const syncZ = this.synchronizeCurve( curves.z, mergedTimes, initialRot[ 2 ] );
+
+				const result = this.interpolateRotations( syncX, syncY, syncZ, eulerOrder );
+
+				times = result[ 0 ];
+				values = result[ 1 ];
+
+			}
 
 		}
 
@@ -6826,7 +7046,7 @@ class AnimationParser {
 
 		const quaternionValues = [];
 
-		if ( ! values || ! times ) return new __WEBPACK_EXTERNAL_MODULE_three_QuaternionKeyframeTrack__( modelName + '.quaternion', [ 0 ], [ 0 ] );
+		if ( ! values || ! times ) return undefined;
 
 		for ( let i = 0; i < values.length; i += 3 ) {
 
@@ -6979,6 +7199,62 @@ class AnimationParser {
 
 	}
 
+	// Synchronize a curve to a target time array using linear interpolation.
+	// If the curve is undefined (axis not animated), returns constant values from initialValue.
+	synchronizeCurve( curve, targetTimes, initialValue ) {
+
+		if ( curve === undefined ) {
+
+			return { times: targetTimes, values: targetTimes.map( () => initialValue ) };
+
+		}
+
+		// If the curve already has the same number of keyframes as the target, assume times match
+		if ( curve.times.length === targetTimes.length ) return curve;
+
+		// Linearly interpolate curve values at each target time
+		const values = [];
+
+		for ( let i = 0; i < targetTimes.length; i ++ ) {
+
+			values.push( this.sampleCurveValue( curve, targetTimes[ i ], initialValue ) );
+
+		}
+
+		return { times: targetTimes, values: values };
+
+	}
+
+	// Sample a single value from a curve at a given time using linear interpolation
+	sampleCurveValue( curve, time, initialValue ) {
+
+		const times = curve.times;
+		const values = curve.values;
+
+		// Before first keyframe
+		if ( time <= times[ 0 ] ) return values[ 0 ];
+
+		// After last keyframe
+		if ( time >= times[ times.length - 1 ] ) return values[ values.length - 1 ];
+
+		// Find surrounding keyframes and linearly interpolate
+		for ( let i = 0; i < times.length - 1; i ++ ) {
+
+			if ( time >= times[ i ] && time <= times[ i + 1 ] ) {
+
+				if ( times[ i ] === time ) return values[ i ];
+
+				const alpha = ( time - times[ i ] ) / ( times[ i + 1 ] - times[ i ] );
+				return values[ i ] * ( 1 - alpha ) + values[ i + 1 ] * alpha;
+
+			}
+
+		}
+
+		return initialValue;
+
+	}
+
 	// Rotations are defined as Euler angles which can have values  of any size
 	// These will be converted to quaternions which don't support values greater than
 	// PI, so we'll interpolate large rotations
@@ -7048,7 +7324,7 @@ class AnimationParser {
 				const Q2 = new __WEBPACK_EXTERNAL_MODULE_three_Quaternion__().setFromEuler( E2 );
 
 				// Check unroll
-				if ( Q1.dot( Q2 ) ) {
+				if ( Q1.dot( Q2 ) < 0 ) {
 
 					Q2.set( - Q2.x, - Q2.y, - Q2.z, - Q2.w );
 
@@ -8297,7 +8573,7 @@ function slice( a, b, from, to ) {
 
 
 
-;// ./node_modules/three/examples/jsm/utils/BufferGeometryUtils.js
+;// ../../node_modules/three/examples/jsm/utils/BufferGeometryUtils.js
 /* unused harmony import specifier */ var BufferAttribute;
 /* unused harmony import specifier */ var BufferGeometry;
 /* unused harmony import specifier */ var InstancedBufferAttribute;
@@ -8335,13 +8611,13 @@ function computeMikkTSpaceTangents( geometry, MikkTSpace, negateSign = true ) {
 
 	if ( ! MikkTSpace || ! MikkTSpace.isReady ) {
 
-		throw new Error( 'BufferGeometryUtils: Initialized MikkTSpace library required.' );
+		throw new Error( 'THREE.BufferGeometryUtils: Initialized MikkTSpace library required.' );
 
 	}
 
 	if ( ! geometry.hasAttribute( 'position' ) || ! geometry.hasAttribute( 'normal' ) || ! geometry.hasAttribute( 'uv' ) ) {
 
-		throw new Error( 'BufferGeometryUtils: Tangents require "position", "normal", and "uv" attributes.' );
+		throw new Error( 'THREE.BufferGeometryUtils: Tangents require "position", "normal", and "uv" attributes.' );
 
 	}
 
@@ -8582,8 +8858,7 @@ function mergeGeometries( geometries, useGroups = false ) {
 	for ( const name in morphAttributes ) {
 
 		const numMorphTargets = morphAttributes[ name ][ 0 ].length;
-
-		if ( numMorphTargets === 0 ) break;
+		if ( numMorphTargets === 0 ) continue;
 
 		mergedGeometry.morphAttributes = mergedGeometry.morphAttributes || {};
 		mergedGeometry.morphAttributes[ name ] = [];
@@ -9006,8 +9281,8 @@ function mergeVertices( geometry, tolerance = 1e-4 ) {
 
 			for ( let k = 0; k < itemSize; k ++ ) {
 
-				// double tilde truncates the decimal value
-				hash += `${ ~ ~ ( attribute[ getters[ k ] ]( index ) * hashMultiplier + hashAdditive ) },`;
+				// Math.trunc() preserves the full Number range, ~~ would wrap to int32
+				hash += `${ Math.trunc( attribute[ getters[ k ] ]( index ) * hashMultiplier + hashAdditive ) },`;
 
 			}
 
@@ -9096,12 +9371,13 @@ function mergeVertices( geometry, tolerance = 1e-4 ) {
 }
 
 /**
- * Returns a new indexed geometry based on `TrianglesDrawMode` draw mode.
- * This mode corresponds to the `gl.TRIANGLES` primitive in WebGL.
+ * Converts the given geometry to the `TrianglesDrawMode` draw mode, which
+ * corresponds to the `gl.TRIANGLES` primitive in WebGL. The conversion only
+ * rewrites the index, so the geometry is modified in place and returned.
  *
  * @param {BufferGeometry} geometry - The geometry to convert.
  * @param {number} drawMode - The current draw mode.
- * @return {BufferGeometry} The new geometry using `TrianglesDrawMode`.
+ * @return {BufferGeometry} The converted geometry using `TrianglesDrawMode`.
  */
 function toTrianglesDrawMode( geometry, drawMode ) {
 
@@ -9191,13 +9467,12 @@ function toTrianglesDrawMode( geometry, drawMode ) {
 
 		}
 
-		// build final geometry
+		// updated indices
 
-		const newGeometry = geometry.clone();
-		newGeometry.setIndex( newIndices );
-		newGeometry.clearGroups();
+		geometry.setIndex( newIndices );
+		geometry.clearGroups();
 
-		return newGeometry;
+		return geometry;
 
 	} else {
 
@@ -9317,7 +9592,7 @@ function computeMorphedAttributes( object ) {
 	const morphPosition = geometry.morphAttributes.position;
 	const morphTargetsRelative = geometry.morphTargetsRelative;
 	const normalAttribute = geometry.attributes.normal;
-	const morphNormal = geometry.morphAttributes.position;
+	const morphNormal = geometry.morphAttributes.normal;
 
 	const groups = geometry.groups;
 	const drawRange = geometry.drawRange;
@@ -9611,119 +9886,680 @@ function mergeGroups( geometry ) {
  */
 function toCreasedNormals( geometry, creaseAngle = Math.PI / 3 /* 60 degrees */ ) {
 
-	const creaseDot = Math.cos( creaseAngle );
-	const hashMultiplier = ( 1 + 1e-10 ) * 1e2;
-
-	// reusable vectors
-	const verts = [ new Vector3(), new Vector3(), new Vector3() ];
-	const tempVec1 = new Vector3();
-	const tempVec2 = new Vector3();
-	const tempNorm = new Vector3();
-	const tempNorm2 = new Vector3();
-
-	// hashes a vector
-	function hashVertex( v ) {
-
-		const x = ~ ~ ( v.x * hashMultiplier );
-		const y = ~ ~ ( v.y * hashMultiplier );
-		const z = ~ ~ ( v.z * hashMultiplier );
-		return `${x},${y},${z}`;
-
-	}
-
 	// BufferGeometry.toNonIndexed() warns if the geometry is non-indexed
 	// and returns the original geometry
 	const resultGeometry = geometry.index ? geometry.toNonIndexed() : geometry;
 	const posAttr = resultGeometry.attributes.position;
-	const vertexMap = {};
+	const vertexCount = posAttr.count;
 
-	// find all the normals shared by commonly located vertices
-	for ( let i = 0, l = posAttr.count / 3; i < l; i ++ ) {
+	let positions;
 
-		const i3 = 3 * i;
-		const a = verts[ 0 ].fromBufferAttribute( posAttr, i3 + 0 );
-		const b = verts[ 1 ].fromBufferAttribute( posAttr, i3 + 1 );
-		const c = verts[ 2 ].fromBufferAttribute( posAttr, i3 + 2 );
+	if ( posAttr.isBufferAttribute === true && posAttr.itemSize === 3 && posAttr.normalized === false ) {
 
-		tempVec1.subVectors( c, b );
-		tempVec2.subVectors( a, b );
+		positions = posAttr.array;
 
-		// add the normal to the map for all vertices
-		const normal = new Vector3().crossVectors( tempVec1, tempVec2 ).normalize();
-		for ( let n = 0; n < 3; n ++ ) {
+	} else {
 
-			const vert = verts[ n ];
-			const hash = hashVertex( vert );
-			if ( ! ( hash in vertexMap ) ) {
+		// flatten the position buffer so the math below operates on plain numbers
+		positions = new Float64Array( vertexCount * 3 );
 
-				vertexMap[ hash ] = [];
+		for ( let i = 0; i < vertexCount; i ++ ) {
 
-			}
-
-			vertexMap[ hash ].push( normal );
+			positions[ 3 * i + 0 ] = posAttr.getX( i );
+			positions[ 3 * i + 1 ] = posAttr.getY( i );
+			positions[ 3 * i + 2 ] = posAttr.getZ( i );
 
 		}
 
 	}
 
-	// average normals from all vertices that share a common location if they are within the
-	// provided crease threshold
-	const normalArray = new Float32Array( posAttr.count * 3 );
-	const normAttr = new BufferAttribute( normalArray, 3, false );
-	for ( let i = 0, l = posAttr.count / 3; i < l; i ++ ) {
+	const creaseDot = Math.cos( creaseAngle );
+	const hashMultiplier = ( 1 + 1e-10 ) * 1e2;
+	const faceCount = vertexCount / 3;
 
-		// get the face normal for this vertex
+	// compute the normal of each face
+	const faceNormals = new Float64Array( faceCount * 3 );
+	for ( let f = 0; f < faceCount; f ++ ) {
+
+		const f9 = 9 * f;
+		const ax = positions[ f9 + 0 ], ay = positions[ f9 + 1 ], az = positions[ f9 + 2 ];
+		const bx = positions[ f9 + 3 ], by = positions[ f9 + 4 ], bz = positions[ f9 + 5 ];
+		const cx = positions[ f9 + 6 ], cy = positions[ f9 + 7 ], cz = positions[ f9 + 8 ];
+
+		const v1x = cx - bx, v1y = cy - by, v1z = cz - bz;
+		const v2x = ax - bx, v2y = ay - by, v2z = az - bz;
+
+		const nx = v1y * v2z - v1z * v2y;
+		const ny = v1z * v2x - v1x * v2z;
+		const nz = v1x * v2y - v1y * v2x;
+
+		const invLength = 1 / ( Math.sqrt( nx * nx + ny * ny + nz * nz ) || 1 );
+		faceNormals[ 3 * f + 0 ] = nx * invLength;
+		faceNormals[ 3 * f + 1 ] = ny * invLength;
+		faceNormals[ 3 * f + 2 ] = nz * invLength;
+
+	}
+
+	// assign an id to each vertex, sharing the id between vertices with the same
+	// quantized position via an open-addressed hash table (slots hold id + 1, 0 means empty)
+	const vertexIds = new Int32Array( vertexCount );
+	const quantized = new Float64Array( vertexCount * 3 );
+
+	let tableSize = 1;
+	while ( tableSize < vertexCount * 2 ) tableSize <<= 1;
+	const tableMask = tableSize - 1;
+	const table = new Int32Array( tableSize );
+
+	let uniqueCount = 0;
+	for ( let i = 0; i < vertexCount; i ++ ) {
+
 		const i3 = 3 * i;
-		const a = verts[ 0 ].fromBufferAttribute( posAttr, i3 + 0 );
-		const b = verts[ 1 ].fromBufferAttribute( posAttr, i3 + 1 );
-		const c = verts[ 2 ].fromBufferAttribute( posAttr, i3 + 2 );
+		const qx = Math.trunc( positions[ i3 + 0 ] * hashMultiplier );
+		const qy = Math.trunc( positions[ i3 + 1 ] * hashMultiplier );
+		const qz = Math.trunc( positions[ i3 + 2 ] * hashMultiplier );
 
-		tempVec1.subVectors( c, b );
-		tempVec2.subVectors( a, b );
+		let slot = ( Math.imul( qx, 73856093 ) ^ Math.imul( qy, 19349663 ) ^ Math.imul( qz, 83492791 ) ) & tableMask;
 
-		tempNorm.crossVectors( tempVec1, tempVec2 ).normalize();
+		while ( true ) {
 
-		// average all normals that meet the threshold and set the normal value
+			const id = table[ slot ];
+
+			if ( id === 0 ) {
+
+				const q3 = 3 * uniqueCount;
+				quantized[ q3 + 0 ] = qx;
+				quantized[ q3 + 1 ] = qy;
+				quantized[ q3 + 2 ] = qz;
+
+				table[ slot ] = uniqueCount + 1;
+				vertexIds[ i ] = uniqueCount ++;
+				break;
+
+			}
+
+			const q3 = 3 * ( id - 1 );
+
+			if ( quantized[ q3 + 0 ] === qx && quantized[ q3 + 1 ] === qy && quantized[ q3 + 2 ] === qz ) {
+
+				vertexIds[ i ] = id - 1;
+				break;
+
+			}
+
+			slot = ( slot + 1 ) & tableMask;
+
+		}
+
+	}
+
+	// bucket the faces surrounding each unique vertex position
+	const bucketOffsets = new Int32Array( uniqueCount + 1 );
+	for ( let i = 0; i < vertexCount; i ++ ) bucketOffsets[ vertexIds[ i ] + 1 ] ++;
+	for ( let i = 0; i < uniqueCount; i ++ ) bucketOffsets[ i + 1 ] += bucketOffsets[ i ];
+
+	const bucketFaces = new Int32Array( vertexCount );
+	const bucketCursors = bucketOffsets.slice( 0, uniqueCount );
+	for ( let f = 0; f < faceCount; f ++ ) {
+
+		const f3 = 3 * f;
+		bucketFaces[ bucketCursors[ vertexIds[ f3 + 0 ] ] ++ ] = f;
+		bucketFaces[ bucketCursors[ vertexIds[ f3 + 1 ] ] ++ ] = f;
+		bucketFaces[ bucketCursors[ vertexIds[ f3 + 2 ] ] ++ ] = f;
+
+	}
+
+	// average the normals of the faces surrounding each vertex if they are within the
+	// provided crease threshold
+	const normalArray = new Float32Array( vertexCount * 3 );
+	for ( let f = 0; f < faceCount; f ++ ) {
+
+		const f3 = 3 * f;
+		const nx = faceNormals[ f3 + 0 ];
+		const ny = faceNormals[ f3 + 1 ];
+		const nz = faceNormals[ f3 + 2 ];
+
 		for ( let n = 0; n < 3; n ++ ) {
 
-			const vert = verts[ n ];
-			const hash = hashVertex( vert );
-			const otherNormals = vertexMap[ hash ];
-			tempNorm2.set( 0, 0, 0 );
+			const i = f3 + n;
+			const id = vertexIds[ i ];
 
-			for ( let k = 0, lk = otherNormals.length; k < lk; k ++ ) {
+			let sumX = 0, sumY = 0, sumZ = 0;
 
-				const otherNorm = otherNormals[ k ];
-				if ( tempNorm.dot( otherNorm ) > creaseDot ) {
+			for ( let k = bucketOffsets[ id ], end = bucketOffsets[ id + 1 ]; k < end; k ++ ) {
 
-					tempNorm2.add( otherNorm );
+				const o3 = 3 * bucketFaces[ k ];
+				const ox = faceNormals[ o3 + 0 ];
+				const oy = faceNormals[ o3 + 1 ];
+				const oz = faceNormals[ o3 + 2 ];
+
+				if ( nx * ox + ny * oy + nz * oz > creaseDot ) {
+
+					sumX += ox;
+					sumY += oy;
+					sumZ += oz;
 
 				}
 
 			}
 
-			tempNorm2.normalize();
-			normAttr.setXYZ( i3 + n, tempNorm2.x, tempNorm2.y, tempNorm2.z );
+			const invLength = 1 / ( Math.sqrt( sumX * sumX + sumY * sumY + sumZ * sumZ ) || 1 );
+			normalArray[ 3 * i + 0 ] = sumX * invLength;
+			normalArray[ 3 * i + 1 ] = sumY * invLength;
+			normalArray[ 3 * i + 2 ] = sumZ * invLength;
 
 		}
 
 	}
 
-	resultGeometry.setAttribute( 'normal', normAttr );
+	resultGeometry.setAttribute( 'normal', new BufferAttribute( normalArray, 3, false ) );
 	return resultGeometry;
 
 }
 
 
 
-;// ./node_modules/three/examples/jsm/loaders/GLTFLoader.js
+;// ../../node_modules/three/examples/jsm/utils/SkeletonUtils.js
+/* unused harmony import specifier */ var Quaternion;
+/* unused harmony import specifier */ var SkeletonUtils_Vector3;
+/* unused harmony import specifier */ var Matrix4;
+/* unused harmony import specifier */ var AnimationMixer;
+/* unused harmony import specifier */ var VectorKeyframeTrack;
+/* unused harmony import specifier */ var QuaternionKeyframeTrack;
+/* unused harmony import specifier */ var AnimationClip;
+/* unused harmony import specifier */ var SkeletonHelper;
+
+
+/**
+ * @module SkeletonUtils
+ * @three_import import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+ */
+
+function getBoneName( bone, options ) {
+
+	if ( options.getBoneName !== undefined ) {
+
+		return options.getBoneName( bone );
+
+	}
+
+	return options.names[ bone.name ];
+
+}
+
+/**
+ * Retargets the skeleton from the given source to the target.
+ *
+ * Both `target` and `source` can be a 3D object with a skeleton property (e.g. a skinned mesh)
+ * or a {@link Skeleton} directly.
+ *
+ * @param {Object3D|Skeleton} target - The target object.
+ * @param {Object3D|Skeleton} source - The source object.
+ * @param {module:SkeletonUtils~RetargetOptions} options - The options.
+ */
+function retarget( target, source, options = {} ) {
+
+	const quat = new Quaternion(),
+		scale = new SkeletonUtils_Vector3(),
+		relativeMatrix = new Matrix4(),
+		globalMatrix = new Matrix4();
+
+	options.preserveBoneMatrix = options.preserveBoneMatrix !== undefined ? options.preserveBoneMatrix : true;
+	options.preserveBonePositions = options.preserveBonePositions !== undefined ? options.preserveBonePositions : true;
+	options.useTargetMatrix = options.useTargetMatrix !== undefined ? options.useTargetMatrix : false;
+	options.hip = options.hip !== undefined ? options.hip : 'hip';
+	options.hipInfluence = options.hipInfluence !== undefined ? options.hipInfluence : new SkeletonUtils_Vector3( 1, 1, 1 );
+	options.scale = options.scale !== undefined ? options.scale : 1;
+	options.names = options.names || {};
+
+	const sourceBones = source.isObject3D ? source.skeleton.bones : getBones( source ),
+		bones = target.isObject3D ? target.skeleton.bones : getBones( target );
+
+	let bone, name, boneTo,
+		bonesPosition;
+
+	// reset bones
+
+	if ( target.isObject3D ) {
+
+		target.skeleton.pose();
+
+	} else {
+
+		options.useTargetMatrix = true;
+		options.preserveBoneMatrix = false;
+
+	}
+
+	if ( options.preserveBonePositions ) {
+
+		bonesPosition = [];
+
+		for ( let i = 0; i < bones.length; i ++ ) {
+
+			bonesPosition.push( bones[ i ].position.clone() );
+
+		}
+
+	}
+
+	if ( options.preserveBoneMatrix ) {
+
+		// reset matrix
+
+		target.updateMatrixWorld();
+
+		target.matrixWorld.identity();
+
+		// reset children matrix
+
+		for ( let i = 0; i < target.children.length; ++ i ) {
+
+			target.children[ i ].updateMatrixWorld( true );
+
+		}
+
+	}
+
+	for ( let i = 0; i < bones.length; ++ i ) {
+
+		bone = bones[ i ];
+		name = getBoneName( bone, options );
+
+		boneTo = getBoneByName( name, sourceBones );
+
+		globalMatrix.copy( bone.matrixWorld );
+
+		if ( boneTo ) {
+
+			boneTo.updateMatrixWorld();
+
+			if ( options.useTargetMatrix ) {
+
+				relativeMatrix.copy( boneTo.matrixWorld );
+
+			} else {
+
+				relativeMatrix.copy( target.matrixWorld ).invert();
+				relativeMatrix.multiply( boneTo.matrixWorld );
+
+			}
+
+			// ignore scale to extract rotation
+
+			scale.setFromMatrixScale( relativeMatrix );
+			relativeMatrix.scale( scale.set( 1 / scale.x, 1 / scale.y, 1 / scale.z ) );
+
+			// apply to global matrix
+
+			globalMatrix.makeRotationFromQuaternion( quat.setFromRotationMatrix( relativeMatrix ) );
+
+			if ( target.isObject3D ) {
+
+				if ( options.localOffsets ) {
+
+					if ( options.localOffsets[ bone.name ] ) {
+
+						globalMatrix.multiply( options.localOffsets[ bone.name ] );
+
+					}
+
+				}
+
+			}
+
+			globalMatrix.copyPosition( relativeMatrix );
+
+		}
+
+		if ( name === options.hip ) {
+
+			globalMatrix.elements[ 12 ] *= options.scale * options.hipInfluence.x;
+			globalMatrix.elements[ 13 ] *= options.scale * options.hipInfluence.y;
+			globalMatrix.elements[ 14 ] *= options.scale * options.hipInfluence.z;
+
+			if ( options.hipPosition !== undefined ) {
+
+				globalMatrix.elements[ 12 ] += options.hipPosition.x * options.scale;
+				globalMatrix.elements[ 13 ] += options.hipPosition.y * options.scale;
+				globalMatrix.elements[ 14 ] += options.hipPosition.z * options.scale;
+
+			}
+
+		}
+
+		if ( bone.parent ) {
+
+			bone.matrix.copy( bone.parent.matrixWorld ).invert();
+			bone.matrix.multiply( globalMatrix );
+
+		} else {
+
+			bone.matrix.copy( globalMatrix );
+
+		}
+
+		bone.matrix.decompose( bone.position, bone.quaternion, bone.scale );
+
+		bone.updateMatrixWorld();
+
+	}
+
+	if ( options.preserveBonePositions ) {
+
+		for ( let i = 0; i < bones.length; ++ i ) {
+
+			bone = bones[ i ];
+			name = getBoneName( bone, options ) || bone.name;
+
+			if ( name !== options.hip ) {
+
+				bone.position.copy( bonesPosition[ i ] );
+
+			}
+
+		}
+
+	}
+
+	if ( options.preserveBoneMatrix ) {
+
+		// restore matrix
+
+		target.updateMatrixWorld( true );
+
+	}
+
+}
+
+/**
+ * Retargets the animation clip of the source to the target 3D object.
+ *
+ * The `source` can be a 3D object with a skeleton property (e.g. a skinned mesh)
+ * or a {@link Skeleton} directly.
+ *
+ * @param {Object3D} target - The target 3D object. Must have a `skeleton` property.
+ * @param {Object3D|Skeleton} source - The source object.
+ * @param {AnimationClip} clip - The animation clip.
+ * @param {module:SkeletonUtils~RetargetOptions} options - The options.
+ * @return {AnimationClip} The retargeted animation clip.
+ */
+function retargetClip( target, source, clip, options = {} ) {
+
+	options.useFirstFramePosition = options.useFirstFramePosition !== undefined ? options.useFirstFramePosition : false;
+
+	// Calculate the fps from the source clip based on the track with the most frames, unless fps is already provided.
+	options.fps = options.fps !== undefined ? options.fps : ( Math.max( ...clip.tracks.map( track => track.times.length ) ) / clip.duration );
+	options.names = options.names || [];
+
+	if ( ! source.isObject3D ) {
+
+		source = getHelperFromSkeleton( source );
+
+	}
+
+	const numFrames = Math.round( clip.duration * ( options.fps / 1000 ) * 1000 ),
+		delta = clip.duration / ( numFrames - 1 ),
+		convertedTracks = [],
+		mixer = new AnimationMixer( source ),
+		bones = getBones( target.skeleton ),
+		boneDatas = [];
+
+	let positionOffset,
+		bone, boneTo, boneData,
+		name;
+
+	mixer.clipAction( clip ).play();
+
+	// trim
+
+	let start = 0, end = numFrames;
+
+	if ( options.trim !== undefined ) {
+
+		start = Math.round( options.trim[ 0 ] * options.fps );
+		end = Math.min( Math.round( options.trim[ 1 ] * options.fps ), numFrames ) - start;
+
+		mixer.update( options.trim[ 0 ] );
+
+	} else {
+
+		mixer.update( 0 );
+
+	}
+
+	source.updateMatrixWorld();
+
+	//
+
+	for ( let frame = 0; frame < end; ++ frame ) {
+
+		const time = frame * delta;
+
+		retarget( target, source, options );
+
+		for ( let j = 0; j < bones.length; ++ j ) {
+
+			bone = bones[ j ];
+			name = getBoneName( bone, options ) || bone.name;
+			boneTo = getBoneByName( name, source.skeleton );
+
+			if ( boneTo ) {
+
+				boneData = boneDatas[ j ] = boneDatas[ j ] || { bone: bone };
+
+				if ( options.hip === name ) {
+
+					if ( ! boneData.pos ) {
+
+						boneData.pos = {
+							times: new Float32Array( end ),
+							values: new Float32Array( end * 3 )
+						};
+
+					}
+
+					if ( options.useFirstFramePosition ) {
+
+						if ( frame === 0 ) {
+
+							positionOffset = bone.position.clone();
+
+						}
+
+						bone.position.sub( positionOffset );
+
+					}
+
+					boneData.pos.times[ frame ] = time;
+
+					bone.position.toArray( boneData.pos.values, frame * 3 );
+
+				}
+
+				if ( ! boneData.quat ) {
+
+					boneData.quat = {
+						times: new Float32Array( end ),
+						values: new Float32Array( end * 4 )
+					};
+
+				}
+
+				boneData.quat.times[ frame ] = time;
+
+				bone.quaternion.toArray( boneData.quat.values, frame * 4 );
+
+			}
+
+		}
+
+		if ( frame === end - 2 ) {
+
+			// last mixer update before final loop iteration
+			// make sure we do not go over or equal to clip duration
+			mixer.update( delta - 0.0000001 );
+
+		} else {
+
+			mixer.update( delta );
+
+		}
+
+		source.updateMatrixWorld();
+
+	}
+
+	for ( let i = 0; i < boneDatas.length; ++ i ) {
+
+		boneData = boneDatas[ i ];
+
+		if ( boneData ) {
+
+			if ( boneData.pos ) {
+
+				convertedTracks.push( new VectorKeyframeTrack(
+					'.bones[' + boneData.bone.name + '].position',
+					boneData.pos.times,
+					boneData.pos.values
+				) );
+
+			}
+
+			convertedTracks.push( new QuaternionKeyframeTrack(
+				'.bones[' + boneData.bone.name + '].quaternion',
+				boneData.quat.times,
+				boneData.quat.values
+			) );
+
+		}
+
+	}
+
+	mixer.uncacheAction( clip );
+
+	return new AnimationClip( clip.name, - 1, convertedTracks );
+
+}
+
+/**
+ * Clones the given 3D object and its descendants, ensuring that any `SkinnedMesh` instances are
+ * correctly associated with their bones. Bones are also cloned, and must be descendants of the
+ * object passed to this method. Other data, like geometries and materials, are reused by reference.
+ *
+ * @param {Object3D} source - The 3D object to clone.
+ * @return {Object3D} The cloned 3D object.
+ */
+function clone( source ) {
+
+	const sourceLookup = new Map();
+	const cloneLookup = new Map();
+
+	const clone = source.clone();
+
+	parallelTraverse( source, clone, function ( sourceNode, clonedNode ) {
+
+		sourceLookup.set( clonedNode, sourceNode );
+		cloneLookup.set( sourceNode, clonedNode );
+
+	} );
+
+	clone.traverse( function ( node ) {
+
+		if ( ! node.isSkinnedMesh ) return;
+
+		const clonedMesh = node;
+		const sourceMesh = sourceLookup.get( node );
+		const sourceBones = sourceMesh.skeleton.bones;
+
+		clonedMesh.skeleton = sourceMesh.skeleton.clone();
+		clonedMesh.bindMatrix.copy( sourceMesh.bindMatrix );
+
+		clonedMesh.skeleton.bones = sourceBones.map( function ( bone ) {
+
+			return cloneLookup.get( bone );
+
+		} );
+
+		clonedMesh.bind( clonedMesh.skeleton, clonedMesh.bindMatrix );
+
+	} );
+
+	return clone;
+
+}
+
+// internal helper
+
+function getBoneByName( name, skeleton ) {
+
+	for ( let i = 0, bones = getBones( skeleton ); i < bones.length; i ++ ) {
+
+		if ( name === bones[ i ].name )
+
+			return bones[ i ];
+
+	}
+
+}
+
+function getBones( skeleton ) {
+
+	return Array.isArray( skeleton ) ? skeleton : skeleton.bones;
+
+}
+
+
+function getHelperFromSkeleton( skeleton ) {
+
+	const source = new SkeletonHelper( skeleton.bones[ 0 ] );
+	source.skeleton = skeleton;
+
+	return source;
+
+}
+
+function parallelTraverse( a, b, callback ) {
+
+	callback( a, b );
+
+	for ( let i = 0; i < a.children.length; i ++ ) {
+
+		parallelTraverse( a.children[ i ], b.children[ i ], callback );
+
+	}
+
+}
+
+/**
+ * Retarget options of `SkeletonUtils`.
+ *
+ * @typedef {Object} module:SkeletonUtils~RetargetOptions
+ * @property {boolean} [useFirstFramePosition=false] - Whether to use the position of the first frame or not.
+ * @property {number} [fps] - The FPS of the clip.
+ * @property {Object<string,string>} [names] - A dictionary for mapping target to source bone names.
+ * @property {function(string):string} [getBoneName] - A function for mapping bone names. Alternative to `names`.
+ * @property {Array<number>} [trim] - Whether to trim the clip or not. If set the array should hold two values for the start and end.
+ * @property {boolean} [preserveBoneMatrix=true] - Whether to preserve bone matrices or not.
+ * @property {boolean} [preserveBonePositions=true] - Whether to preserve bone positions or not.
+ * @property {boolean} [useTargetMatrix=false] - Whether to use the target matrix or not.
+ * @property {string} [hip='hip'] - The name of the source's hip bone.
+ * @property {Vector3} [hipInfluence=(1,1,1)] - The hip influence.
+ * @property {number} [scale=1] - The scale.
+ * @property {Object<string,Matrix4>} [localOffsets] - Per-bone local offset matrices, keyed by bone name.
+ * @property {Vector3} [hipPosition] - An additional position offset applied to the hip bone.
+ **/
+
+
+
+;// ../../node_modules/three/examples/jsm/loaders/GLTFLoader.js
+
 
 
 
 /**
  * A loader for the glTF 2.0 format.
  *
- * [glTF](https://www.khronos.org/gltf/} (GL Transmission Format) is an [open format specification]{@link https://github.com/KhronosGroup/glTF/tree/main/specification/2.0)
+ * [glTF](https://www.khronos.org/gltf/) (GL Transmission Format) is an [open format specification]{@link https://github.com/KhronosGroup/glTF/tree/main/specification/2.0)
  * for efficient delivery and loading of 3D content. Assets may be provided either in JSON (.gltf) or binary (.glb)
  * format. External files store textures (.jpg, .png) and additional binary data (.bin). A glTF asset may deliver
  * one or more scenes, including meshes, materials, textures, skins, skeletons, morph targets, animations, lights,
@@ -9735,8 +10571,11 @@ function toCreasedNormals( geometry, creaseAngle = Math.PI / 3 /* 60 degrees */ 
  *
  * `GLTFLoader` supports the following glTF 2.0 extensions:
  * - KHR_draco_mesh_compression
+ * - KHR_lights_punctual
+ * - KHR_materials_anisotropy
  * - KHR_materials_clearcoat
  * - KHR_materials_dispersion
+ * - KHR_materials_emissive_strength
  * - KHR_materials_ior
  * - KHR_materials_specular
  * - KHR_materials_transmission
@@ -9744,14 +10583,17 @@ function toCreasedNormals( geometry, creaseAngle = Math.PI / 3 /* 60 degrees */ 
  * - KHR_materials_unlit
  * - KHR_materials_volume
  * - KHR_mesh_quantization
- * - KHR_lights_punctual
+ * - KHR_meshopt_compression
  * - KHR_texture_basisu
  * - KHR_texture_transform
- * - EXT_texture_webp
+ * - EXT_materials_bump
  * - EXT_meshopt_compression
  * - EXT_mesh_gpu_instancing
+ * - EXT_texture_avif
+ * - EXT_texture_webp
  *
- * The following glTF 2.0 extension is supported by an external user plugin:
+ * The following glTF 2.0 extensions are supported by separately registered plugins:
+ * - KHR_gaussian_splatting
  * - [KHR_materials_variants](https://github.com/takahirox/three-gltf-extensions)
  * - [MSFT_texture_dds](https://github.com/takahirox/three-gltf-extensions)
  * - [KHR_animation_pointer](https://github.com/needle-tools/three-animation-pointer)
@@ -9881,7 +10723,13 @@ class GLTFLoader extends __WEBPACK_EXTERNAL_MODULE_three_Loader__ {
 
 		this.register( function ( parser ) {
 
-			return new GLTFMeshoptCompression( parser );
+			return new GLTFMeshoptCompression( parser, EXTENSIONS.EXT_MESHOPT_COMPRESSION );
+
+		} );
+
+		this.register( function ( parser ) {
+
+			return new GLTFMeshoptCompression( parser, EXTENSIONS.KHR_MESHOPT_COMPRESSION );
 
 		} );
 
@@ -10060,7 +10908,7 @@ class GLTFLoader extends __WEBPACK_EXTERNAL_MODULE_three_Loader__ {
 	}
 
 	/**
-	 * Parses the given FBX data and returns the resulting group.
+	 * Parses the given glTF data and returns the resulting group.
 	 *
 	 * @param {string|ArrayBuffer} data - The raw glTF data.
 	 * @param {string} path - The URL base path.
@@ -10252,6 +11100,20 @@ function GLTFRegistry() {
 /********** EXTENSIONS ***********/
 /*********************************/
 
+function getMaterialExtension( parser, materialIndex, extensionName ) {
+
+	const materialDef = parser.json.materials[ materialIndex ];
+
+	if ( materialDef.extensions && materialDef.extensions[ extensionName ] ) {
+
+		return materialDef.extensions[ extensionName ];
+
+	}
+
+	return null;
+
+}
+
 const EXTENSIONS = {
 	KHR_BINARY_GLTF: 'KHR_binary_glTF',
 	KHR_DRACO_MESH_COMPRESSION: 'KHR_draco_mesh_compression',
@@ -10274,6 +11136,7 @@ const EXTENSIONS = {
 	EXT_TEXTURE_WEBP: 'EXT_texture_webp',
 	EXT_TEXTURE_AVIF: 'EXT_texture_avif',
 	EXT_MESHOPT_COMPRESSION: 'EXT_meshopt_compression',
+	KHR_MESHOPT_COMPRESSION: 'KHR_meshopt_compression',
 	EXT_MESH_GPU_INSTANCING: 'EXT_mesh_gpu_instancing'
 };
 
@@ -10488,20 +11351,13 @@ class GLTFMaterialsEmissiveStrengthExtension {
 
 	extendMaterialParams( materialIndex, materialParams ) {
 
-		const parser = this.parser;
-		const materialDef = parser.json.materials[ materialIndex ];
+		const extension = getMaterialExtension( this.parser, materialIndex, this.name );
 
-		if ( ! materialDef.extensions || ! materialDef.extensions[ this.name ] ) {
+		if ( extension === null ) return Promise.resolve();
 
-			return Promise.resolve();
+		if ( extension.emissiveStrength !== undefined ) {
 
-		}
-
-		const emissiveStrength = materialDef.extensions[ this.name ].emissiveStrength;
-
-		if ( emissiveStrength !== undefined ) {
-
-			materialParams.emissiveIntensity = emissiveStrength;
+			materialParams.emissiveIntensity = extension.emissiveStrength;
 
 		}
 
@@ -10529,29 +11385,19 @@ class GLTFMaterialsClearcoatExtension {
 
 	getMaterialType( materialIndex ) {
 
-		const parser = this.parser;
-		const materialDef = parser.json.materials[ materialIndex ];
+		const extension = getMaterialExtension( this.parser, materialIndex, this.name );
 
-		if ( ! materialDef.extensions || ! materialDef.extensions[ this.name ] ) return null;
-
-		return __WEBPACK_EXTERNAL_MODULE_three_MeshPhysicalMaterial__;
+		return extension !== null ? __WEBPACK_EXTERNAL_MODULE_three_MeshPhysicalMaterial__ : null;
 
 	}
 
 	extendMaterialParams( materialIndex, materialParams ) {
 
-		const parser = this.parser;
-		const materialDef = parser.json.materials[ materialIndex ];
+		const extension = getMaterialExtension( this.parser, materialIndex, this.name );
 
-		if ( ! materialDef.extensions || ! materialDef.extensions[ this.name ] ) {
-
-			return Promise.resolve();
-
-		}
+		if ( extension === null ) return Promise.resolve();
 
 		const pending = [];
-
-		const extension = materialDef.extensions[ this.name ];
 
 		if ( extension.clearcoatFactor !== undefined ) {
 
@@ -10561,7 +11407,7 @@ class GLTFMaterialsClearcoatExtension {
 
 		if ( extension.clearcoatTexture !== undefined ) {
 
-			pending.push( parser.assignTexture( materialParams, 'clearcoatMap', extension.clearcoatTexture ) );
+			pending.push( this.parser.assignTexture( materialParams, 'clearcoatMap', extension.clearcoatTexture ) );
 
 		}
 
@@ -10573,13 +11419,13 @@ class GLTFMaterialsClearcoatExtension {
 
 		if ( extension.clearcoatRoughnessTexture !== undefined ) {
 
-			pending.push( parser.assignTexture( materialParams, 'clearcoatRoughnessMap', extension.clearcoatRoughnessTexture ) );
+			pending.push( this.parser.assignTexture( materialParams, 'clearcoatRoughnessMap', extension.clearcoatRoughnessTexture ) );
 
 		}
 
 		if ( extension.clearcoatNormalTexture !== undefined ) {
 
-			pending.push( parser.assignTexture( materialParams, 'clearcoatNormalMap', extension.clearcoatNormalTexture ) );
+			pending.push( this.parser.assignTexture( materialParams, 'clearcoatNormalMap', extension.clearcoatNormalTexture ) );
 
 			if ( extension.clearcoatNormalTexture.scale !== undefined ) {
 
@@ -10615,27 +11461,17 @@ class GLTFMaterialsDispersionExtension {
 
 	getMaterialType( materialIndex ) {
 
-		const parser = this.parser;
-		const materialDef = parser.json.materials[ materialIndex ];
+		const extension = getMaterialExtension( this.parser, materialIndex, this.name );
 
-		if ( ! materialDef.extensions || ! materialDef.extensions[ this.name ] ) return null;
-
-		return __WEBPACK_EXTERNAL_MODULE_three_MeshPhysicalMaterial__;
+		return extension !== null ? __WEBPACK_EXTERNAL_MODULE_three_MeshPhysicalMaterial__ : null;
 
 	}
 
 	extendMaterialParams( materialIndex, materialParams ) {
 
-		const parser = this.parser;
-		const materialDef = parser.json.materials[ materialIndex ];
+		const extension = getMaterialExtension( this.parser, materialIndex, this.name );
 
-		if ( ! materialDef.extensions || ! materialDef.extensions[ this.name ] ) {
-
-			return Promise.resolve();
-
-		}
-
-		const extension = materialDef.extensions[ this.name ];
+		if ( extension === null ) return Promise.resolve();
 
 		materialParams.dispersion = extension.dispersion !== undefined ? extension.dispersion : 0;
 
@@ -10663,29 +11499,19 @@ class GLTFMaterialsIridescenceExtension {
 
 	getMaterialType( materialIndex ) {
 
-		const parser = this.parser;
-		const materialDef = parser.json.materials[ materialIndex ];
+		const extension = getMaterialExtension( this.parser, materialIndex, this.name );
 
-		if ( ! materialDef.extensions || ! materialDef.extensions[ this.name ] ) return null;
-
-		return __WEBPACK_EXTERNAL_MODULE_three_MeshPhysicalMaterial__;
+		return extension !== null ? __WEBPACK_EXTERNAL_MODULE_three_MeshPhysicalMaterial__ : null;
 
 	}
 
 	extendMaterialParams( materialIndex, materialParams ) {
 
-		const parser = this.parser;
-		const materialDef = parser.json.materials[ materialIndex ];
+		const extension = getMaterialExtension( this.parser, materialIndex, this.name );
 
-		if ( ! materialDef.extensions || ! materialDef.extensions[ this.name ] ) {
-
-			return Promise.resolve();
-
-		}
+		if ( extension === null ) return Promise.resolve();
 
 		const pending = [];
-
-		const extension = materialDef.extensions[ this.name ];
 
 		if ( extension.iridescenceFactor !== undefined ) {
 
@@ -10695,7 +11521,7 @@ class GLTFMaterialsIridescenceExtension {
 
 		if ( extension.iridescenceTexture !== undefined ) {
 
-			pending.push( parser.assignTexture( materialParams, 'iridescenceMap', extension.iridescenceTexture ) );
+			pending.push( this.parser.assignTexture( materialParams, 'iridescenceMap', extension.iridescenceTexture ) );
 
 		}
 
@@ -10725,7 +11551,7 @@ class GLTFMaterialsIridescenceExtension {
 
 		if ( extension.iridescenceThicknessTexture !== undefined ) {
 
-			pending.push( parser.assignTexture( materialParams, 'iridescenceThicknessMap', extension.iridescenceThicknessTexture ) );
+			pending.push( this.parser.assignTexture( materialParams, 'iridescenceThicknessMap', extension.iridescenceThicknessTexture ) );
 
 		}
 
@@ -10753,33 +11579,23 @@ class GLTFMaterialsSheenExtension {
 
 	getMaterialType( materialIndex ) {
 
-		const parser = this.parser;
-		const materialDef = parser.json.materials[ materialIndex ];
+		const extension = getMaterialExtension( this.parser, materialIndex, this.name );
 
-		if ( ! materialDef.extensions || ! materialDef.extensions[ this.name ] ) return null;
-
-		return __WEBPACK_EXTERNAL_MODULE_three_MeshPhysicalMaterial__;
+		return extension !== null ? __WEBPACK_EXTERNAL_MODULE_three_MeshPhysicalMaterial__ : null;
 
 	}
 
 	extendMaterialParams( materialIndex, materialParams ) {
 
-		const parser = this.parser;
-		const materialDef = parser.json.materials[ materialIndex ];
+		const extension = getMaterialExtension( this.parser, materialIndex, this.name );
 
-		if ( ! materialDef.extensions || ! materialDef.extensions[ this.name ] ) {
-
-			return Promise.resolve();
-
-		}
+		if ( extension === null ) return Promise.resolve();
 
 		const pending = [];
 
 		materialParams.sheenColor = new __WEBPACK_EXTERNAL_MODULE_three_Color__( 0, 0, 0 );
 		materialParams.sheenRoughness = 0;
 		materialParams.sheen = 1;
-
-		const extension = materialDef.extensions[ this.name ];
 
 		if ( extension.sheenColorFactor !== undefined ) {
 
@@ -10796,13 +11612,13 @@ class GLTFMaterialsSheenExtension {
 
 		if ( extension.sheenColorTexture !== undefined ) {
 
-			pending.push( parser.assignTexture( materialParams, 'sheenColorMap', extension.sheenColorTexture, __WEBPACK_EXTERNAL_MODULE_three_SRGBColorSpace__ ) );
+			pending.push( this.parser.assignTexture( materialParams, 'sheenColorMap', extension.sheenColorTexture, __WEBPACK_EXTERNAL_MODULE_three_SRGBColorSpace__ ) );
 
 		}
 
 		if ( extension.sheenRoughnessTexture !== undefined ) {
 
-			pending.push( parser.assignTexture( materialParams, 'sheenRoughnessMap', extension.sheenRoughnessTexture ) );
+			pending.push( this.parser.assignTexture( materialParams, 'sheenRoughnessMap', extension.sheenRoughnessTexture ) );
 
 		}
 
@@ -10831,29 +11647,19 @@ class GLTFMaterialsTransmissionExtension {
 
 	getMaterialType( materialIndex ) {
 
-		const parser = this.parser;
-		const materialDef = parser.json.materials[ materialIndex ];
+		const extension = getMaterialExtension( this.parser, materialIndex, this.name );
 
-		if ( ! materialDef.extensions || ! materialDef.extensions[ this.name ] ) return null;
-
-		return __WEBPACK_EXTERNAL_MODULE_three_MeshPhysicalMaterial__;
+		return extension !== null ? __WEBPACK_EXTERNAL_MODULE_three_MeshPhysicalMaterial__ : null;
 
 	}
 
 	extendMaterialParams( materialIndex, materialParams ) {
 
-		const parser = this.parser;
-		const materialDef = parser.json.materials[ materialIndex ];
+		const extension = getMaterialExtension( this.parser, materialIndex, this.name );
 
-		if ( ! materialDef.extensions || ! materialDef.extensions[ this.name ] ) {
-
-			return Promise.resolve();
-
-		}
+		if ( extension === null ) return Promise.resolve();
 
 		const pending = [];
-
-		const extension = materialDef.extensions[ this.name ];
 
 		if ( extension.transmissionFactor !== undefined ) {
 
@@ -10863,7 +11669,7 @@ class GLTFMaterialsTransmissionExtension {
 
 		if ( extension.transmissionTexture !== undefined ) {
 
-			pending.push( parser.assignTexture( materialParams, 'transmissionMap', extension.transmissionTexture ) );
+			pending.push( this.parser.assignTexture( materialParams, 'transmissionMap', extension.transmissionTexture ) );
 
 		}
 
@@ -10891,35 +11697,25 @@ class GLTFMaterialsVolumeExtension {
 
 	getMaterialType( materialIndex ) {
 
-		const parser = this.parser;
-		const materialDef = parser.json.materials[ materialIndex ];
+		const extension = getMaterialExtension( this.parser, materialIndex, this.name );
 
-		if ( ! materialDef.extensions || ! materialDef.extensions[ this.name ] ) return null;
-
-		return __WEBPACK_EXTERNAL_MODULE_three_MeshPhysicalMaterial__;
+		return extension !== null ? __WEBPACK_EXTERNAL_MODULE_three_MeshPhysicalMaterial__ : null;
 
 	}
 
 	extendMaterialParams( materialIndex, materialParams ) {
 
-		const parser = this.parser;
-		const materialDef = parser.json.materials[ materialIndex ];
+		const extension = getMaterialExtension( this.parser, materialIndex, this.name );
 
-		if ( ! materialDef.extensions || ! materialDef.extensions[ this.name ] ) {
-
-			return Promise.resolve();
-
-		}
+		if ( extension === null ) return Promise.resolve();
 
 		const pending = [];
-
-		const extension = materialDef.extensions[ this.name ];
 
 		materialParams.thickness = extension.thicknessFactor !== undefined ? extension.thicknessFactor : 0;
 
 		if ( extension.thicknessTexture !== undefined ) {
 
-			pending.push( parser.assignTexture( materialParams, 'thicknessMap', extension.thicknessTexture ) );
+			pending.push( this.parser.assignTexture( materialParams, 'thicknessMap', extension.thicknessTexture ) );
 
 		}
 
@@ -10952,29 +11748,21 @@ class GLTFMaterialsIorExtension {
 
 	getMaterialType( materialIndex ) {
 
-		const parser = this.parser;
-		const materialDef = parser.json.materials[ materialIndex ];
+		const extension = getMaterialExtension( this.parser, materialIndex, this.name );
 
-		if ( ! materialDef.extensions || ! materialDef.extensions[ this.name ] ) return null;
-
-		return __WEBPACK_EXTERNAL_MODULE_three_MeshPhysicalMaterial__;
+		return extension !== null ? __WEBPACK_EXTERNAL_MODULE_three_MeshPhysicalMaterial__ : null;
 
 	}
 
 	extendMaterialParams( materialIndex, materialParams ) {
 
-		const parser = this.parser;
-		const materialDef = parser.json.materials[ materialIndex ];
+		const extension = getMaterialExtension( this.parser, materialIndex, this.name );
 
-		if ( ! materialDef.extensions || ! materialDef.extensions[ this.name ] ) {
-
-			return Promise.resolve();
-
-		}
-
-		const extension = materialDef.extensions[ this.name ];
+		if ( extension === null ) return Promise.resolve();
 
 		materialParams.ior = extension.ior !== undefined ? extension.ior : 1.5;
+
+		if ( materialParams.ior === 0 ) materialParams.ior = 1000; // see #26167
 
 		return Promise.resolve();
 
@@ -11000,35 +11788,25 @@ class GLTFMaterialsSpecularExtension {
 
 	getMaterialType( materialIndex ) {
 
-		const parser = this.parser;
-		const materialDef = parser.json.materials[ materialIndex ];
+		const extension = getMaterialExtension( this.parser, materialIndex, this.name );
 
-		if ( ! materialDef.extensions || ! materialDef.extensions[ this.name ] ) return null;
-
-		return __WEBPACK_EXTERNAL_MODULE_three_MeshPhysicalMaterial__;
+		return extension !== null ? __WEBPACK_EXTERNAL_MODULE_three_MeshPhysicalMaterial__ : null;
 
 	}
 
 	extendMaterialParams( materialIndex, materialParams ) {
 
-		const parser = this.parser;
-		const materialDef = parser.json.materials[ materialIndex ];
+		const extension = getMaterialExtension( this.parser, materialIndex, this.name );
 
-		if ( ! materialDef.extensions || ! materialDef.extensions[ this.name ] ) {
-
-			return Promise.resolve();
-
-		}
+		if ( extension === null ) return Promise.resolve();
 
 		const pending = [];
-
-		const extension = materialDef.extensions[ this.name ];
 
 		materialParams.specularIntensity = extension.specularFactor !== undefined ? extension.specularFactor : 1.0;
 
 		if ( extension.specularTexture !== undefined ) {
 
-			pending.push( parser.assignTexture( materialParams, 'specularIntensityMap', extension.specularTexture ) );
+			pending.push( this.parser.assignTexture( materialParams, 'specularIntensityMap', extension.specularTexture ) );
 
 		}
 
@@ -11037,7 +11815,7 @@ class GLTFMaterialsSpecularExtension {
 
 		if ( extension.specularColorTexture !== undefined ) {
 
-			pending.push( parser.assignTexture( materialParams, 'specularColorMap', extension.specularColorTexture, __WEBPACK_EXTERNAL_MODULE_three_SRGBColorSpace__ ) );
+			pending.push( this.parser.assignTexture( materialParams, 'specularColorMap', extension.specularColorTexture, __WEBPACK_EXTERNAL_MODULE_three_SRGBColorSpace__ ) );
 
 		}
 
@@ -11066,35 +11844,25 @@ class GLTFMaterialsBumpExtension {
 
 	getMaterialType( materialIndex ) {
 
-		const parser = this.parser;
-		const materialDef = parser.json.materials[ materialIndex ];
+		const extension = getMaterialExtension( this.parser, materialIndex, this.name );
 
-		if ( ! materialDef.extensions || ! materialDef.extensions[ this.name ] ) return null;
-
-		return __WEBPACK_EXTERNAL_MODULE_three_MeshPhysicalMaterial__;
+		return extension !== null ? __WEBPACK_EXTERNAL_MODULE_three_MeshPhysicalMaterial__ : null;
 
 	}
 
 	extendMaterialParams( materialIndex, materialParams ) {
 
-		const parser = this.parser;
-		const materialDef = parser.json.materials[ materialIndex ];
+		const extension = getMaterialExtension( this.parser, materialIndex, this.name );
 
-		if ( ! materialDef.extensions || ! materialDef.extensions[ this.name ] ) {
-
-			return Promise.resolve();
-
-		}
+		if ( extension === null ) return Promise.resolve();
 
 		const pending = [];
-
-		const extension = materialDef.extensions[ this.name ];
 
 		materialParams.bumpScale = extension.bumpFactor !== undefined ? extension.bumpFactor : 1.0;
 
 		if ( extension.bumpTexture !== undefined ) {
 
-			pending.push( parser.assignTexture( materialParams, 'bumpMap', extension.bumpTexture ) );
+			pending.push( this.parser.assignTexture( materialParams, 'bumpMap', extension.bumpTexture ) );
 
 		}
 
@@ -11122,29 +11890,19 @@ class GLTFMaterialsAnisotropyExtension {
 
 	getMaterialType( materialIndex ) {
 
-		const parser = this.parser;
-		const materialDef = parser.json.materials[ materialIndex ];
+		const extension = getMaterialExtension( this.parser, materialIndex, this.name );
 
-		if ( ! materialDef.extensions || ! materialDef.extensions[ this.name ] ) return null;
-
-		return __WEBPACK_EXTERNAL_MODULE_three_MeshPhysicalMaterial__;
+		return extension !== null ? __WEBPACK_EXTERNAL_MODULE_three_MeshPhysicalMaterial__ : null;
 
 	}
 
 	extendMaterialParams( materialIndex, materialParams ) {
 
-		const parser = this.parser;
-		const materialDef = parser.json.materials[ materialIndex ];
+		const extension = getMaterialExtension( this.parser, materialIndex, this.name );
 
-		if ( ! materialDef.extensions || ! materialDef.extensions[ this.name ] ) {
-
-			return Promise.resolve();
-
-		}
+		if ( extension === null ) return Promise.resolve();
 
 		const pending = [];
-
-		const extension = materialDef.extensions[ this.name ];
 
 		if ( extension.anisotropyStrength !== undefined ) {
 
@@ -11160,7 +11918,7 @@ class GLTFMaterialsAnisotropyExtension {
 
 		if ( extension.anisotropyTexture !== undefined ) {
 
-			pending.push( parser.assignTexture( materialParams, 'anisotropyMap', extension.anisotropyTexture ) );
+			pending.push( this.parser.assignTexture( materialParams, 'anisotropyMap', extension.anisotropyTexture ) );
 
 		}
 
@@ -11326,9 +12084,9 @@ class GLTFTextureAVIFExtension {
  */
 class GLTFMeshoptCompression {
 
-	constructor( parser ) {
+	constructor( parser, name ) {
 
-		this.name = EXTENSIONS.EXT_MESHOPT_COMPRESSION;
+		this.name = name;
 		this.parser = parser;
 
 	}
@@ -11517,6 +12275,9 @@ class GLTFMeshGpuInstancing {
 				}
 
 				// Add instance attributes to the geometry, excluding TRS.
+
+				let instanceGeometry = null;
+
 				for ( const attributeName in attributes ) {
 
 					if ( attributeName === '_COLOR_0' ) {
@@ -11528,7 +12289,36 @@ class GLTFMeshGpuInstancing {
 						 attributeName !== 'ROTATION' &&
 						 attributeName !== 'SCALE' ) {
 
-						mesh.geometry.setAttribute( attributeName, attributes[ attributeName ] );
+						if ( instanceGeometry === null ) {
+
+							// do a shallow clone of the goemetry so per-instance data are not shared
+
+							const source = instancedMesh.geometry;
+							instanceGeometry = new __WEBPACK_EXTERNAL_MODULE_three_BufferGeometry__();
+							instanceGeometry.name = source.name;
+
+							for ( const name in source.attributes ) instanceGeometry.setAttribute( name, source.attributes[ name ] );
+							for ( const name in source.morphAttributes ) instanceGeometry.morphAttributes[ name ] = source.morphAttributes[ name ];
+							if ( source.index !== null ) instanceGeometry.setIndex( source.index );
+
+							instanceGeometry.morphTargetsRelative = source.morphTargetsRelative;
+
+							for ( const group of source.groups ) instanceGeometry.addGroup( group.start, group.count, group.materialIndex );
+
+							if ( source.boundingBox !== null ) instanceGeometry.boundingBox = source.boundingBox.clone();
+							if ( source.boundingSphere !== null ) instanceGeometry.boundingSphere = source.boundingSphere.clone();
+
+							instanceGeometry.drawRange.start = source.drawRange.start;
+							instanceGeometry.drawRange.count = source.drawRange.count;
+
+							instanceGeometry.userData = Object.assign( {}, source.userData );
+
+							instancedMesh.geometry = instanceGeometry;
+
+						}
+
+						const attr = attributes[ attributeName ];
+						instanceGeometry.setAttribute( attributeName, new __WEBPACK_EXTERNAL_MODULE_three_InstancedBufferAttribute__( attr.array, attr.itemSize, attr.normalized ) );
 
 					}
 
@@ -11768,6 +12558,27 @@ class GLTFTextureTransformExtension {
 		if ( transform.scale !== undefined ) {
 
 			texture.repeat.fromArray( transform.scale );
+
+		}
+
+		if ( transform.rotation !== undefined ) {
+
+			// glTF's KHR_texture_transform order differs from three.js:
+			// glTF defines the UV transform as T * R * S
+			// three.js defines the UV transform as T * S * R
+			//
+			// To fix this, we need to override the matrix with the value computed per glTF spec
+			// We still set the other fields so that you can inspect/export the resulting object.
+
+			const c = Math.cos( texture.rotation );
+			const s = Math.sin( texture.rotation );
+
+			texture.matrix.set(
+				texture.repeat.x * c, texture.repeat.y * s, texture.offset.x,
+				- texture.repeat.x * s, texture.repeat.y * c, texture.offset.y,
+				0, 0, 1
+			);
+			texture.matrixAutoUpdate = false;
 
 		}
 
@@ -12315,7 +13126,7 @@ class GLTFParser {
 		let isFirefox = false;
 		let firefoxVersion = - 1;
 
-		if ( typeof navigator !== 'undefined' ) {
+		if ( typeof navigator !== 'undefined' && typeof navigator.userAgent !== 'undefined' ) {
 
 			const userAgent = navigator.userAgent;
 
@@ -13507,6 +14318,18 @@ class GLTFParser {
 
 				}
 
+				// Convert strip/fan primitives to triangles
+
+				if ( primitive.mode === WEBGL_CONSTANTS.TRIANGLE_STRIP ) {
+
+					geometryPromise = geometryPromise.then( geometry => toTrianglesDrawMode( geometry, __WEBPACK_EXTERNAL_MODULE_three_TriangleStripDrawMode__ ) );
+
+				} else if ( primitive.mode === WEBGL_CONSTANTS.TRIANGLE_FAN ) {
+
+					geometryPromise = geometryPromise.then( geometry => toTrianglesDrawMode( geometry, __WEBPACK_EXTERNAL_MODULE_three_TriangleFanDrawMode__ ) );
+
+				}
+
 				// Cache this geometry
 				cache[ cacheKey ] = { primitive: primitive, promise: geometryPromise };
 
@@ -13550,7 +14373,7 @@ class GLTFParser {
 
 		pending.push( parser.loadGeometries( primitives ) );
 
-		return Promise.all( pending ).then( function ( results ) {
+		return Promise.all( pending ).then( async function ( results ) {
 
 			const materials = results.slice( 0, results.length - 1 );
 			const geometries = results[ results.length - 1 ];
@@ -13573,8 +14396,17 @@ class GLTFParser {
 						primitive.mode === WEBGL_CONSTANTS.TRIANGLE_FAN ||
 						primitive.mode === undefined ) {
 
+					const needsSkinning = meshDef.isSkinnedMesh === true;
+					const hasSkinningAttributes = geometry.hasAttribute( 'skinIndex' ) && geometry.hasAttribute( 'skinWeight' );
+
+					if ( needsSkinning && hasSkinningAttributes === false ) {
+
+						console.warn( 'THREE.GLTFLoader: Missing skinIndex or skinWeight attributes. Skinning disabled.' );
+
+					}
+
 					// .isSkinnedMesh isn't in glTF spec. See ._markDefs()
-					mesh = meshDef.isSkinnedMesh === true
+					mesh = ( needsSkinning && hasSkinningAttributes )
 						? new __WEBPACK_EXTERNAL_MODULE_three_SkinnedMesh__( geometry, material )
 						: new __WEBPACK_EXTERNAL_MODULE_three_Mesh__( geometry, material );
 
@@ -13582,16 +14414,6 @@ class GLTFParser {
 
 						// normalize skin weights to fix malformed assets (see #15319)
 						mesh.normalizeSkinWeights();
-
-					}
-
-					if ( primitive.mode === WEBGL_CONSTANTS.TRIANGLE_STRIP ) {
-
-						mesh.geometry = toTrianglesDrawMode( mesh.geometry, __WEBPACK_EXTERNAL_MODULE_three_TriangleStripDrawMode__ );
-
-					} else if ( primitive.mode === WEBGL_CONSTANTS.TRIANGLE_FAN ) {
-
-						mesh.geometry = toTrianglesDrawMode( mesh.geometry, __WEBPACK_EXTERNAL_MODULE_three_TriangleFanDrawMode__ );
 
 					}
 
@@ -13972,6 +14794,28 @@ class GLTFParser {
 
 			}
 
+			// Reconstruct pivot from container pattern created by GLTFExporter
+			// The container has position+pivot, rotation, scale; child has -pivot offset and mesh
+			if ( node.userData.pivot !== undefined && children.length > 0 ) {
+
+				const pivot = node.userData.pivot;
+				const pivotChild = children[ 0 ];
+
+				// Set pivot on container and adjust transforms
+				node.pivot = new __WEBPACK_EXTERNAL_MODULE_three_Vector3__().fromArray( pivot );
+
+				// Adjust container position: stored as position + pivot, so subtract pivot
+				node.position.x -= pivot[ 0 ];
+				node.position.y -= pivot[ 1 ];
+				node.position.z -= pivot[ 2 ];
+
+				// Remove the child's -pivot offset since pivot now handles it
+				pivotChild.position.set( 0, 0, 0 );
+
+				delete node.userData.pivot;
+
+			}
+
 			return node;
 
 		} );
@@ -14163,7 +15007,20 @@ class GLTFParser {
 
 			for ( let i = 0, il = nodes.length; i < il; i ++ ) {
 
-				scene.add( nodes[ i ] );
+				const node = nodes[ i ];
+
+				// If the node already has a parent, it means it's being reused across multiple scenes.
+				// Clone it to avoid the second scene's add() removing it from the first scene.
+				// See: https://github.com/mrdoob/three.js/issues/27993
+				if ( node.parent !== null ) {
+
+					scene.add( clone( node ) );
+
+				} else {
+
+					scene.add( node );
+
+				}
 
 			}
 
@@ -14214,17 +15071,28 @@ class GLTFParser {
 		const targetName = node.name ? node.name : node.uuid;
 		const targetNames = [];
 
+		function collectMorphTargets( object ) {
+
+			if ( object.morphTargetInfluences ) {
+
+				targetNames.push( object.name ? object.name : object.uuid );
+
+			}
+
+		}
+
+
 		if ( PATH_PROPERTIES[ target.path ] === PATH_PROPERTIES.weights ) {
 
-			node.traverse( function ( object ) {
+			collectMorphTargets( node );
 
-				if ( object.morphTargetInfluences ) {
+			// for multi-primitive meshes, the node is a Group containing the sub-meshes
 
-					targetNames.push( object.name ? object.name : object.uuid );
+			if ( node.isGroup ) {
 
-				}
+				node.children.forEach( collectMorphTargets );
 
-			} );
+			}
 
 		} else {
 
@@ -14721,7 +15589,7 @@ const loadAudio = (list, onProgress) => {
 
 ;// ./node_modules/@newkrok/three-utils/dist/assets/assets.js
 /* unused harmony import specifier */ var assets_THREE;
-/* unused harmony import specifier */ var clone;
+/* unused harmony import specifier */ var assets_clone;
 /* unused harmony import specifier */ var deepDispose;
 /* unused harmony import specifier */ var assets_loadTextures;
 /* unused harmony import specifier */ var assets_loadGLTFModels;
@@ -14742,7 +15610,7 @@ const registerFBXModel = ({ id, fbxModel, }) => {
     _fbxModels[id] = fbxModel;
 };
 const getFBXModel = (id) => {
-    const clonedModel = clone(_fbxModels[id]);
+    const clonedModel = assets_clone(_fbxModels[id]);
     clonedModel.animations = [..._fbxModels[id].animations];
     return clonedModel;
 };
@@ -14948,7 +15816,7 @@ const loadAssets = ({ textures, gltfModels, fbxModels, fbxSkeletonAnimations, au
 ;// ./node_modules/@newkrok/three-utils/dist/assets/index.js
 
 
-;// ./node_modules/three/examples/jsm/helpers/PositionalAudioHelper.js
+;// ../../node_modules/three/examples/jsm/helpers/PositionalAudioHelper.js
 
 
 /**
@@ -15242,578 +16110,38 @@ const AudioPlayer = {
 
 
 
-;// ./node_modules/three-noise/build/three-noise.module.js
-/* unused harmony import specifier */ var three_noise_module_THREE;
-
-
-var definitions_perlin = "#define GLSLIFY 1\n// From https://github.com/hughsk/glsl-noise/blob/master/periodic/2d.glsl\n\n//\n// GLSL textureless classic 2D noise \"cnoise\",\n// with an RSL-style periodic variant \"pnoise\".\n// Author:  Stefan Gustavson (stefan.gustavson@liu.se)\n// Version: 2011-08-22\n//\n// Many thanks to Ian McEwan of Ashima Arts for the\n// ideas for permutation and gradient selection.\n//\n// Copyright (c) 2011 Stefan Gustavson. All rights reserved.\n// Distributed under the MIT license. See LICENSE file.\n// https://github.com/ashima/webgl-noise\n//\n\nvec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }\n\nvec4 permute(vec4 x) { return mod289(((x * 34.0) + 1.0) * x); }\n\nvec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }\n\nvec2 fade(vec2 t) { return t * t * t * (t * (t * 6.0 - 15.0) + 10.0); }\n\nfloat map(float value, float min1, float max1, float min2, float max2) {\n  return min2 + (value - min1) * (max2 - min2) / (max1 - min1);\n}\n\n// Classic Perlin noise, periodic variant\nfloat perlin(vec2 P) {\n\n  vec2 rep = vec2(255.0, 255.0);\n\n  vec4 Pi = floor(P.xyxy) + vec4(0.0, 0.0, 1.0, 1.0);\n  vec4 Pf = fract(P.xyxy) - vec4(0.0, 0.0, 1.0, 1.0);\n  Pi = mod(Pi, rep.xyxy); // To create noise with explicit period\n  Pi = mod289(Pi);        // To avoid truncation effects in permutation\n  vec4 ix = Pi.xzxz;\n  vec4 iy = Pi.yyww;\n  vec4 fx = Pf.xzxz;\n  vec4 fy = Pf.yyww;\n\n  vec4 i = permute(permute(ix) + iy);\n\n  vec4 gx = fract(i * (1.0 / 41.0)) * 2.0 - 1.0;\n  vec4 gy = abs(gx) - 0.5;\n  vec4 tx = floor(gx + 0.5);\n  gx = gx - tx;\n\n  vec2 g00 = vec2(gx.x, gy.x);\n  vec2 g10 = vec2(gx.y, gy.y);\n  vec2 g01 = vec2(gx.z, gy.z);\n  vec2 g11 = vec2(gx.w, gy.w);\n\n  vec4 norm = taylorInvSqrt(\n      vec4(dot(g00, g00), dot(g01, g01), dot(g10, g10), dot(g11, g11)));\n  g00 *= norm.x;\n  g01 *= norm.y;\n  g10 *= norm.z;\n  g11 *= norm.w;\n\n  float n00 = dot(g00, vec2(fx.x, fy.x));\n  float n10 = dot(g10, vec2(fx.y, fy.y));\n  float n01 = dot(g01, vec2(fx.z, fy.z));\n  float n11 = dot(g11, vec2(fx.w, fy.w));\n\n  vec2 fade_xy = fade(Pf.xy);\n  vec2 n_x = mix(vec2(n00, n01), vec2(n10, n11), fade_xy.x);\n  float n_xy = mix(n_x.x, n_x.y, fade_xy.y);\n  return map(2.3 * n_xy, -1.0, 1.0, 0.0, 1.0);\n}\n\nfloat fbm(vec2 pos, vec4 props) {\n  float persistance = props.x;\n  float lacunarity = props.y;\n  float redistribution = props.z;\n  int octaves = int(props.w);\n\n  float result = 0.0;\n  float amplitude = 1.0;\n  float frequency = 1.0;\n  float maximum = amplitude;\n\n  for (int i = 0; i < 2; i++) {\n\n    vec2 p = pos.xy * frequency;\n\n    float noiseVal = perlin(p);\n    result += noiseVal * amplitude;\n\n    frequency *= lacunarity;\n    amplitude *= persistance;\n    maximum += amplitude;\n  }\n\n  float redistributed = pow(result, redistribution);\n  return redistributed / maximum;\n}\n"; // eslint-disable-line
-
-var p = (/* unused pure expression or super */ null && ([
-  151,
-  160,
-  137,
-  91,
-  90,
-  15,
-  131,
-  13,
-  201,
-  95,
-  96,
-  53,
-  194,
-  233,
-  7,
-  225,
-  140,
-  36,
-  103,
-  30,
-  69,
-  142,
-  8,
-  99,
-  37,
-  240,
-  21,
-  10,
-  23,
-  190,
-  6,
-  148,
-  247,
-  120,
-  234,
-  75,
-  0,
-  26,
-  197,
-  62,
-  94,
-  252,
-  219,
-  203,
-  117,
-  35,
-  11,
-  32,
-  57,
-  177,
-  33,
-  88,
-  237,
-  149,
-  56,
-  87,
-  174,
-  20,
-  125,
-  136,
-  171,
-  168,
-  68,
-  175,
-  74,
-  165,
-  71,
-  134,
-  139,
-  48,
-  27,
-  166,
-  77,
-  146,
-  158,
-  231,
-  83,
-  111,
-  229,
-  122,
-  60,
-  211,
-  133,
-  230,
-  220,
-  105,
-  92,
-  41,
-  55,
-  46,
-  245,
-  40,
-  244,
-  102,
-  143,
-  54,
-  65,
-  25,
-  63,
-  161,
-  1,
-  216,
-  80,
-  73,
-  209,
-  76,
-  132,
-  187,
-  208,
-  89,
-  18,
-  169,
-  200,
-  196,
-  135,
-  130,
-  116,
-  188,
-  159,
-  86,
-  164,
-  100,
-  109,
-  198,
-  173,
-  186,
-  3,
-  64,
-  52,
-  217,
-  226,
-  250,
-  124,
-  123,
-  5,
-  202,
-  38,
-  147,
-  118,
-  126,
-  255,
-  82,
-  85,
-  212,
-  207,
-  206,
-  59,
-  227,
-  47,
-  16,
-  58,
-  17,
-  182,
-  189,
-  28,
-  42,
-  223,
-  183,
-  170,
-  213,
-  119,
-  248,
-  152,
-  2,
-  44,
-  154,
-  163,
-  70,
-  221,
-  153,
-  101,
-  155,
-  167,
-  43,
-  172,
-  9,
-  129,
-  22,
-  39,
-  253,
-  19,
-  98,
-  108,
-  110,
-  79,
-  113,
-  224,
-  232,
-  178,
-  185,
-  112,
-  104,
-  218,
-  246,
-  97,
-  228,
-  251,
-  34,
-  242,
-  193,
-  238,
-  210,
-  144,
-  12,
-  191,
-  179,
-  162,
-  241,
-  81,
-  51,
-  145,
-  235,
-  249,
-  14,
-  239,
-  107,
-  49,
-  192,
-  214,
-  31,
-  181,
-  199,
-  106,
-  157,
-  184,
-  84,
-  204,
-  176,
-  115,
-  121,
-  50,
-  45,
-  127,
-  4,
-  150,
-  254,
-  138,
-  236,
-  205,
-  93,
-  222,
-  114,
-  67,
-  29,
-  24,
-  72,
-  243,
-  141,
-  128,
-  195,
-  78,
-  66,
-  215,
-  61,
-  156,
-  180,
-]));
-
-/**
- * An implimentation of Perlin Noise by Ken Perlin.
- */
-class Perlin {
-  /**
-   *
-   * @param {number} seed Seed Value for PRNG.
-   */
-  constructor(seed) {
-    const _gradientVecs = [
-      // 2D Vecs
-      new three_noise_module_THREE.Vector3(1, 1, 0),
-      new three_noise_module_THREE.Vector3(-1, 1, 0),
-      new three_noise_module_THREE.Vector3(1, -1, 0),
-      new three_noise_module_THREE.Vector3(-1, -1, 0),
-      // + 3D Vecs
-      new three_noise_module_THREE.Vector3(1, 0, 1),
-      new three_noise_module_THREE.Vector3(-1, 0, 1),
-      new three_noise_module_THREE.Vector3(1, 0, -1),
-      new three_noise_module_THREE.Vector3(-1, 0, -1),
-      new three_noise_module_THREE.Vector3(0, 1, 1),
-      new three_noise_module_THREE.Vector3(0, -1, 1),
-      new three_noise_module_THREE.Vector3(0, 1, -1),
-      new three_noise_module_THREE.Vector3(0, -1, -1),
-    ];
-
-    var perm = new Array(512);
-    var gradP = new Array(512);
-
-    if (!seed) seed = 1;
-    seed *= 65536;
-
-    seed = Math.floor(seed);
-    if (seed < 256) {
-      seed |= seed << 8;
-    }
-
-    for (var i = 0; i < 256; i++) {
-      var v;
-      if (i & 1) {
-        v = p[i] ^ (seed & 255);
-      } else {
-        v = p[i] ^ ((seed >> 8) & 255);
-      }
-
-      perm[i] = perm[i + 256] = v;
-      gradP[i] = gradP[i + 256] = _gradientVecs[v % 12];
-    }
-
-    this._seed = seed;
-
-    this._offsetMatrix = [
-      new three_noise_module_THREE.Vector3(0, 0, 0),
-      new three_noise_module_THREE.Vector3(0, 0, 1),
-      new three_noise_module_THREE.Vector3(0, 1, 0),
-      new three_noise_module_THREE.Vector3(0, 1, 1),
-      new three_noise_module_THREE.Vector3(1, 0, 0),
-      new three_noise_module_THREE.Vector3(1, 0, 1),
-      new three_noise_module_THREE.Vector3(1, 1, 0),
-      new three_noise_module_THREE.Vector3(1, 1, 1),
-    ];
-
-    /**
-     * GLSL Shader Chunk for 2D Perlin Noise. Can be used with
-     * three-CustomShaderMaterial.
-     * See: <a href="https://github.com/FarazzShaikh/THREE-CustomShaderMaterial">three-CustomShaderMaterial</a>
-     */
-    this.shaderChunk = {
-      defines: "",
-      header: definitions_perlin,
-      main: "",
-      uniforms: [{ three_noise_seed: this._seed }],
-    };
-
-    this.perm = perm;
-    this.gradP = gradP;
-  }
-
-  _fade(t) {
-    return t * t * t * (t * (t * 6 - 15) + 10);
-  }
-
-  _lerp(a, b, t) {
-    return (1 - t) * a + t * b;
-  }
-
-  _gradient(posInCell) {
-    if (posInCell instanceof three_noise_module_THREE.Vector3) {
-      return posInCell.x + this.perm[posInCell.y + this.perm[posInCell.z]];
-    } else {
-      return posInCell.x + this.perm[posInCell.y];
-    }
-  }
-
-  /**
-   * Maps a number from one range to another.
-   * @param {number} x       Input Number
-   * @param {number} in_min  Current range minimum
-   * @param {number} in_max  Current range maximum
-   * @param {number} out_min New range minimum
-   * @param {number} out_max New range maximum
-   * @returns {number} Input Mapped to range [out_min, out_max]
-   */
-  static map(x, in_min, in_max, out_min, out_max) {
-    return ((x - in_min) * (out_max - out_min)) / (in_max - in_min) + out_min;
-  }
-
-  /**
-   * Samples 2D Perlin Nosie at given coordinates.
-   * @param {THREE.Vector2 | THREE.Vector3} input Coordincates to sample at
-   * @returns {number} Value of Perlin Noise at that coordinate.
-   */
-  get2(input) {
-    if (input.z !== undefined) input = new three_noise_module_THREE.Vector2(input.x, input.y);
-
-    const cell = new three_noise_module_THREE.Vector2(Math.floor(input.x), Math.floor(input.y));
-    input.sub(cell);
-
-    cell.x &= 255;
-    cell.y &= 255;
-
-    const gradiantDot = [];
-    for (let i = 0; i < 4; i++) {
-      const s3 = this._offsetMatrix[i * 2];
-      const s = new three_noise_module_THREE.Vector2(s3.x, s3.y);
-
-      const grad3 =
-        this.gradP[this._gradient(new three_noise_module_THREE.Vector2().addVectors(cell, s))];
-      const grad2 = new three_noise_module_THREE.Vector2(grad3.x, grad3.y);
-      const dist2 = new three_noise_module_THREE.Vector2().subVectors(input, s);
-
-      gradiantDot.push(grad2.dot(dist2));
-    }
-
-    const u = this._fade(input.x);
-    const v = this._fade(input.y);
-
-    const value = this._lerp(
-      this._lerp(gradiantDot[0], gradiantDot[2], u),
-      this._lerp(gradiantDot[1], gradiantDot[3], u),
-      v
-    );
-
-    return value;
-  }
-
-  /**
-   * Samples 3D Perlin Nosie at given coordinates.
-   * @param {THREE.Vector}3 input Coordincates to sample at
-   * @returns {number} Value of Perlin Noise at that coordinate.
-   */
-  get3(input) {
-    if (input.z === undefined)
-      throw "Input to Perlin::get3() must be of type THREE.Vector3";
-
-    const cell = new three_noise_module_THREE.Vector3(
-      Math.floor(input.x),
-      Math.floor(input.y),
-      Math.floor(input.z)
-    );
-    input.sub(cell);
-
-    cell.x &= 255;
-    cell.y &= 255;
-    cell.z &= 255;
-
-    const gradiantDot = [];
-    for (let i = 0; i < 8; i++) {
-      const s = this._offsetMatrix[i];
-
-      const grad3 =
-        this.gradP[this._gradient(new three_noise_module_THREE.Vector3().addVectors(cell, s))];
-      const dist2 = new three_noise_module_THREE.Vector3().subVectors(input, s);
-
-      gradiantDot.push(grad3.dot(dist2));
-    }
-
-    const u = this._fade(input.x);
-    const v = this._fade(input.y);
-    const w = this._fade(input.z);
-
-    const value = this._lerp(
-      this._lerp(
-        this._lerp(gradiantDot[0], gradiantDot[4], u),
-        this._lerp(gradiantDot[1], gradiantDot[5], u),
-        w
-      ),
-      this._lerp(
-        this._lerp(gradiantDot[2], gradiantDot[6], u),
-        this._lerp(gradiantDot[3], gradiantDot[7], u),
-        w
-      ),
-      v
-    );
-
-    return value;
-  }
-}
-
-/**
- * This class is an implimentaiton of a Fractal Brownian Motion
- * function using Perlin Nosie.
- */
-class FBM {
-  /**
-   * Create an instance of the FBM class.
-   * Use this instance to generate fBm noise.
-   *
-   * @param {Object} options Options for fBm generaiton.
-   * @param {number} options.seed Seed for Perlin Noise
-   * @param {number} options.scale What distance to view the noisemap
-   * @param {number} options.persistance How much each octave contributes to the overall shape
-   * @param {number} options.lacunarity How much detail is added or removed at each octave
-   * @param {number} options.octaves Levels of detail you want you perlin noise to have
-   * @param {number} options.redistribution Level of flatness within the valleys
-   */
-  constructor(options) {
-    const { seed, scale, persistance, lacunarity, octaves, redistribution } =
-      options;
-    this._noise = new Perlin(seed);
-    this._scale = scale || 1;
-    this._persistance = persistance || 0.5;
-    this._lacunarity = lacunarity || 2;
-    this._octaves = octaves || 6;
-    this._redistribution = redistribution || 1;
-  }
-
-  /**
-   * Sample 2D Perlin Noise with fBm at given
-   * coordinates. The function will use <code>Perlin_get2</code> or <code>Perlin_get3</code>
-   * depending on the input vector's type.
-   *
-   * @param {(THREE.Vector2 | THREE.Vector3)} input Coordinates to sample noise at.
-   * @returns {number} Normalized noise in the range [0, 1]
-   */
-  get2(input) {
-    let result = 0;
-    let amplitude = 1;
-    let frequency = 1;
-    let max = amplitude;
-
-    let noiseFunction = this._noise.get2.bind(this._noise);
-
-    for (let i = 0; i < this._octaves; i++) {
-      const position = new three_noise_module_THREE.Vector2(
-        input.x * this._scale * frequency,
-        input.y * this._scale * frequency
-      );
-
-      const noiseVal = noiseFunction(position);
-      result += noiseVal * amplitude;
-
-      frequency *= this._lacunarity;
-      amplitude *= this._persistance;
-      max += amplitude;
-    }
-
-    const redistributed = Math.pow(result, this._redistribution);
-    return redistributed / max;
-  }
-
-  /**
-   * Sample 3D Perlin Noise with fBm at given
-   * coordinates. The function will use <code>Perlin_get2</code> or <code>Perlin_get3</code>
-   * depending on the input vector's type.
-   *
-   * @param {THREE.Vector3} input Coordinates to sample noise at.
-   * @returns {number} Normalized noise in the range [0, 1]
-   */
-  get3(input) {
-    let result = 0;
-    let amplitude = 1;
-    let frequency = 1;
-    let max = amplitude;
-
-    let noiseFunction = this._noise.get3.bind(this._noise);
-
-    for (let i = 0; i < this._octaves; i++) {
-      const position = new three_noise_module_THREE.Vector3(
-        input.x * this._scale * frequency,
-        input.y * this._scale * frequency,
-        input.z * this._scale * frequency
-      );
-
-      const noiseVal = noiseFunction(position);
-      result += noiseVal * amplitude;
-
-      frequency *= this._lacunarity;
-      amplitude *= this._persistance;
-      max += amplitude;
-    }
-
-    const redistributed = Math.pow(result, this._redistribution);
-    return redistributed / max;
-  }
-}
-
-
+;// external "three/webgpu"
 
 ;// ./dist/index.js
-/* unused harmony import specifier */ var THREE5;
+/* unused harmony import specifier */ var THREE3;
 /* unused harmony import specifier */ var ObjectUtils;
-/* unused harmony import specifier */ var dist_FBM;
+/* unused harmony import specifier */ var StorageBufferAttribute;
 
 
 
 
+
+// src/js/effects/three-particles/version.ts
+var REVISION = "4.0.0" ;
+if (typeof globalThis !== "undefined") {
+  const g = globalThis;
+  if (g.__THREE_PARTICLES__ && g.__THREE_PARTICLES__ !== REVISION) {
+    console.warn(
+      "WARNING: Multiple instances of @cyberluke/three-particles being imported."
+    );
+  } else {
+    g.__THREE_PARTICLES__ = REVISION;
+  }
+}
+
+// src/js/effects/three-particles/color-utils.ts
+var sRGBToLinear = (c) => c < 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+var linearToSRGB = (c) => c < 31308e-7 ? c * 12.92 : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+var rgbSRGBToLinear = (c) => ({
+  r: sRGBToLinear(c.r ?? 0),
+  g: sRGBToLinear(c.g ?? 0),
+  b: sRGBToLinear(c.b ?? 0)
+});
 
 // src/js/effects/three-particles/three-particles-bezier.ts
 var cache = (/* unused pure expression or super */ null && ([]));
@@ -15837,12 +16165,14 @@ var createBezierCurveFunction = (particleSystemId, bezierPoints) => {
       if (percentage > 1) return bezierPoints[bezierPoints.length - 1].y;
       let start = 0;
       let stop = bezierPoints.length - 1;
-      bezierPoints.find((point, index) => {
-        const result = percentage < (point.percentage ?? 0);
-        if (result) stop = index;
-        else if (point.percentage !== void 0) start = index;
-        return result;
-      });
+      for (let i = 0; i < bezierPoints.length; i++) {
+        const point = bezierPoints[i];
+        if (percentage < (point.percentage ?? 0)) {
+          stop = i;
+          break;
+        }
+        if (point.percentage !== void 0) start = i;
+      }
       const n = stop - start;
       const calculatedPercentage = (percentage - (bezierPoints[start].percentage ?? 0)) / ((bezierPoints[stop].percentage ?? 1) - (bezierPoints[start].percentage ?? 0));
       let value = 0;
@@ -15971,10 +16301,10 @@ var LifeTimeCurve = /* @__PURE__ */ ((LifeTimeCurve2) => {
   LifeTimeCurve2["EASING"] = "EASING";
   return LifeTimeCurve2;
 })(LifeTimeCurve || {});
-var SubEmitterTrigger = /* @__PURE__ */ ((SubEmitterTrigger2) => {
-  SubEmitterTrigger2["BIRTH"] = "BIRTH";
-  SubEmitterTrigger2["DEATH"] = "DEATH";
-  return SubEmitterTrigger2;
+var SubEmitterTrigger = /* @__PURE__ */ ((SubEmitterTrigger3) => {
+  SubEmitterTrigger3["BIRTH"] = "BIRTH";
+  SubEmitterTrigger3["DEATH"] = "DEATH";
+  return SubEmitterTrigger3;
 })(SubEmitterTrigger || {});
 var ForceFieldType = /* @__PURE__ */ ((ForceFieldType3) => {
   ForceFieldType3["POINT"] = "POINT";
@@ -16063,7 +16393,7 @@ var calculateRandomPositionAndVelocityOnCone = (position, quaternion, velocity, 
   position.applyQuaternion(quaternion);
   const positionLength = position.length();
   const normalizedAngle = Math.abs(
-    positionLength / radius * THREE5.MathUtils.degToRad(angle)
+    positionLength / radius * THREE3.MathUtils.degToRad(angle)
   );
   const sinNormalizedAngle = Math.sin(normalizedAngle);
   const speedMultiplierByPosition = 1 / positionLength;
@@ -16138,8 +16468,8 @@ var calculateRandomPositionAndVelocityOnRectangle = (position, quaternion, veloc
   const _rotation = rotation;
   const xOffset = Math.random() * _scale.x - _scale.x / 2;
   const yOffset = Math.random() * _scale.y - _scale.y / 2;
-  const rotationX = THREE5.MathUtils.degToRad(_rotation.x);
-  const rotationY = THREE5.MathUtils.degToRad(_rotation.y);
+  const rotationX = THREE3.MathUtils.degToRad(_rotation.x);
+  const rotationY = THREE3.MathUtils.degToRad(_rotation.y);
   position.x = xOffset * Math.cos(rotationY);
   position.y = yOffset * Math.cos(rotationX);
   position.z = xOffset * Math.sin(rotationY) - yOffset * Math.sin(rotationX);
@@ -16156,7 +16486,7 @@ var createDefaultMeshTexture = () => {
     if (context) {
       context.fillStyle = "white";
       context.fillRect(0, 0, 1, 1);
-      const texture = new THREE5.CanvasTexture(canvas);
+      const texture = new THREE3.CanvasTexture(canvas);
       texture.needsUpdate = true;
       return texture;
     }
@@ -16180,7 +16510,7 @@ var createDefaultParticleTexture = () => {
       context.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
       context.fillStyle = "white";
       context.fill();
-      const texture = new THREE5.CanvasTexture(canvas);
+      const texture = new THREE3.CanvasTexture(canvas);
       texture.needsUpdate = true;
       return texture;
     } else {
@@ -16207,6 +16537,16 @@ var getCurveFunctionFromConfig = (particleSystemId, lifetimeCurve) => {
   if (lifetimeCurve.type === "EASING" /* EASING */) {
     return lifetimeCurve.curveFunction;
   }
+  const raw = lifetimeCurve;
+  if (Array.isArray(raw.bezierPoints)) {
+    return createBezierCurveFunction(
+      particleSystemId,
+      raw.bezierPoints
+    );
+  }
+  if (typeof raw.curveFunction === "function") {
+    return raw.curveFunction;
+  }
   throw new Error(`Unsupported value type: ${lifetimeCurve}`);
 };
 var calculateValue = (particleSystemId, value, time = 0) => {
@@ -16217,7 +16557,7 @@ var calculateValue = (particleSystemId, value, time = 0) => {
     if (value.min === value.max) {
       return value.min ?? 0;
     }
-    return THREE5.MathUtils.randFloat(value.min ?? 0, value.max ?? 1);
+    return THREE3.MathUtils.randFloat(value.min ?? 0, value.max ?? 1);
   }
   const lifetimeCurve = value;
   return getCurveFunctionFromConfig(particleSystemId, lifetimeCurve)(time) * (lifetimeCurve.scale ?? 1);
@@ -16233,7 +16573,8 @@ var applyModifiers = ({
   attributes,
   scalarArray,
   particleLifetimePercentage,
-  particleIndex
+  particleIndex,
+  updateFlags
 }) => {
   const {
     particleSystemId,
@@ -16241,7 +16582,8 @@ var applyModifiers = ({
     lifetimeValues,
     linearVelocityData,
     orbitalVelocityData,
-    noise
+    noise,
+    modifierCurves
   } = generalData;
   const positionIndex = particleIndex * 3;
   const positionArr = attributes.position.array;
@@ -16254,7 +16596,8 @@ var applyModifiers = ({
     positionArr[positionIndex] += normalizedXSpeed * delta;
     positionArr[positionIndex + 1] += normalizedYSpeed * delta;
     positionArr[positionIndex + 2] += normalizedZSpeed * delta;
-    attributes.position.needsUpdate = true;
+    if (updateFlags) updateFlags.position = true;
+    else attributes.position.needsUpdate = true;
   }
   if (orbitalVelocityData) {
     const { speed, positionOffset, valueModifiers } = orbitalVelocityData[particleIndex];
@@ -16273,10 +16616,11 @@ var applyModifiers = ({
     positionArr[positionIndex] += positionOffset.x;
     positionArr[positionIndex + 1] += positionOffset.y;
     positionArr[positionIndex + 2] += positionOffset.z;
-    attributes.position.needsUpdate = true;
+    if (updateFlags) updateFlags.position = true;
+    else attributes.position.needsUpdate = true;
   }
   if (normalizedConfig.sizeOverLifetime.isActive) {
-    const multiplier = calculateValue(
+    const multiplier = modifierCurves?.size ? modifierCurves.size(particleLifetimePercentage) : calculateValue(
       particleSystemId,
       normalizedConfig.sizeOverLifetime.lifetimeCurve,
       particleLifetimePercentage
@@ -16284,7 +16628,7 @@ var applyModifiers = ({
     scalarArray[base + S_SIZE] = startValues.startSize[particleIndex] * multiplier;
   }
   if (normalizedConfig.opacityOverLifetime.isActive) {
-    const multiplier = calculateValue(
+    const multiplier = modifierCurves?.opacity ? modifierCurves.opacity(particleLifetimePercentage) : calculateValue(
       particleSystemId,
       normalizedConfig.opacityOverLifetime.lifetimeCurve,
       particleLifetimePercentage
@@ -16292,17 +16636,17 @@ var applyModifiers = ({
     scalarArray[base + S_COLOR_A] = startValues.startOpacity[particleIndex] * multiplier;
   }
   if (normalizedConfig.colorOverLifetime.isActive) {
-    const rMultiplier = calculateValue(
+    const rMultiplier = modifierCurves?.colorR ? modifierCurves.colorR(particleLifetimePercentage) : calculateValue(
       particleSystemId,
       normalizedConfig.colorOverLifetime.r,
       particleLifetimePercentage
     );
-    const gMultiplier = calculateValue(
+    const gMultiplier = modifierCurves?.colorG ? modifierCurves.colorG(particleLifetimePercentage) : calculateValue(
       particleSystemId,
       normalizedConfig.colorOverLifetime.g,
       particleLifetimePercentage
     );
-    const bMultiplier = calculateValue(
+    const bMultiplier = modifierCurves?.colorB ? modifierCurves.colorB(particleLifetimePercentage) : calculateValue(
       particleSystemId,
       normalizedConfig.colorOverLifetime.b,
       particleLifetimePercentage
@@ -16341,7 +16685,8 @@ var applyModifiers = ({
     noiseInput.set(noisePosition, noisePosition, noisePosition);
     noiseOnPosition = sampler.get3(noiseInput);
     positionArr[positionIndex + 2] += noiseOnPosition * noisePower * positionAmount;
-    attributes.position.needsUpdate = true;
+    if (updateFlags) updateFlags.position = true;
+    else attributes.position.needsUpdate = true;
   }
   if (attributes.quat) {
     const rotZ = scalarArray[base + S_ROTATION];
@@ -16351,7 +16696,8 @@ var applyModifiers = ({
     attributes.quat.array[qi + 1] = 0;
     attributes.quat.array[qi + 2] = Math.sin(halfZ);
     attributes.quat.array[qi + 3] = Math.cos(halfZ);
-    attributes.quat.needsUpdate = true;
+    if (updateFlags) updateFlags.quat = true;
+    else attributes.quat.needsUpdate = true;
   }
 };
 
@@ -16369,767 +16715,144 @@ function resolveSimulationBackend(renderer, preference = "AUTO" /* AUTO */) {
   }
   return gpuCapable ? "GPU" /* GPU */ : "CPU" /* CPU */;
 }
-
-// src/js/effects/three-particles/shaders/instanced-particle-fragment-shader.glsl.ts
-var InstancedParticleFragmentShader = (/* unused pure expression or super */ null && (`
-  uniform sampler2D map;
-  uniform float elapsed;
-  uniform float fps;
-  uniform bool useFPSForFrameIndex;
-  uniform vec2 tiles;
-  uniform bool discardBackgroundColor;
-  uniform vec3 backgroundColor;
-  uniform float backgroundColorTolerance;
-  uniform bool softParticlesEnabled;
-  uniform float softParticlesIntensity;
-  uniform sampler2D sceneDepthTexture;
-  uniform vec2 cameraNearFar;
-
-  varying vec2 vUv;
-  varying vec4 vColor;
-  varying float vLifetime;
-  varying float vStartLifetime;
-  varying float vStartFrame;
-  varying float vRotation;
-  varying float vViewZ;
-
-  #include <common>
-  #include <logdepthbuf_pars_fragment>
-
-  float linearizeDepth(float depthSample, float near, float far) {
-    float z_ndc = 2.0 * depthSample - 1.0;
-    return 2.0 * near * far / (far + near - z_ndc * (far - near));
+function resolveWebGPUEffectiveRendererType(requested) {
+  switch (requested) {
+    case "INSTANCED" /* INSTANCED */:
+      return "INSTANCED" /* INSTANCED */;
+    case "TRAIL" /* TRAIL */:
+      return "TRAIL" /* TRAIL */;
+    case "MESH" /* MESH */:
+      return "MESH" /* MESH */;
+    case "POINTS" /* POINTS */:
+    default:
+      return "POINTS" /* POINTS */;
   }
-
-  void main()
-  {
-    gl_FragColor = vColor;
-
-    // Rotate UV around centre (matches Points renderer behaviour)
-    vec2 center = vec2(0.5);
-    vec2 centeredPoint = vUv - center;
-
-    mat2 rotation = mat2(
-      cos(vRotation), sin(vRotation),
-      -sin(vRotation), cos(vRotation)
-    );
-
-    centeredPoint = rotation * centeredPoint;
-    vec2 centeredMiddlePoint = centeredPoint + center;
-
-    // Discard pixels outside the inscribed circle
-    float dist = distance(centeredMiddlePoint, center);
-    if (dist > 0.5) discard;
-
-    float frameIndex = round(vStartFrame) + (
-      useFPSForFrameIndex == true
-        ? fps == 0.0
-            ? 0.0
-            : max((vLifetime / 1000.0) * fps, 0.0)
-        : max(min(floor(min(vLifetime / vStartLifetime, 1.0) * (tiles.x * tiles.y)), tiles.x * tiles.y - 1.0), 0.0)
-    );
-
-    float spriteXIndex = floor(mod(frameIndex, tiles.x));
-    float spriteYIndex = floor(mod(frameIndex / tiles.x, tiles.y));
-
-    vec2 uvPoint = vec2(
-      centeredMiddlePoint.x / tiles.x + spriteXIndex / tiles.x,
-      centeredMiddlePoint.y / tiles.y + spriteYIndex / tiles.y
-    );
-
-    vec4 rotatedTexture = texture2D(map, uvPoint);
-
-    gl_FragColor = gl_FragColor * rotatedTexture;
-
-    if (discardBackgroundColor && abs(length(rotatedTexture.rgb - backgroundColor.rgb)) < backgroundColorTolerance) discard;
-
-    if (softParticlesEnabled) {
-      vec2 screenUV = gl_FragCoord.xy / vec2(textureSize(sceneDepthTexture, 0));
-      float sceneDepthSample = texture2D(sceneDepthTexture, screenUV).r;
-      float sceneDepthLinear = linearizeDepth(sceneDepthSample, cameraNearFar.x, cameraNearFar.y);
-      float depthDiff = sceneDepthLinear - vViewZ;
-      float softFade = smoothstep(0.0, softParticlesIntensity, depthDiff);
-      gl_FragColor.a *= softFade;
-      if (gl_FragColor.a < 0.001) discard;
-    }
-
-    #include <logdepthbuf_fragment>
-  }
-`));
-var instanced_particle_fragment_shader_glsl_default = (/* unused pure expression or super */ null && (InstancedParticleFragmentShader));
-
-// src/js/effects/three-particles/shaders/instanced-particle-vertex-shader.glsl.ts
-var InstancedParticleVertexShader = (/* unused pure expression or super */ null && (`
-  attribute float instanceSize;
-  attribute vec4 instanceColor;
-  attribute float instanceLifetime;
-  attribute float instanceStartLifetime;
-  attribute float instanceRotation;
-  attribute float instanceStartFrame;
-  attribute vec3 instanceOffset;
-
-  uniform float viewportHeight;
-
-  varying vec2 vUv;
-  varying vec4 vColor;
-  varying float vLifetime;
-  varying float vStartLifetime;
-  varying float vStartFrame;
-  varying float vRotation;
-  varying float vViewZ;
-
-  #include <common>
-  #include <logdepthbuf_pars_vertex>
-
-  void main()
-  {
-    // Early-out for dead particles: skip all transforms and emit a degenerate
-    // position that produces zero-area triangles.
-    if (instanceColor.a <= 0.0) {
-      gl_Position = vec4(0.0, 0.0, 0.0, 0.0);
-      return;
-    }
-
-    vColor = instanceColor;
-    vLifetime = instanceLifetime;
-    vStartLifetime = instanceStartLifetime;
-    vStartFrame = instanceStartFrame;
-    vRotation = instanceRotation;
-
-    vec4 mvPosition = modelViewMatrix * vec4(instanceOffset, 1.0);
-
-    // Match the Points renderer pixel size: gl_PointSize = size * 100.0 / distance.
-    // A view-space offset of d produces d * projectionMatrix[1][1] / w * (viewportHeight/2) pixels,
-    // where w = -mvPosition.z for perspective.  Solving for d so the result equals
-    // the gl_PointSize pixel count:
-    //   d = size * 100.0 / distance
-    //       * (-mvPosition.z)
-    //       / (projectionMatrix[1][1] * viewportHeight * 0.5)
-    // Since distance \u2248 -mvPosition.z for view-aligned particles the two cancel out,
-    // leaving a distance-independent expression.  We keep them explicit so particles
-    // off the viewing axis still scale correctly.
-    float dist = length(mvPosition.xyz);
-    float pointSizePx = instanceSize * 100.0 / dist;
-    float perspectiveSize = pointSizePx * (-mvPosition.z)
-                          / (projectionMatrix[1][1] * viewportHeight * 0.5);
-
-    // Billboard: offset quad vertices in view space (no rotation here;
-    // rotation is applied to UVs in the fragment shader to keep behaviour
-    // identical to the Points renderer).
-    mvPosition.xy += position.xy * perspectiveSize;
-
-    vViewZ = -mvPosition.z;
-    gl_Position = projectionMatrix * mvPosition;
-
-    // Pass UV for texture sampling (quad ranges from -0.5..0.5, map to 0..1).
-    // Flip Y to match gl_PointCoord convention (Y runs top-to-bottom).
-    vUv = vec2(position.x + 0.5, 0.5 - position.y);
-
-    #include <logdepthbuf_vertex>
-  }
-`));
-var instanced_particle_vertex_shader_glsl_default = (/* unused pure expression or super */ null && (InstancedParticleVertexShader));
-
-// src/js/effects/three-particles/shaders/mesh-particle-fragment-shader.glsl.ts
-var MeshParticleFragmentShader = (/* unused pure expression or super */ null && (`
-  uniform sampler2D map;
-  uniform float elapsed;
-  uniform float fps;
-  uniform bool useFPSForFrameIndex;
-  uniform vec2 tiles;
-  uniform bool discardBackgroundColor;
-  uniform vec3 backgroundColor;
-  uniform float backgroundColorTolerance;
-  uniform bool softParticlesEnabled;
-  uniform float softParticlesIntensity;
-  uniform sampler2D sceneDepthTexture;
-  uniform vec2 cameraNearFar;
-
-  varying vec4 vColor;
-  varying float vLifetime;
-  varying float vStartLifetime;
-  varying float vStartFrame;
-  varying float vRotation;
-  varying vec3 vNormal;
-  varying vec2 vUv;
-  varying float vViewZ;
-
-  #include <common>
-  #include <logdepthbuf_pars_fragment>
-
-  float linearizeDepth(float depthSample, float near, float far) {
-    float z_ndc = 2.0 * depthSample - 1.0;
-    return 2.0 * near * far / (far + near - z_ndc * (far - near));
-  }
-
-  void main()
-  {
-    gl_FragColor = vColor;
-
-    // Use mesh UVs directly for texture sampling
-    vec2 uvPoint = vUv;
-
-    // Apply texture sheet animation if tiles > 1x1
-    if (tiles.x > 1.0 || tiles.y > 1.0) {
-      float frameIndex = round(vStartFrame) + (
-        useFPSForFrameIndex == true
-          ? fps == 0.0
-              ? 0.0
-              : max((vLifetime / 1000.0) * fps, 0.0)
-          : max(min(floor(min(vLifetime / vStartLifetime, 1.0) * (tiles.x * tiles.y)), tiles.x * tiles.y - 1.0), 0.0)
-      );
-
-      float spriteXIndex = floor(mod(frameIndex, tiles.x));
-      float spriteYIndex = floor(mod(frameIndex / tiles.x, tiles.y));
-
-      uvPoint = vec2(
-        vUv.x / tiles.x + spriteXIndex / tiles.x,
-        vUv.y / tiles.y + spriteYIndex / tiles.y
-      );
-    }
-
-    vec4 texColor = texture2D(map, uvPoint);
-    gl_FragColor = gl_FragColor * texColor;
-
-    if (discardBackgroundColor && abs(length(texColor.rgb - backgroundColor.rgb)) < backgroundColorTolerance) discard;
-
-    // Simple directional lighting from camera direction
-    float lightIntensity = 0.5 + 0.5 * max(dot(vNormal, vec3(0.0, 0.0, 1.0)), 0.0);
-    gl_FragColor.rgb *= lightIntensity;
-
-    if (softParticlesEnabled) {
-      vec2 screenUV = gl_FragCoord.xy / vec2(textureSize(sceneDepthTexture, 0));
-      float sceneDepthSample = texture2D(sceneDepthTexture, screenUV).r;
-      float sceneDepthLinear = linearizeDepth(sceneDepthSample, cameraNearFar.x, cameraNearFar.y);
-      float depthDiff = sceneDepthLinear - vViewZ;
-      float softFade = smoothstep(0.0, softParticlesIntensity, depthDiff);
-      gl_FragColor.a *= softFade;
-      if (gl_FragColor.a < 0.001) discard;
-    }
-
-    #include <logdepthbuf_fragment>
-  }
-`));
-var mesh_particle_fragment_shader_glsl_default = (/* unused pure expression or super */ null && (MeshParticleFragmentShader));
-
-// src/js/effects/three-particles/shaders/mesh-particle-vertex-shader.glsl.ts
-var MeshParticleVertexShader = (/* unused pure expression or super */ null && (`
-  attribute float instanceSize;
-  attribute vec4 instanceColor;
-  attribute float instanceLifetime;
-  attribute float instanceStartLifetime;
-  attribute float instanceRotation;
-  attribute float instanceStartFrame;
-  attribute vec3 instanceOffset;
-  attribute vec4 instanceQuat;
-
-  varying vec4 vColor;
-  varying float vLifetime;
-  varying float vStartLifetime;
-  varying float vStartFrame;
-  varying float vRotation;
-  varying vec3 vNormal;
-  varying vec2 vUv;
-  varying float vViewZ;
-
-  #include <common>
-  #include <logdepthbuf_pars_vertex>
-
-  vec3 applyQuaternion(vec3 v, vec4 q) {
-    vec3 t = 2.0 * cross(q.xyz, v);
-    return v + q.w * t + cross(q.xyz, t);
-  }
-
-  void main()
-  {
-    // Early-out for dead particles: skip all expensive transforms and emit
-    // a degenerate position that produces zero-area triangles.
-    if (instanceColor.a <= 0.0) {
-      gl_Position = vec4(0.0, 0.0, 0.0, 0.0);
-      return;
-    }
-
-    vColor = instanceColor;
-    vLifetime = instanceLifetime;
-    vStartLifetime = instanceStartLifetime;
-    vStartFrame = instanceStartFrame;
-    vRotation = instanceRotation;
-
-    // Apply quaternion rotation to the mesh vertex position
-    vec3 rotatedPosition = applyQuaternion(position, instanceQuat);
-
-    // Scale mesh by particle size
-    vec3 scaledPosition = rotatedPosition * instanceSize;
-
-    // Apply instance offset (particle world position)
-    vec3 worldPos = scaledPosition + instanceOffset;
-
-    vec4 mvPosition = modelViewMatrix * vec4(worldPos, 1.0);
-    vViewZ = -mvPosition.z;
-    gl_Position = projectionMatrix * mvPosition;
-
-    // Transform normal by quaternion for lighting
-    vNormal = normalize((modelViewMatrix * vec4(applyQuaternion(normal, instanceQuat), 0.0)).xyz);
-
-    // Pass through UVs from the mesh geometry
-    vUv = uv;
-
-    #include <logdepthbuf_vertex>
-  }
-`));
-var mesh_particle_vertex_shader_glsl_default = (/* unused pure expression or super */ null && (MeshParticleVertexShader));
-
-// src/js/effects/three-particles/shaders/particle-system-fragment-shader.glsl.ts
-var ParticleSystemFragmentShader = (/* unused pure expression or super */ null && (`
-  uniform sampler2D map;
-  uniform float elapsed;
-  uniform float fps;
-  uniform bool useFPSForFrameIndex;
-  uniform vec2 tiles;
-  uniform bool discardBackgroundColor;
-  uniform vec3 backgroundColor;
-  uniform float backgroundColorTolerance;
-  uniform bool softParticlesEnabled;
-  uniform float softParticlesIntensity;
-  uniform sampler2D sceneDepthTexture;
-  uniform vec2 cameraNearFar;
-
-  varying vec4 vColor;
-  varying float vLifetime;
-  varying float vStartLifetime;
-  varying float vRotation;
-  varying float vStartFrame;
-  varying float vViewZ;
-
-  #include <common>
-  #include <logdepthbuf_pars_fragment>
-
-  float linearizeDepth(float depthSample, float near, float far) {
-    float z_ndc = 2.0 * depthSample - 1.0;
-    return 2.0 * near * far / (far + near - z_ndc * (far - near));
-  }
-
-  void main()
-  {
-    gl_FragColor = vColor;
-    float mid = 0.5;
-
-    float frameIndex = round(vStartFrame) + (
-      useFPSForFrameIndex == true
-        ? fps == 0.0
-            ? 0.0
-            : max((vLifetime / 1000.0) * fps, 0.0)
-        : max(min(floor(min(vLifetime / vStartLifetime, 1.0) * (tiles.x * tiles.y)), tiles.x * tiles.y - 1.0), 0.0)
-    );
-        
-    float spriteXIndex = floor(mod(frameIndex, tiles.x));
-    float spriteYIndex = floor(mod(frameIndex / tiles.x, tiles.y));
-
-    vec2 frameUV = vec2(
-      gl_PointCoord.x / tiles.x + spriteXIndex / tiles.x,
-      gl_PointCoord.y / tiles.y + spriteYIndex / tiles.y);
-
-    vec2 center = vec2(0.5, 0.5);
-    vec2 centeredPoint = gl_PointCoord - center;
-
-    mat2 rotation = mat2(
-      cos(vRotation), sin(vRotation),
-      -sin(vRotation), cos(vRotation)
-    );
-
-    centeredPoint = rotation * centeredPoint;
-    vec2 centeredMiddlePoint = vec2(
-      centeredPoint.x + center.x,
-      centeredPoint.y + center.y
-    );
-
-    float dist = distance(centeredMiddlePoint, center);
-    if (dist > 0.5) discard;
-
-    vec2 uvPoint = vec2(
-      centeredMiddlePoint.x / tiles.x + spriteXIndex / tiles.x,
-      centeredMiddlePoint.y / tiles.y + spriteYIndex / tiles.y
-    );
-
-    vec4 rotatedTexture = texture2D(map, uvPoint);
-
-    gl_FragColor = gl_FragColor * rotatedTexture;
-
-    if (discardBackgroundColor && abs(length(rotatedTexture.rgb - backgroundColor.rgb)) < backgroundColorTolerance) discard;
-
-    if (softParticlesEnabled) {
-      vec2 screenUV = gl_FragCoord.xy / vec2(textureSize(sceneDepthTexture, 0));
-      float sceneDepthSample = texture2D(sceneDepthTexture, screenUV).r;
-      float sceneDepthLinear = linearizeDepth(sceneDepthSample, cameraNearFar.x, cameraNearFar.y);
-      float depthDiff = sceneDepthLinear - vViewZ;
-      float softFade = smoothstep(0.0, softParticlesIntensity, depthDiff);
-      gl_FragColor.a *= softFade;
-      if (gl_FragColor.a < 0.001) discard;
-    }
-
-    #include <logdepthbuf_fragment>
-  }
-`));
-var particle_system_fragment_shader_glsl_default = (/* unused pure expression or super */ null && (ParticleSystemFragmentShader));
-
-// src/js/effects/three-particles/shaders/particle-system-vertex-shader.glsl.ts
-var ParticleSystemVertexShader = (/* unused pure expression or super */ null && (`
-  attribute float size;
-  attribute vec4 color;
-  attribute float lifetime;
-  attribute float startLifetime;
-  attribute float rotation;
-  attribute float startFrame;
-
-  varying mat4 vPosition;
-  varying vec4 vColor;
-  varying float vLifetime;
-  varying float vStartLifetime;
-  varying float vRotation;
-  varying float vStartFrame;
-  varying float vViewZ;
-
-  #include <common>
-  #include <logdepthbuf_pars_vertex>
-
-  void main()
-  {
-    vColor = color;
-    vLifetime = lifetime;
-    vStartLifetime = startLifetime;
-    vRotation = rotation;
-    vStartFrame = startFrame;
-
-    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-    gl_PointSize = size * (100.0 / length(mvPosition.xyz));
-    vViewZ = -mvPosition.z;
-    gl_Position = projectionMatrix * mvPosition;
-
-    #include <logdepthbuf_vertex>
-  }
-`));
-var particle_system_vertex_shader_glsl_default = (/* unused pure expression or super */ null && (ParticleSystemVertexShader));
-
-// src/js/effects/three-particles/shaders/trail-fragment-shader.glsl.ts
-var TrailFragmentShader = (/* unused pure expression or super */ null && (`
-  uniform sampler2D map;
-  uniform bool useMap;
-  uniform bool discardBackgroundColor;
-  uniform vec3 backgroundColor;
-  uniform float backgroundColorTolerance;
-  uniform bool softParticlesEnabled;
-  uniform float softParticlesIntensity;
-  uniform sampler2D sceneDepthTexture;
-  uniform vec2 cameraNearFar;
-
-  varying float vAlpha;
-  varying vec4 vColor;
-  varying vec2 vUv;
-  varying float vViewZ;
-
-  #include <common>
-  #include <logdepthbuf_pars_fragment>
-
-  float linearizeDepth(float depthSample, float near, float far) {
-    float z_ndc = 2.0 * depthSample - 1.0;
-    return 2.0 * near * far / (far + near - z_ndc * (far - near));
-  }
-
-  void main()
-  {
-    // Soft edge: always fade near ribbon edges
-    float edgeDist = 1.0 - abs(vUv.x * 2.0 - 1.0);
-    float softEdge = smoothstep(0.0, 0.4, edgeDist);
-
-    gl_FragColor = vColor;
-
-    if (useMap) {
-      // Use texture luminance as brightness modulation on top of soft edge
-      vec4 texColor = texture2D(map, vUv);
-      float texBrightness = dot(texColor.rgb, vec3(0.299, 0.587, 0.114));
-      gl_FragColor.rgb *= (0.5 + texBrightness * 0.5);
-      gl_FragColor.a *= texColor.a;
-    }
-
-    gl_FragColor.a *= vAlpha * softEdge;
-
-    if (gl_FragColor.a < 0.001) discard;
-
-    if (softParticlesEnabled) {
-      vec2 screenUV = gl_FragCoord.xy / vec2(textureSize(sceneDepthTexture, 0));
-      float sceneDepthSample = texture2D(sceneDepthTexture, screenUV).r;
-      float sceneDepthLinear = linearizeDepth(sceneDepthSample, cameraNearFar.x, cameraNearFar.y);
-      float depthDiff = sceneDepthLinear - vViewZ;
-      float softFade = smoothstep(0.0, softParticlesIntensity, depthDiff);
-      gl_FragColor.a *= softFade;
-      if (gl_FragColor.a < 0.001) discard;
-    }
-
-    if (discardBackgroundColor && abs(length(gl_FragColor.rgb - backgroundColor.rgb)) < backgroundColorTolerance) discard;
-
-    #include <logdepthbuf_fragment>
-  }
-`));
-var trail_fragment_shader_glsl_default = (/* unused pure expression or super */ null && (TrailFragmentShader));
-
-// src/js/effects/three-particles/shaders/trail-vertex-shader.glsl.ts
-var TrailVertexShader = (/* unused pure expression or super */ null && (`
-  attribute float trailAlpha;
-  attribute vec4 trailColor;
-  attribute float trailOffset;
-  attribute float trailHalfWidth;
-  attribute vec3 trailNext;
-  attribute vec2 trailUV;
-
-  varying float vAlpha;
-  varying vec4 vColor;
-  varying vec2 vUv;
-  varying float vViewZ;
-
-  #include <common>
-  #include <logdepthbuf_pars_vertex>
-
-  void main()
-  {
-    vAlpha = trailAlpha;
-    vColor = trailColor;
-    vUv = trailUV;
-
-    // Compute tangent from current position to next sample
-    vec3 tangent = trailNext - position;
-    float tangentLen = length(tangent);
-    if (tangentLen < 0.0001) {
-      tangent = vec3(0.0, 1.0, 0.0);
-    } else {
-      tangent = tangent / tangentLen;
-    }
-
-    // Billboard: perpendicular = cross(tangent, viewDirection)
-    vec3 worldPos = (modelMatrix * vec4(position, 1.0)).xyz;
-    vec3 viewDir = normalize(cameraPosition - worldPos);
-    vec3 perp = cross(tangent, viewDir);
-    float perpLen = length(perp);
-
-    // When tangent is nearly parallel to view direction, the cross product
-    // collapses and the ribbon becomes edge-on (invisible). Build a stable
-    // fallback perpendicular from the camera's right axis \u2014 this keeps the
-    // ribbon in screen-space and prevents it from flipping into an arbitrary
-    // plane when viewed edge-on.
-    vec3 camRight = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
-    vec3 fallbackPerp = normalize(camRight - tangent * dot(camRight, tangent));
-
-    if (perpLen < 0.0001) {
-      perp = fallbackPerp;
-    } else {
-      perp = perp / perpLen;
-      // Smoothly blend toward the fallback when the billboard perp weakens.
-      // The wide range (0..0.7) ensures a gradual transition so the ribbon
-      // does not snap abruptly when rotating toward edge-on.
-      float blendFactor = smoothstep(0.0, 0.7, perpLen);
-      perp = normalize(mix(fallbackPerp, perp, blendFactor));
-    }
-
-    vec3 offsetPos = position + perp * trailOffset * trailHalfWidth;
-    vec4 mvPosition = modelViewMatrix * vec4(offsetPos, 1.0);
-    vViewZ = -mvPosition.z;
-    gl_Position = projectionMatrix * mvPosition;
-
-    #include <logdepthbuf_vertex>
-  }
-`));
-var trail_vertex_shader_glsl_default = (/* unused pure expression or super */ null && (TrailVertexShader));
-var _planeToParticle = new __WEBPACK_EXTERNAL_MODULE_three_Vector3__();
-var _normalComponent = new __WEBPACK_EXTERNAL_MODULE_three_Vector3__();
-var applyCollisionPlanes = ({
-  collisionPlanes,
-  velocity,
-  positionArr,
-  positionIndex,
-  scalarArr,
-  scalarBase,
-  deactivateParticle,
-  particleIndex
-}) => {
-  for (let i = 0; i < collisionPlanes.length; i++) {
-    const plane = collisionPlanes[i];
-    if (!plane.isActive) continue;
-    const normal = plane.normal;
-    const planePos = plane.position;
-    _planeToParticle.set(
-      positionArr[positionIndex] - planePos.x,
-      positionArr[positionIndex + 1] - planePos.y,
-      positionArr[positionIndex + 2] - planePos.z
-    );
-    const signedDistance = _planeToParticle.dot(normal);
-    if (signedDistance >= 0) continue;
-    switch (plane.mode) {
-      case "KILL" /* KILL */:
-        deactivateParticle(particleIndex);
-        return true;
-      case "CLAMP" /* CLAMP */:
-        positionArr[positionIndex] = positionArr[positionIndex] - signedDistance * normal.x;
-        positionArr[positionIndex + 1] = positionArr[positionIndex + 1] - signedDistance * normal.y;
-        positionArr[positionIndex + 2] = positionArr[positionIndex + 2] - signedDistance * normal.z;
-        const velDotNormal = velocity.x * normal.x + velocity.y * normal.y + velocity.z * normal.z;
-        if (velDotNormal < 0) {
-          velocity.x -= velDotNormal * normal.x;
-          velocity.y -= velDotNormal * normal.y;
-          velocity.z -= velDotNormal * normal.z;
-        }
-        break;
-      case "BOUNCE" /* BOUNCE */: {
-        positionArr[positionIndex] = positionArr[positionIndex] - signedDistance * normal.x;
-        positionArr[positionIndex + 1] = positionArr[positionIndex + 1] - signedDistance * normal.y;
-        positionArr[positionIndex + 2] = positionArr[positionIndex + 2] - signedDistance * normal.z;
-        const vDotN = velocity.x * normal.x + velocity.y * normal.y + velocity.z * normal.z;
-        _normalComponent.set(
-          2 * vDotN * normal.x,
-          2 * vDotN * normal.y,
-          2 * vDotN * normal.z
-        );
-        velocity.x = (velocity.x - _normalComponent.x) * plane.dampen;
-        velocity.y = (velocity.y - _normalComponent.y) * plane.dampen;
-        velocity.z = (velocity.z - _normalComponent.z) * plane.dampen;
-        if (plane.lifetimeLoss > 0) {
-          const startLifetime = scalarArr[scalarBase + S_START_LIFETIME];
-          scalarArr[scalarBase + S_LIFETIME] += plane.lifetimeLoss * startLifetime;
-        }
-        break;
-      }
-    }
-  }
-  return false;
-};
-var _forceDirection = new __WEBPACK_EXTERNAL_MODULE_three_Vector3__();
-var applyPointForce = (field, strength, velocity, positionArr, positionIndex, delta) => {
-  _forceDirection.set(
-    field.position.x - positionArr[positionIndex],
-    field.position.y - positionArr[positionIndex + 1],
-    field.position.z - positionArr[positionIndex + 2]
-  );
-  const distance = _forceDirection.length();
-  if (distance < 1e-4) return;
-  if (field.range !== Infinity && distance > field.range) return;
-  _forceDirection.divideScalar(distance);
-  let falloffMultiplier = 1;
-  if (field.range !== Infinity) {
-    const normalizedDistance = distance / field.range;
-    switch (field.falloff) {
-      case "LINEAR" /* LINEAR */:
-        falloffMultiplier = 1 - normalizedDistance;
-        break;
-      case "QUADRATIC" /* QUADRATIC */:
-        falloffMultiplier = 1 - normalizedDistance * normalizedDistance;
-        break;
-      case "NONE" /* NONE */:
-        falloffMultiplier = 1;
-        break;
-    }
-  }
-  const force = strength * falloffMultiplier * delta;
-  velocity.x += _forceDirection.x * force;
-  velocity.y += _forceDirection.y * force;
-  velocity.z += _forceDirection.z * force;
-};
-var applyDirectionalForce = (field, strength, velocity, delta) => {
-  const force = strength * delta;
-  velocity.x += field.direction.x * force;
-  velocity.y += field.direction.y * force;
-  velocity.z += field.direction.z * force;
-};
-var applyForceFields = ({
-  particleSystemId,
-  forceFields,
-  velocity,
-  positionArr,
-  positionIndex,
-  delta,
-  systemLifetimePercentage
-}) => {
-  for (let i = 0; i < forceFields.length; i++) {
-    const field = forceFields[i];
-    if (!field.isActive) continue;
-    const strength = calculateValue(
-      particleSystemId,
-      field.strength,
-      systemLifetimePercentage
-    );
-    if (strength === 0) continue;
-    if (field.type === "POINT" /* POINT */) {
-      applyPointForce(
-        field,
-        strength,
-        velocity,
-        positionArr,
-        positionIndex,
-        delta
-      );
-    } else if (field.type === "DIRECTIONAL" /* DIRECTIONAL */) {
-      applyDirectionalForce(field, strength, velocity, delta);
-    }
-  }
-};
-
-// src/js/effects/three-particles/three-particles.ts
-var normalizeTrailCurve = (curve, defaultCurve) => {
-  if (!curve) return defaultCurve;
-  const raw = curve;
-  if (!raw.type && Array.isArray(raw.bezierPoints)) {
-    return { type: "BEZIER" /* BEZIER */, ...raw };
-  }
-  return curve;
-};
+}
 var _particleSystemId = 0;
 var createdParticleSystems = (/* unused pure expression or super */ null && ([]));
-var setUniformFloat = (u, v) => {
-  u.value = v;
-};
-var setUniformVec3 = (u, x, y, z) => {
-  u.value.set(x, y, z);
-};
 var _tslMaterialFactory = null;
-var registerTSLMaterialFactory = (factory) => {
+var _rendererBackendIsGPU = true;
+var _cpuPreferenceWarned = false;
+var _cpuPreferencePreferenceWarn = () => {
+  _cpuPreferenceWarned = true;
+  console.warn(
+    "three-particles: simulationBackend 'CPU' maps to the GPU kernel in 4.0.0 (GPU-only build)."
+  );
+};
+var registerTSLMaterialFactory = (factory, options) => {
+  if (options && "renderer" in options && !isComputeCapableRenderer(options.renderer)) {
+    console.warn(
+      "three-particles: registerTSLMaterialFactory skipped ??? the provided renderer does not support compute dispatches (expected THREE.WebGPURenderer). Particle systems will use the CPU/GLSL path."
+    );
+    return false;
+  }
   _tslMaterialFactory = factory;
+  if (options && "renderer" in options) {
+    _rendererBackendIsGPU = !!options.renderer?.backend?.isWebGPUBackend;
+  } else {
+    _rendererBackendIsGPU = true;
+  }
+  return true;
 };
-var _subEmitterPosition = new __WEBPACK_EXTERNAL_MODULE_three_Vector3__();
-var _subLocalPosition = new __WEBPACK_EXTERNAL_MODULE_three_Vector3__();
-var _shadowOrbitalEuler = new __WEBPACK_EXTERNAL_MODULE_three_Euler__(0, 0, 0, "XYZ");
+new __WEBPACK_EXTERNAL_MODULE_three_Vector3__();
+new __WEBPACK_EXTERNAL_MODULE_three_Vector3__();
+new __WEBPACK_EXTERNAL_MODULE_three_Euler__(0, 0, 0, "XYZ");
 var _lastWorldPositionSnapshot = new __WEBPACK_EXTERNAL_MODULE_three_Vector3__();
-var _localForceFieldPos = new __WEBPACK_EXTERNAL_MODULE_three_Vector3__();
-var _localForceFieldDir = new __WEBPACK_EXTERNAL_MODULE_three_Vector3__();
-var _inverseQuat = new __WEBPACK_EXTERNAL_MODULE_three_Quaternion__();
-var _localForceFields = (/* unused pure expression or super */ null && ([]));
-var _localCollisionPlanePos = new __WEBPACK_EXTERNAL_MODULE_three_Vector3__();
-var _localCollisionPlaneNormal = new __WEBPACK_EXTERNAL_MODULE_three_Vector3__();
-var _localCollisionPlanes = (/* unused pure expression or super */ null && ([]));
 new __WEBPACK_EXTERNAL_MODULE_three_Vector3__();
 new __WEBPACK_EXTERNAL_MODULE_three_Vector3__();
-new __WEBPACK_EXTERNAL_MODULE_three_Vector3__();
-var _distanceStep = { x: 0, y: 0, z: 0 };
-var _tempPosition = { x: 0, y: 0, z: 0 };
-var _modifierParams = {
-  delta: 0,
-  generalData: null,
-  normalizedConfig: null,
-  attributes: null,
-  scalarArray: null,
-  particleLifetimePercentage: 0,
-  particleIndex: 0
+new __WEBPACK_EXTERNAL_MODULE_three_Quaternion__();
+var assertNamed = (cond, message) => {
+  if (!cond) {
+    throw new Error(`three-particles: ${message}`);
+  }
 };
-var toVector3 = (v, fallback) => v ? new THREE5.Vector3(v.x ?? 0, v.y ?? 0, v.z ?? 0) : fallback.clone();
+var normalizeVector2Value = (raw, fallback, label) => {
+  if (raw === void 0 || raw === null) {
+    return new __WEBPACK_EXTERNAL_MODULE_three_Vector2__(fallback[0], fallback[1]);
+  }
+  if (raw instanceof __WEBPACK_EXTERNAL_MODULE_three_Vector2__) return raw;
+  let n1;
+  let n2;
+  if (Array.isArray(raw)) {
+    n1 = Number(raw[0]);
+    n2 = Number(raw[1]);
+  } else if (typeof raw === "object") {
+    const o = raw;
+    n1 = o.x !== void 0 ? Number(o.x) : o.u !== void 0 ? Number(o.u) : void 0;
+    n2 = o.y !== void 0 ? Number(o.y) : o.v !== void 0 ? Number(o.v) : void 0;
+  }
+  assertNamed(
+    n1 !== void 0 && n2 !== void 0 && Number.isFinite(n1) && Number.isFinite(n2),
+    `${label} must be one of: Vector2, [x,y], [u,v], {x,y} or {u,v}`
+  );
+  return new __WEBPACK_EXTERNAL_MODULE_three_Vector2__(n1, n2);
+};
+var normalizeTextureValue = (raw, label) => {
+  if (raw === void 0 || raw === null) return null;
+  assertNamed(
+    typeof raw === "object" && "image" in raw,
+    `${label} must be null or a texture object with .image (got ${String(raw)})`
+  );
+  return raw;
+};
+var normalizeDepthTextureValue = (raw, label) => {
+  if (raw === void 0 || raw === null) return null;
+  assertNamed(
+    typeof raw === "object" && "image" in raw,
+    `${label} must be a texture object with .image when set (got ${String(raw)})`
+  );
+  return raw;
+};
+var normalizeBackgroundToVector3 = (raw, label) => {
+  if (raw === void 0 || raw === null) return new __WEBPACK_EXTERNAL_MODULE_three_Vector3__(1, 1, 1);
+  if (typeof raw === "number") {
+    const c = new __WEBPACK_EXTERNAL_MODULE_three_Color__(raw);
+    return new __WEBPACK_EXTERNAL_MODULE_three_Vector3__(c.r, c.g, c.b);
+  }
+  if (typeof raw === "string") {
+    const s = raw.trim();
+    const c = new __WEBPACK_EXTERNAL_MODULE_three_Color__(s.startsWith("#") ? s : `#${s}`);
+    assertNamed(
+      Number.isFinite(c.r) && Number.isFinite(c.g) && Number.isFinite(c.b),
+      `${label} is not a valid hex color string`
+    );
+    return new __WEBPACK_EXTERNAL_MODULE_three_Vector3__(c.r, c.g, c.b);
+  }
+  if (Array.isArray(raw)) {
+    const [r, g, b] = raw;
+    assertNamed(
+      Number.isFinite(r) && Number.isFinite(g) && Number.isFinite(b),
+      `${label} array must contain three finite numbers`
+    );
+    return new __WEBPACK_EXTERNAL_MODULE_three_Vector3__(r, g, b);
+  }
+  const o = raw;
+  assertNamed(
+    Number.isFinite(Number(o.r)) && Number.isFinite(Number(o.g)) && Number.isFinite(Number(o.b)),
+    `${label} object must provide finite r/g/b`
+  );
+  return new __WEBPACK_EXTERNAL_MODULE_three_Vector3__(Number(o.r), Number(o.g), Number(o.b));
+};
+new __WEBPACK_EXTERNAL_MODULE_three_Vector3__();
+new __WEBPACK_EXTERNAL_MODULE_three_Vector3__();
+new __WEBPACK_EXTERNAL_MODULE_three_Vector3__();
+new __WEBPACK_EXTERNAL_MODULE_three_Vector3__();
+new __WEBPACK_EXTERNAL_MODULE_three_Vector3__();
+new __WEBPACK_EXTERNAL_MODULE_three_Vector2__();
+var toVector3 = (v, fallback) => v ? new THREE3.Vector3(v.x ?? 0, v.y ?? 0, v.z ?? 0) : fallback.clone();
 var normalizeForceFields = (rawForceFields) => (rawForceFields ?? []).map((ff) => ({
   isActive: ff.isActive ?? true,
   type: ff.type ?? "POINT" /* POINT */,
-  position: toVector3(ff.position, new THREE5.Vector3(0, 0, 0)),
-  direction: toVector3(ff.direction, new THREE5.Vector3(0, 1, 0)).normalize(),
+  position: toVector3(ff.position, new THREE3.Vector3(0, 0, 0)),
+  direction: toVector3(ff.direction, new THREE3.Vector3(0, 1, 0)).normalize(),
   strength: ff.strength ?? 1,
   range: Math.max(0, ff.range ?? Infinity),
   falloff: ff.falloff ?? "LINEAR" /* LINEAR */
 }));
 var normalizeCollisionPlanes = (rawPlanes) => (rawPlanes ?? []).map((cp) => ({
   isActive: cp.isActive ?? true,
-  position: toVector3(cp.position, new THREE5.Vector3(0, 0, 0)),
-  normal: toVector3(cp.normal, new THREE5.Vector3(0, 1, 0)).normalize(),
+  position: toVector3(cp.position, new THREE3.Vector3(0, 0, 0)),
+  normal: toVector3(cp.normal, new THREE3.Vector3(0, 1, 0)).normalize(),
   mode: cp.mode ?? "KILL" /* KILL */,
   dampen: Math.max(0, Math.min(1, cp.dampen ?? 0.5)),
   lifetimeLoss: Math.max(0, Math.min(1, cp.lifetimeLoss ?? 0))
@@ -17140,6 +16863,15 @@ var blendingMap = {
   "THREE.AdditiveBlending": __WEBPACK_EXTERNAL_MODULE_three_AdditiveBlending__,
   "THREE.SubtractiveBlending": __WEBPACK_EXTERNAL_MODULE_three_SubtractiveBlending__,
   "THREE.MultiplyBlending": __WEBPACK_EXTERNAL_MODULE_three_MultiplyBlending__
+};
+var toBlendingConstant = (v) => {
+  if (typeof v === "number") return v;
+  if (typeof v === "string") {
+    const key = v.startsWith("THREE.") ? v : `THREE.${v}`;
+    const mapped = blendingMap[key];
+    if (mapped !== void 0) return mapped;
+  }
+  return THREE3.NormalBlending;
 };
 var getDefaultParticleSystemConfig = () => JSON.parse(JSON.stringify(DEFAULT_PARTICLE_SYSTEM_CONFIG));
 var DEFAULT_PARTICLE_SYSTEM_CONFIG = {
@@ -17188,8 +16920,7 @@ var DEFAULT_PARTICLE_SYSTEM_CONFIG = {
       arc: 360
     },
     rectangle: {
-      rotation: { x: 0, y: 0 },
-      // TODO: add z rotation
+      rotation: { x: 0, y: 0, z: 0 },
       scale: { x: 1, y: 1 }
     },
     box: {
@@ -17297,60 +17028,6 @@ var DEFAULT_PARTICLE_SYSTEM_CONFIG = {
   forceFields: [],
   collisionPlanes: []
 };
-var calculatePositionAndVelocity = (generalData, { shape, sphere, cone, circle, rectangle, box }, startSpeed, position, velocity) => {
-  const calculatedStartSpeed = calculateValue(
-    generalData.particleSystemId,
-    startSpeed,
-    generalData.normalizedLifetimePercentage
-  );
-  switch (shape) {
-    case "SPHERE" /* SPHERE */:
-      calculateRandomPositionAndVelocityOnSphere(
-        position,
-        generalData.wrapperQuaternion,
-        velocity,
-        calculatedStartSpeed,
-        sphere
-      );
-      break;
-    case "CONE" /* CONE */:
-      calculateRandomPositionAndVelocityOnCone(
-        position,
-        generalData.wrapperQuaternion,
-        velocity,
-        calculatedStartSpeed,
-        cone
-      );
-      break;
-    case "CIRCLE" /* CIRCLE */:
-      calculateRandomPositionAndVelocityOnCircle(
-        position,
-        generalData.wrapperQuaternion,
-        velocity,
-        calculatedStartSpeed,
-        circle
-      );
-      break;
-    case "RECTANGLE" /* RECTANGLE */:
-      calculateRandomPositionAndVelocityOnRectangle(
-        position,
-        generalData.wrapperQuaternion,
-        velocity,
-        calculatedStartSpeed,
-        rectangle
-      );
-      break;
-    case "BOX" /* BOX */:
-      calculateRandomPositionAndVelocityOnBox(
-        position,
-        generalData.wrapperQuaternion,
-        velocity,
-        calculatedStartSpeed,
-        box
-      );
-      break;
-  }
-};
 var destroyParticleSystem = (particleSystem) => {
   createdParticleSystems = createdParticleSystems.filter(
     ({
@@ -17379,1136 +17056,808 @@ var destroyParticleSystem = (particleSystem) => {
     }
   );
 };
+var _defaultTexture = null;
+var getDefaultTexture = () => {
+  if (_defaultTexture) return _defaultTexture;
+  if (typeof document === "undefined") return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = 1;
+  canvas.height = 1;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, 1, 1);
+  }
+  _defaultTexture = new THREE3.Texture(canvas);
+  _defaultTexture.needsUpdate = true;
+  return _defaultTexture;
+};
 var createParticleSystem = (config = DEFAULT_PARTICLE_SYSTEM_CONFIG, externalNow) => {
   const now = externalNow || Date.now();
-  const generalData = {
-    particleSystemId: _particleSystemId++,
-    normalizedLifetimePercentage: 0,
-    distanceFromLastEmitByDistance: 0,
-    lastWorldPosition: new THREE5.Vector3(-99999),
-    currentWorldPosition: new THREE5.Vector3(-99999),
-    worldPositionChange: new THREE5.Vector3(),
-    sourceWorldMatrix: new THREE5.Matrix4(),
-    worldQuaternion: new THREE5.Quaternion(),
-    wrapperQuaternion: new THREE5.Quaternion(),
-    worldScale: new THREE5.Vector3(1, 1, 1),
-    worldEuler: new THREE5.Euler(),
-    gravityVelocity: new THREE5.Vector3(0, 0, 0),
-    startValues: {},
-    linearVelocityData: void 0,
-    orbitalVelocityData: void 0,
-    lifetimeValues: {},
-    creationTimes: [],
-    noise: {
-      isActive: false,
-      strength: 0,
-      noisePower: 0,
-      frequency: 0.5,
-      positionAmount: 0,
-      rotationAmount: 0,
-      sizeAmount: 0,
-      fbmMax: 1
-    },
-    isEnabled: true
-  };
+  const useTSL = _tslMaterialFactory !== null;
+  if (!useTSL) {
+    throw new Error(
+      "three-particles: WebGPU TSL material factory not registered. Call enableWebGPU(renderer) immediately after creating a WebGPURenderer. @cyberluke/three-particles 4.0.0 is GPU-only - no CPU fallback path exists."
+    );
+  }
+  if (!_rendererBackendIsGPU) {
+    throw new Error(
+      "three-particles: renderer is not a native WebGPU backend. This build has no WebGL2 fallback. Use a new THREE.WebGPURenderer()."
+    );
+  }
+  const factory = _tslMaterialFactory;
+  if (!factory.createComputePipeline) {
+    throw new Error(
+      "three-particles: active WebGPU renderer does not provide a complete TSL compute pipeline (createComputePipeline missing). No CPU fallback exists; install a WebGPU-capable backend."
+    );
+  }
+  const maxParticles = config.maxParticles || DEFAULT_PARTICLE_SYSTEM_CONFIG.maxParticles;
   const normalizedConfig = ObjectUtils.deepMerge(
     DEFAULT_PARTICLE_SYSTEM_CONFIG,
     config,
     { applyToFirstObject: false, skippedProperties: [] }
   );
-  let particleMap = normalizedConfig.map || (normalizedConfig.renderer.rendererType === "MESH" /* MESH */ ? createDefaultMeshTexture() : createDefaultParticleTexture());
-  if (particleMap) {
-    particleMap.wrapS = THREE5.ClampToEdgeWrapping;
-    particleMap.wrapT = THREE5.ClampToEdgeWrapping;
+  if (normalizedConfig.simulationBackend === "CPU") {
+    if (!_cpuPreferenceWarned) {
+      _cpuPreferencePreferenceWarn();
+    }
+    normalizedConfig.simulationBackend = "GPU" /* GPU */;
   }
-  const {
-    transform,
-    duration,
-    looping,
-    startDelay,
-    startLifetime,
-    startSpeed,
-    startSize,
-    startRotation,
-    startColor,
-    startOpacity,
-    gravity,
-    simulationSpace,
+  const requestedRendererType = normalizedConfig.renderer.rendererType || "POINTS" /* POINTS */;
+  const effectiveRendererType = resolveWebGPUEffectiveRendererType(
+    requestedRendererType
+  );
+  const rrType = effectiveRendererType;
+  const useInstancing = effectiveRendererType === "INSTANCED" /* INSTANCED */ || effectiveRendererType === "MESH" /* MESH */;
+  const trailConfig = normalizedConfig.renderer.trail;
+  const trailLength = Math.max(2, Math.round(trailConfig?.length ?? 20));
+  const trailHistoryAttribute = rrType === "TRAIL" /* TRAIL */ ? new StorageBufferAttribute(
+    new Float32Array(maxParticles * (trailLength + 1) * 4),
+    4
+  ) : null;
+  const trailDesc = trailHistoryAttribute ? {
+    attribute: trailHistoryAttribute,
+    meta: null,
+    length: trailLength,
+    minVertexDistance: trailConfig?.minVertexDistance ?? 0,
+    maxTime: (trailConfig?.maxTime ?? 0) * 1e3
+  } : null;
+  const subEmitterConfigs = normalizedConfig.subEmitters ?? [];
+  const fifos = subEmitterConfigs.map((se) => {
+    const capacity = Math.max(1, Math.round(se.maxInstances ?? 32));
+    const f = factory.createSubEmitterFifoAttribute(capacity);
+    f.trigger = se.trigger === "BIRTH" ? 0 : 1;
+    return f;
+  });
+  const fifoBaseStride = fifos.reduce((m, f) => Math.max(m, f.windowSize), 0);
+  const forceFields = normalizeForceFields(normalizedConfig.forceFields);
+  const collisionPlanes = normalizeCollisionPlanes(normalizedConfig.collisionPlanes);
+  const pipeline = factory.createComputePipeline(
     maxParticles,
-    emission,
-    shape,
-    renderer,
-    noise,
-    velocityOverLifetime,
-    onUpdate,
-    onComplete,
-    textureSheetAnimation,
-    subEmitters,
-    forceFields: rawForceFields
-  } = normalizedConfig;
-  const normalizedForceFields = normalizeForceFields(rawForceFields);
-  const normalizedCollisionPlanes = normalizeCollisionPlanes(normalizedConfig.collisionPlanes);
-  if (typeof renderer?.blending === "string")
-    renderer.blending = blendingMap[renderer.blending];
-  const startPositions = Array.from(
-    { length: maxParticles },
-    () => new THREE5.Vector3()
+    useInstancing,
+    normalizedConfig,
+    _particleSystemId,
+    // pre-increment inside generalData below would be off by 1; use the raw next id
+    forceFields.length,
+    collisionPlanes.length,
+    fifos,
+    trailDesc ?? void 0
   );
-  const velocities = Array.from(
-    { length: maxParticles },
-    () => new THREE5.Vector3()
-  );
-  generalData.creationTimes = Array.from({ length: maxParticles }, () => 0);
-  const freeList = Array.from(
-    { length: maxParticles },
-    (_, i) => maxParticles - 1 - i
-  );
-  if (velocityOverLifetime.isActive) {
-    generalData.linearVelocityData = Array.from(
-      { length: maxParticles },
-      () => ({
-        speed: new THREE5.Vector3(
-          velocityOverLifetime.linear.x ? calculateValue(
-            generalData.particleSystemId,
-            velocityOverLifetime.linear.x,
-            0
-          ) : 0,
-          velocityOverLifetime.linear.y ? calculateValue(
-            generalData.particleSystemId,
-            velocityOverLifetime.linear.y,
-            0
-          ) : 0,
-          velocityOverLifetime.linear.z ? calculateValue(
-            generalData.particleSystemId,
-            velocityOverLifetime.linear.z,
-            0
-          ) : 0
-        ),
-        valueModifiers: {
-          x: isLifeTimeCurve(velocityOverLifetime.linear.x || 0) ? getCurveFunctionFromConfig(
-            generalData.particleSystemId,
-            velocityOverLifetime.linear.x
-          ) : void 0,
-          y: isLifeTimeCurve(velocityOverLifetime.linear.y || 0) ? getCurveFunctionFromConfig(
-            generalData.particleSystemId,
-            velocityOverLifetime.linear.y
-          ) : void 0,
-          z: isLifeTimeCurve(velocityOverLifetime.linear.z || 0) ? getCurveFunctionFromConfig(
-            generalData.particleSystemId,
-            velocityOverLifetime.linear.z
-          ) : void 0
-        }
-      })
+  const ribbonPipeline = trailDesc ? factory.createTrailRibbonUpdate({
+    position: new StorageBufferAttribute(
+      new Float32Array(maxParticles * trailLength * 2 * 4),
+      4
+    ),
+    next: new StorageBufferAttribute(
+      new Float32Array(maxParticles * trailLength * 2 * 4),
+      4
+    ),
+    uvColorA: new StorageBufferAttribute(
+      new Float32Array(maxParticles * trailLength * 2 * 4),
+      4
+    ),
+    colorB: new StorageBufferAttribute(
+      new Float32Array(maxParticles * trailLength * 2 * 4),
+      4
+    ),
+    history: trailDesc.attribute,
+    meta: trailDesc.meta,
+    particleColor: pipeline.buffers.color,
+    curveFns: {
+      width: trailConfig?.widthOverTrail ? getCurveFunctionFromConfig(_particleSystemId, trailConfig.widthOverTrail) : void 0,
+      opacity: trailConfig?.opacityOverTrail ? getCurveFunctionFromConfig(_particleSystemId, trailConfig.opacityOverTrail) : void 0,
+      colorR: trailConfig?.colorOverTrail?.isActive ? getCurveFunctionFromConfig(_particleSystemId, trailConfig.colorOverTrail.r) : void 0,
+      colorG: trailConfig?.colorOverTrail?.isActive ? getCurveFunctionFromConfig(_particleSystemId, trailConfig.colorOverTrail.g) : void 0,
+      colorB: trailConfig?.colorOverTrail?.isActive ? getCurveFunctionFromConfig(_particleSystemId, trailConfig.colorOverTrail.b) : void 0
+    },
+    width: trailConfig?.width ?? 1,
+    length: trailLength,
+    maxTime: trailDesc.maxTime,
+    maxParticles
+  }) : null;
+  const subEntries = [];
+  for (let fi = 0; fi < subEmitterConfigs.length; fi++) {
+    const se = subEmitterConfigs[fi];
+    const fifo = fifos[fi];
+    const childCfg = ObjectUtils.deepMerge(
+      getDefaultParticleSystemConfig(),
+      se.config ?? {},
+      { applyToFirstObject: false, skippedProperties: [] }
     );
-    generalData.orbitalVelocityData = Array.from(
-      { length: maxParticles },
-      () => ({
-        speed: new THREE5.Vector3(
-          velocityOverLifetime.orbital.x ? calculateValue(
-            generalData.particleSystemId,
-            velocityOverLifetime.orbital.x,
-            0
-          ) : 0,
-          velocityOverLifetime.orbital.y ? calculateValue(
-            generalData.particleSystemId,
-            velocityOverLifetime.orbital.y,
-            0
-          ) : 0,
-          velocityOverLifetime.orbital.z ? calculateValue(
-            generalData.particleSystemId,
-            velocityOverLifetime.orbital.z,
-            0
-          ) : 0
-        ),
-        valueModifiers: {
-          x: isLifeTimeCurve(velocityOverLifetime.orbital.x || 0) ? getCurveFunctionFromConfig(
-            generalData.particleSystemId,
-            velocityOverLifetime.orbital.x
-          ) : void 0,
-          y: isLifeTimeCurve(velocityOverLifetime.orbital.y || 0) ? getCurveFunctionFromConfig(
-            generalData.particleSystemId,
-            velocityOverLifetime.orbital.y
-          ) : void 0,
-          z: isLifeTimeCurve(velocityOverLifetime.orbital.z || 0) ? getCurveFunctionFromConfig(
-            generalData.particleSystemId,
-            velocityOverLifetime.orbital.z
-          ) : void 0
-        },
-        positionOffset: new THREE5.Vector3()
-      })
-    );
-  }
-  const startValueKeys = [
-    "startSize",
-    "startOpacity"
-  ];
-  startValueKeys.forEach((key) => {
-    generalData.startValues[key] = Array.from(
-      { length: maxParticles },
-      () => calculateValue(
-        generalData.particleSystemId,
-        normalizedConfig[key],
-        0
+    const firstBurst = childCfg.emission?.bursts?.[0];
+    const burstCount = firstBurst ? Math.max(
+      1,
+      Math.ceil(
+        calculateValue(
+          _particleSystemId + 1 + fi,
+          firstBurst.count,
+          0
+        ) * (firstBurst.cycles ?? 1)
       )
+    ) : 1;
+    const perEvent = Math.min(burstCount, fifo.capacity);
+    const childMax = Math.max(2, Math.min(perEvent * fifo.capacity, 65536));
+    const childRequestedRendererType = childCfg.renderer?.rendererType;
+    const childEffectiveRendererType = resolveWebGPUEffectiveRendererType(
+      childRequestedRendererType
     );
-  });
-  generalData.startValues.startColorR = Array.from(
-    { length: maxParticles },
-    () => 0
-  );
-  generalData.startValues.startColorG = Array.from(
-    { length: maxParticles },
-    () => 0
-  );
-  generalData.startValues.startColorB = Array.from(
-    { length: maxParticles },
-    () => 0
-  );
-  const lifetimeValueKeys = [
-    "rotationOverLifetime"
-  ];
-  lifetimeValueKeys.forEach((key) => {
-    const value = normalizedConfig[key];
-    if (value.isActive)
-      generalData.lifetimeValues[key] = Array.from(
-        { length: maxParticles },
-        () => THREE5.MathUtils.randFloat(value.min, value.max)
-      );
-  });
-  const fbmMax = 2 - Math.pow(2, -noise.octaves);
-  generalData.noise = {
-    isActive: noise.isActive,
-    strength: noise.strength,
-    noisePower: 0.15 * noise.strength,
-    frequency: noise.frequency,
-    positionAmount: noise.positionAmount,
-    rotationAmount: noise.rotationAmount,
-    sizeAmount: noise.sizeAmount,
-    fbmMax,
-    sampler: noise.isActive ? new dist_FBM({
-      seed: Math.random(),
-      scale: noise.frequency,
-      octaves: noise.octaves
-    }) : void 0,
-    offsets: noise.useRandomOffset ? Array.from({ length: maxParticles }, () => Math.random() * 100) : void 0
-  };
-  if (emission.bursts && emission.bursts.length > 0) {
-    generalData.burstStates = emission.bursts.map(() => ({
-      cyclesExecuted: 0,
-      lastCycleTime: 0,
-      probabilityPassed: false
-    }));
-  }
-  const useTrail = renderer.rendererType === "TRAIL" /* TRAIL */;
-  const useMesh = renderer.rendererType === "MESH" /* MESH */;
-  const useInstancing = !useTrail && !useMesh && renderer.rendererType === "INSTANCED" /* INSTANCED */;
-  const useInstancedAttributes = useInstancing || useMesh;
-  const defaultTrailCurve = {
-    type: "BEZIER" /* BEZIER */,
-    scale: 1,
-    bezierPoints: [
-      { x: 0, y: 1, percentage: 0 },
-      { x: 1, y: 0, percentage: 1 }
-    ]
-  };
-  const trailConfig = useTrail ? {
-    length: renderer.trail?.length ?? 20,
-    width: renderer.trail?.width ?? 1,
-    widthOverTrail: normalizeTrailCurve(
-      renderer.trail?.widthOverTrail,
-      defaultTrailCurve
-    ),
-    opacityOverTrail: normalizeTrailCurve(
-      renderer.trail?.opacityOverTrail,
-      defaultTrailCurve
-    ),
-    colorOverTrail: renderer.trail?.colorOverTrail,
-    minVertexDistance: renderer.trail?.minVertexDistance ?? 0,
-    maxTime: renderer.trail?.maxTime ?? 0,
-    smoothing: renderer.trail?.smoothing ?? false,
-    smoothingSubdivisions: renderer.trail?.smoothingSubdivisions ?? 3,
-    twistPrevention: renderer.trail?.twistPrevention ?? false,
-    ribbonId: renderer.trail?.ribbonId
-  } : void 0;
-  if (useTrail && trailConfig) {
-    const trailLength = trailConfig.length;
-    generalData.trailLength = trailLength;
-    generalData.positionHistory = new Float32Array(
-      maxParticles * trailLength * 3
+    const childInstanced = childEffectiveRendererType === "INSTANCED" /* INSTANCED */ || childEffectiveRendererType === "MESH" /* MESH */;
+    const childPipeline = factory.createComputePipeline(
+      childMax,
+      childInstanced,
+      childCfg,
+      _particleSystemId + 1 + fi,
+      0,
+      0,
+      [],
+      void 0
     );
-    generalData.positionHistoryIndex = new Uint16Array(maxParticles);
-    generalData.positionHistoryCount = new Uint16Array(maxParticles);
-    if (trailConfig.minVertexDistance > 0) {
-      generalData.trailLastSampledPosition = new Float32Array(maxParticles * 3);
-    }
-    if (trailConfig.maxTime > 0) {
-      generalData.trailSampleTimes = new Float64Array(
-        maxParticles * trailLength
-      );
-    }
-    if (trailConfig.twistPrevention) {
-      generalData.trailPrevNormal = new Float32Array(maxParticles * 3);
-    }
+    const childShapeParams = factory.encodeShapeEmitParams(
+      childCfg,
+      _particleSystemId + 1 + fi
+    );
+    const childVel = childCfg.velocityOverLifetime;
+    const init = factory.createSubEmitterInitUpdate(
+      childPipeline.buffers,
+      childMax,
+      childShapeParams,
+      pipeline.buffers,
+      maxParticles,
+      fifo,
+      se.inheritVelocity ?? 0,
+      perEvent,
+      {
+        linear: [childVel?.linear?.x, childVel?.linear?.y, childVel?.linear?.z],
+        orbital: [childVel?.orbital?.x, childVel?.orbital?.y, childVel?.orbital?.z]
+      }
+    );
+    subEntries.push({
+      fifo,
+      pipeline: childPipeline,
+      init,
+      instanced: childInstanced,
+      requestedRendererType: childRequestedRendererType,
+      effectiveRendererType: childEffectiveRendererType,
+      cfg: childCfg,
+      object: null,
+      perEvent,
+      gravity: childCfg.gravity,
+      noise: childCfg.noise?.isActive ? {
+        isActive: true,
+        strength: childCfg.noise.strength,
+        noisePower: 0.15 * childCfg.noise.strength,
+        frequency: childCfg.noise.frequency,
+        positionAmount: childCfg.noise.positionAmount,
+        rotationAmount: childCfg.noise.rotationAmount,
+        sizeAmount: childCfg.noise.sizeAmount,
+        fbmMax: 2 - Math.pow(2, -childCfg.noise.octaves)
+      } : null,
+      rate: childCfg.emission?.rateOverTime ? calculateValue(_particleSystemId + 1 + fi, childCfg.emission.rateOverTime, 0) : 0,
+      acc: 0,
+      lastEmit: 0,
+      poseFrom: "self",
+      selfPose: { x: 0, y: 0, z: 0, qx: 0, qy: 0, qz: 0, qw: 1, sx: 1, sy: 1, sz: 1, isWorld: childCfg.simulationSpace === "WORLD" /* WORLD */ ? 1 : 0 }
+    });
   }
-  const attr = (name) => useInstancedAttributes ? `instance${name.charAt(0).toUpperCase()}${name.slice(1)}` : name;
-  const posAttr = useInstancedAttributes ? "instanceOffset" : "position";
-  const softParticlesEnabled = !!(renderer.softParticles?.enabled && renderer.softParticles?.depthTexture);
+  const cameraNearFarSource = normalizedConfig.renderer.cameraNearFar;
+  const tilesSource = normalizedConfig.textureSheetAnimation?.tiles;
+  const elapsedUniform = { value: 0 };
   const sharedUniforms = {
-    elapsed: { value: 0 },
-    map: { value: particleMap },
-    tiles: {
-      value: new THREE5.Vector2(
-        textureSheetAnimation.tiles?.x ?? 1,
-        textureSheetAnimation.tiles?.y ?? 1
+    elapsed: elapsedUniform,
+    viewportHeight: { value: 720 },
+    cameraNearFar: {
+      value: normalizeVector2Value(
+        cameraNearFarSource,
+        [0.1, 1e3],
+        "renderer.cameraNearFar"
       )
     },
-    fps: { value: textureSheetAnimation.fps },
-    useFPSForFrameIndex: {
-      value: textureSheetAnimation.timeMode === "FPS" /* FPS */
-    },
-    backgroundColor: { value: renderer.backgroundColor },
-    discardBackgroundColor: { value: renderer.discardBackgroundColor },
-    backgroundColorTolerance: { value: renderer.backgroundColorTolerance },
-    ...useInstancing ? { viewportHeight: { value: 1 } } : {},
-    softParticlesEnabled: { value: softParticlesEnabled },
+    useInstancing: { value: useInstancing },
+    softParticlesEnabled: { value: !!normalizedConfig.renderer.softParticles?.enabled },
     softParticlesIntensity: {
-      value: Math.max(renderer.softParticles?.intensity ?? 1, 1e-3)
+      value: Math.max(normalizedConfig.renderer.softParticles?.intensity ?? 1, 1e-3)
     },
     sceneDepthTexture: {
-      value: renderer.softParticles?.depthTexture ?? null
+      value: normalizeDepthTextureValue(
+        normalizedConfig.renderer.softParticles?.depthTexture,
+        "renderer.softParticles.depthTexture"
+      )
     },
-    cameraNearFar: { value: new THREE5.Vector2(0.1, 1e3) }
-  };
-  const getVertexShader = () => {
-    if (useMesh) return mesh_particle_vertex_shader_glsl_default;
-    if (useInstancing) return instanced_particle_vertex_shader_glsl_default;
-    return particle_system_vertex_shader_glsl_default;
-  };
-  const getFragmentShader = () => {
-    if (useMesh) return mesh_particle_fragment_shader_glsl_default;
-    if (useInstancing) return instanced_particle_fragment_shader_glsl_default;
-    return particle_system_fragment_shader_glsl_default;
-  };
-  const useTSL = _tslMaterialFactory !== null;
-  const useGPUCompute = useTSL && !useTrail && normalizedConfig.simulationBackend !== "CPU" /* CPU */ && !!_tslMaterialFactory?.createComputePipeline && !!_tslMaterialFactory.writeParticleToModifierBuffers && !!_tslMaterialFactory.deactivateParticleInModifierBuffers && !!_tslMaterialFactory.flushEmitQueue;
-  let gpuPipeline = null;
-  if (useGPUCompute) {
-    gpuPipeline = _tslMaterialFactory.createComputePipeline(
-      maxParticles,
-      useInstancedAttributes,
-      normalizedConfig,
-      generalData.particleSystemId,
-      normalizedForceFields.length,
-      normalizedCollisionPlanes.length
-    );
-    if (gpuPipeline && _tslMaterialFactory.registerCurveDataLength) {
-      _tslMaterialFactory.registerCurveDataLength(
-        gpuPipeline.buffers,
-        gpuPipeline.curveDataLength
-      );
+    discardBackgroundColor: { value: !!normalizedConfig.renderer.discardBackgroundColor },
+    backgroundColor: { value: new THREE3.Color(16777215) },
+    backgroundColorTolerance: { value: normalizedConfig.renderer.backgroundColorTolerance ?? 0 },
+    map: {
+      value: normalizeTextureValue(
+        normalizedConfig.map ?? getDefaultTexture(),
+        "map"
+      )
+    },
+    startLifetime: { value: 0 },
+    startSize: { value: 1 },
+    startRotation: { value: 0 },
+    startOpacity: { value: 1 },
+    startColor: { value: new THREE3.Color(1, 1, 1) },
+    lifetime: { value: 0 },
+    color: { value: new THREE3.Color(1, 1, 1) },
+    // Sprite-sheet animation fields consumed by tsl-shared.createParticleUniforms.
+    fps: { value: normalizedConfig.textureSheetAnimation?.fps || 30 },
+    useFPSForFrameIndex: {
+      value: normalizedConfig.textureSheetAnimation?.timeMode === "FPS" /* FPS */
+    },
+    tiles: {
+      // The ONLY normalizer: `tiles` reaches the TSL factory as a Vector2
+      // (also {u,v} pairs are accepted per §10). The engine's own default is
+      // already (1,1) via the merged default config.
+      value: normalizeVector2Value(
+        tilesSource,
+        [1, 1],
+        "textureSheetAnimation.tiles"
+      )
     }
-  }
-  const rendererConfig = {
-    transparent: renderer.transparent,
-    blending: renderer.blending,
-    depthTest: renderer.depthTest,
-    depthWrite: renderer.depthWrite
   };
-  const material = useTSL ? _tslMaterialFactory.createTSLParticleMaterial(
-    renderer.rendererType ?? "POINTS" /* POINTS */,
+  const bgVec = normalizeBackgroundToVector3(
+    normalizedConfig.renderer.backgroundColor,
+    "renderer.backgroundColor"
+  );
+  sharedUniforms.backgroundColor.value.setRGB(bgVec.x, bgVec.y, bgVec.z);
+  const rendererConfig = {
+    transparent: !!normalizedConfig.renderer.transparent,
+    blending: toBlendingConstant(normalizedConfig.renderer.blending),
+    depthTest: normalizedConfig.renderer.depthTest !== false,
+    depthWrite: normalizedConfig.renderer.depthWrite !== false
+  };
+  const material = factory.createTSLParticleMaterial(
+    rrType,
     sharedUniforms,
     rendererConfig,
-    useGPUCompute
-  ) : new THREE5.ShaderMaterial({
-    uniforms: sharedUniforms,
-    vertexShader: getVertexShader(),
-    fragmentShader: getFragmentShader(),
-    ...rendererConfig
-  });
+    true
+  );
+  const buffers = pipeline.buffers;
   let geometry;
-  if (useMesh) {
-    const meshConfig = renderer.mesh;
-    if (!meshConfig?.geometry) {
-      throw new Error(
-        "RendererType.MESH requires a mesh configuration with a geometry. Set renderer.mesh.geometry to a THREE.BufferGeometry instance."
-      );
+  if (useInstancing) {
+    const g = new THREE3.InstancedBufferGeometry();
+    const meshGeometry = normalizedConfig.renderer.mesh?.geometry;
+    const baseGeometry = rrType === "MESH" /* MESH */ && meshGeometry ? meshGeometry : new THREE3.BufferGeometry();
+    if (rrType !== "MESH" /* MESH */ || !meshGeometry) {
+      const quad = new Float32Array([-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0]);
+      const quadUV = new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]);
+      const quadNormal = new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1]);
+      const idx = new Uint16Array([0, 1, 2, 0, 2, 3]);
+      baseGeometry.setAttribute("position", new THREE3.BufferAttribute(quad, 3));
+      baseGeometry.setAttribute("uv", new THREE3.BufferAttribute(quadUV, 2));
+      baseGeometry.setAttribute("normal", new THREE3.BufferAttribute(quadNormal, 3));
+      baseGeometry.setIndex(new THREE3.BufferAttribute(idx, 1));
     }
-    const instancedGeometry = new THREE5.InstancedBufferGeometry();
-    const sourceGeom = meshConfig.geometry;
-    const srcPos = sourceGeom.getAttribute("position");
-    if (srcPos) instancedGeometry.setAttribute("position", srcPos);
-    const srcNormal = sourceGeom.getAttribute("normal");
-    if (srcNormal) instancedGeometry.setAttribute("normal", srcNormal);
-    const srcUv = sourceGeom.getAttribute("uv");
-    if (srcUv) instancedGeometry.setAttribute("uv", srcUv);
-    const srcIndex = sourceGeom.getIndex();
-    if (srcIndex) instancedGeometry.setIndex(srcIndex);
-    instancedGeometry.instanceCount = maxParticles;
-    geometry = instancedGeometry;
-  } else if (useInstancing) {
-    const instancedGeometry = new THREE5.InstancedBufferGeometry();
-    const quadPositions = new Float32Array([
-      -0.5,
-      -0.5,
-      0,
-      0.5,
-      -0.5,
-      0,
-      0.5,
-      0.5,
-      0,
-      -0.5,
-      0.5,
-      0
-    ]);
-    const quadIndices = new Uint16Array([0, 1, 2, 0, 2, 3]);
-    instancedGeometry.setAttribute(
-      "position",
-      new THREE5.BufferAttribute(quadPositions, 3)
-    );
-    instancedGeometry.setIndex(new THREE5.BufferAttribute(quadIndices, 1));
-    instancedGeometry.instanceCount = maxParticles;
-    geometry = instancedGeometry;
+    g.setAttribute("position", baseGeometry.getAttribute("position"));
+    if (baseGeometry.index !== null) g.setIndex(baseGeometry.index);
+    g.instanceCount = maxParticles;
+    g.setAttribute("instanceOffset", buffers.position);
+    g.setAttribute("instanceColor", buffers.color);
+    g.setAttribute("instanceParticleState", buffers.particleState);
+    g.setAttribute("instanceStartValues", buffers.startValues);
+    geometry = g;
   } else {
-    geometry = new THREE5.BufferGeometry();
+    const g = new THREE3.BufferGeometry();
+    g.setAttribute("position", buffers.position);
+    g.setAttribute("color", buffers.color);
+    g.setAttribute("particleState", buffers.particleState);
+    g.setAttribute("startValues", buffers.startValues);
+    g.setDrawRange(0, maxParticles);
+    geometry = g;
+    g.instanceCount = maxParticles;
   }
-  for (let i = 0; i < maxParticles; i++)
-    calculatePositionAndVelocity(
-      generalData,
-      shape,
-      startSpeed,
-      startPositions[i],
-      velocities[i]
-    );
-  const scalarArray = new Float32Array(maxParticles * SCALAR_STRIDE);
-  for (let i = 0; i < maxParticles; i++) {
-    const base = i * SCALAR_STRIDE;
-    scalarArray[base + S_IS_ACTIVE] = 0;
-    scalarArray[base + S_LIFETIME] = 0;
-    scalarArray[base + S_START_LIFETIME] = calculateValue(generalData.particleSystemId, startLifetime, 0) * 1e3;
-    scalarArray[base + S_START_FRAME] = textureSheetAnimation.startFrame ? calculateValue(
-      generalData.particleSystemId,
-      textureSheetAnimation.startFrame,
-      0
-    ) : 0;
-    scalarArray[base + S_SIZE] = generalData.startValues.startSize[i];
-    scalarArray[base + S_ROTATION] = 0;
-    const colorRandomRatio = Math.random();
-    scalarArray[base + S_COLOR_R] = startColor.min.r + colorRandomRatio * (startColor.max.r - startColor.min.r);
-    scalarArray[base + S_COLOR_G] = startColor.min.g + colorRandomRatio * (startColor.max.g - startColor.min.g);
-    scalarArray[base + S_COLOR_B] = startColor.min.b + colorRandomRatio * (startColor.max.b - startColor.min.b);
-    scalarArray[base + S_COLOR_A] = 0;
-  }
-  const scalarInterleavedBuffer = useInstancedAttributes ? new THREE5.InstancedInterleavedBuffer(scalarArray, SCALAR_STRIDE) : new THREE5.InterleavedBuffer(scalarArray, SCALAR_STRIDE);
-  if (useGPUCompute && gpuPipeline) {
-    const gpuBuf = gpuPipeline.buffers;
-    geometry.setAttribute(posAttr, gpuBuf.position);
-    geometry.setAttribute(attr("color"), gpuBuf.color);
-    geometry.setAttribute(attr("particleState"), gpuBuf.particleState);
-    geometry.setAttribute(attr("startValues"), gpuBuf.startValues);
-  } else {
-    const positionArray = new Float32Array(maxParticles * 3);
-    for (let i = 0; i < maxParticles; i++) {
-      positionArray[i * 3] = startPositions[i].x;
-      positionArray[i * 3 + 1] = startPositions[i].y;
-      positionArray[i * 3 + 2] = startPositions[i].z;
-    }
-    const positionAttribute = useInstancedAttributes ? new THREE5.InstancedBufferAttribute(positionArray, 3) : new THREE5.BufferAttribute(positionArray, 3);
-    geometry.setAttribute(posAttr, positionAttribute);
-    geometry.setAttribute(
-      attr("isActive"),
-      new THREE5.InterleavedBufferAttribute(
-        scalarInterleavedBuffer,
-        1,
-        S_IS_ACTIVE
-      )
-    );
-    geometry.setAttribute(
-      attr("lifetime"),
-      new THREE5.InterleavedBufferAttribute(
-        scalarInterleavedBuffer,
-        1,
-        S_LIFETIME
-      )
-    );
-    geometry.setAttribute(
-      attr("startLifetime"),
-      new THREE5.InterleavedBufferAttribute(
-        scalarInterleavedBuffer,
-        1,
-        S_START_LIFETIME
-      )
-    );
-    geometry.setAttribute(
-      attr("startFrame"),
-      new THREE5.InterleavedBufferAttribute(
-        scalarInterleavedBuffer,
-        1,
-        S_START_FRAME
-      )
-    );
-    geometry.setAttribute(
-      attr("size"),
-      new THREE5.InterleavedBufferAttribute(scalarInterleavedBuffer, 1, S_SIZE)
-    );
-    geometry.setAttribute(
-      attr("rotation"),
-      new THREE5.InterleavedBufferAttribute(
-        scalarInterleavedBuffer,
-        1,
-        S_ROTATION
-      )
-    );
-    geometry.setAttribute(
-      attr("color"),
-      new THREE5.InterleavedBufferAttribute(
-        scalarInterleavedBuffer,
-        4,
-        S_COLOR_R
-      )
-    );
-  }
-  if (useMesh && !useGPUCompute) {
-    const quatArray = new Float32Array(maxParticles * 4);
-    for (let i = 0; i < maxParticles; i++) {
-      quatArray[i * 4 + 3] = 1;
-    }
-    geometry.setAttribute(
-      attr("quat"),
-      new THREE5.InstancedBufferAttribute(quatArray, 4)
-    );
-  }
-  const a = geometry.attributes;
-  const aIsActive = a[attr("isActive")];
-  const aColor = a[attr("color")];
-  const aStartFrame = a[attr("startFrame")];
-  const aStartLifetime = a[attr("startLifetime")];
-  const aSize = a[attr("size")];
-  const aRotation = a[attr("rotation")];
-  const aLifetime = a[attr("lifetime")];
-  const aPosition = a[posAttr];
-  const aQuat = useMesh && !useGPUCompute ? a[attr("quat")] : void 0;
-  const deactivateParticle = (particleIndex) => {
-    const base = particleIndex * SCALAR_STRIDE;
-    scalarArray[base + S_IS_ACTIVE] = 0;
-    scalarArray[base + S_COLOR_A] = 0;
-    if (useGPUCompute && gpuPipeline) {
-      _tslMaterialFactory.deactivateParticleInModifierBuffers(
-        gpuPipeline.buffers,
-        particleIndex
-      );
-    } else {
-      scalarInterleavedBuffer.needsUpdate = true;
-    }
-    freeList.push(particleIndex);
-  };
-  const activateParticle = ({
-    particleIndex,
-    activationTime,
-    position
-  }) => {
-    const base = particleIndex * SCALAR_STRIDE;
-    scalarArray[base + S_IS_ACTIVE] = 1;
-    generalData.creationTimes[particleIndex] = activationTime;
-    if (generalData.positionHistoryCount) {
-      generalData.positionHistoryCount[particleIndex] = 0;
-      generalData.positionHistoryIndex[particleIndex] = 0;
-      if (generalData.trailLastSampledPosition) {
-        const lsIdx = particleIndex * 3;
-        generalData.trailLastSampledPosition[lsIdx] = 0;
-        generalData.trailLastSampledPosition[lsIdx + 1] = 0;
-        generalData.trailLastSampledPosition[lsIdx + 2] = 0;
-      }
-      if (generalData.trailPrevNormal) {
-        const nIdx = particleIndex * 3;
-        generalData.trailPrevNormal[nIdx] = 0;
-        generalData.trailPrevNormal[nIdx + 1] = 0;
-        generalData.trailPrevNormal[nIdx + 2] = 0;
-      }
-    }
-    if (generalData.noise.offsets)
-      generalData.noise.offsets[particleIndex] = Math.random() * 100;
-    const colorRandomRatio = Math.random();
-    const cfgStartColor = normalizedConfig.startColor;
-    scalarArray[base + S_COLOR_R] = cfgStartColor.min.r + colorRandomRatio * (cfgStartColor.max.r - cfgStartColor.min.r);
-    scalarArray[base + S_COLOR_G] = cfgStartColor.min.g + colorRandomRatio * (cfgStartColor.max.g - cfgStartColor.min.g);
-    scalarArray[base + S_COLOR_B] = cfgStartColor.min.b + colorRandomRatio * (cfgStartColor.max.b - cfgStartColor.min.b);
-    generalData.startValues.startColorR[particleIndex] = scalarArray[base + S_COLOR_R];
-    generalData.startValues.startColorG[particleIndex] = scalarArray[base + S_COLOR_G];
-    generalData.startValues.startColorB[particleIndex] = scalarArray[base + S_COLOR_B];
-    scalarArray[base + S_START_FRAME] = normalizedConfig.textureSheetAnimation.startFrame ? calculateValue(
-      generalData.particleSystemId,
-      normalizedConfig.textureSheetAnimation.startFrame,
-      0
-    ) : 0;
-    scalarArray[base + S_START_LIFETIME] = calculateValue(
-      generalData.particleSystemId,
-      normalizedConfig.startLifetime,
-      generalData.normalizedLifetimePercentage
-    ) * 1e3;
-    generalData.startValues.startSize[particleIndex] = calculateValue(
-      generalData.particleSystemId,
-      normalizedConfig.startSize,
-      generalData.normalizedLifetimePercentage
-    );
-    scalarArray[base + S_SIZE] = generalData.startValues.startSize[particleIndex];
-    generalData.startValues.startOpacity[particleIndex] = calculateValue(
-      generalData.particleSystemId,
-      normalizedConfig.startOpacity,
-      generalData.normalizedLifetimePercentage
-    );
-    scalarArray[base + S_COLOR_A] = generalData.startValues.startOpacity[particleIndex];
-    scalarArray[base + S_ROTATION] = calculateValue(
-      generalData.particleSystemId,
-      normalizedConfig.startRotation,
-      generalData.normalizedLifetimePercentage
-    );
-    if (aQuat) {
-      const rotZ = scalarArray[base + S_ROTATION];
-      const halfZ = rotZ * 0.5;
-      const qi = particleIndex * 4;
-      aQuat.array[qi] = 0;
-      aQuat.array[qi + 1] = 0;
-      aQuat.array[qi + 2] = Math.sin(halfZ);
-      aQuat.array[qi + 3] = Math.cos(halfZ);
-      aQuat.needsUpdate = true;
-    }
-    if (normalizedConfig.rotationOverLifetime.isActive)
-      generalData.lifetimeValues.rotationOverLifetime[particleIndex] = THREE5.MathUtils.randFloat(
-        normalizedConfig.rotationOverLifetime.min,
-        normalizedConfig.rotationOverLifetime.max
-      );
-    calculatePositionAndVelocity(
-      generalData,
-      normalizedConfig.shape,
-      normalizedConfig.startSpeed,
-      startPositions[particleIndex],
-      velocities[particleIndex]
-    );
-    {
-      const positionIndex = particleIndex * 3;
-      const isWorld = normalizedConfig.simulationSpace === "WORLD" /* WORLD */;
-      const ox = startPositions[particleIndex].x;
-      const oy = startPositions[particleIndex].y;
-      const oz = startPositions[particleIndex].z;
-      if (isWorld) {
-        const m = generalData.sourceWorldMatrix.elements;
-        const s = generalData.worldScale;
-        aPosition.array[positionIndex] = position.x + ox * s.x + m[12];
-        aPosition.array[positionIndex + 1] = position.y + oy * s.y + m[13];
-        aPosition.array[positionIndex + 2] = position.z + oz * s.z + m[14];
-      } else {
-        aPosition.array[positionIndex] = position.x + ox;
-        aPosition.array[positionIndex + 1] = position.y + oy;
-        aPosition.array[positionIndex + 2] = position.z + oz;
-      }
-      if (!useGPUCompute) {
-        aPosition.needsUpdate = true;
-      }
-    }
-    if (generalData.linearVelocityData) {
-      generalData.linearVelocityData[particleIndex].speed.set(
-        normalizedConfig.velocityOverLifetime.linear.x ? calculateValue(
-          generalData.particleSystemId,
-          normalizedConfig.velocityOverLifetime.linear.x,
-          0
-        ) : 0,
-        normalizedConfig.velocityOverLifetime.linear.y ? calculateValue(
-          generalData.particleSystemId,
-          normalizedConfig.velocityOverLifetime.linear.y,
-          0
-        ) : 0,
-        normalizedConfig.velocityOverLifetime.linear.z ? calculateValue(
-          generalData.particleSystemId,
-          normalizedConfig.velocityOverLifetime.linear.z,
-          0
-        ) : 0
-      );
-    }
-    if (generalData.orbitalVelocityData) {
-      generalData.orbitalVelocityData[particleIndex].speed.set(
-        normalizedConfig.velocityOverLifetime.orbital.x ? calculateValue(
-          generalData.particleSystemId,
-          normalizedConfig.velocityOverLifetime.orbital.x,
-          0
-        ) : 0,
-        normalizedConfig.velocityOverLifetime.orbital.y ? calculateValue(
-          generalData.particleSystemId,
-          normalizedConfig.velocityOverLifetime.orbital.y,
-          0
-        ) : 0,
-        normalizedConfig.velocityOverLifetime.orbital.z ? calculateValue(
-          generalData.particleSystemId,
-          normalizedConfig.velocityOverLifetime.orbital.z,
-          0
-        ) : 0
-      );
-      generalData.orbitalVelocityData[particleIndex].positionOffset.set(
-        startPositions[particleIndex].x,
-        startPositions[particleIndex].y,
-        startPositions[particleIndex].z
-      );
-    }
-    scalarArray[base + S_LIFETIME] = 0;
-    if (useGPUCompute && gpuPipeline) {
-      const isWorld = normalizedConfig.simulationSpace === "WORLD" /* WORLD */;
-      const m = generalData.sourceWorldMatrix.elements;
-      const s = generalData.worldScale;
-      const ox = startPositions[particleIndex].x;
-      const oy = startPositions[particleIndex].y;
-      const oz = startPositions[particleIndex].z;
-      _tslMaterialFactory.writeParticleToModifierBuffers(
-        gpuPipeline.buffers,
-        particleIndex,
-        {
-          position: {
-            x: position.x + (isWorld ? ox * s.x + m[12] : ox),
-            y: position.y + (isWorld ? oy * s.y + m[13] : oy),
-            z: position.z + (isWorld ? oz * s.z + m[14] : oz)
-          },
-          velocity: {
-            x: velocities[particleIndex].x,
-            y: velocities[particleIndex].y,
-            z: velocities[particleIndex].z
-          },
-          startLifetime: scalarArray[base + S_START_LIFETIME],
-          colorA: scalarArray[base + S_COLOR_A],
-          size: scalarArray[base + S_SIZE],
-          rotation: scalarArray[base + S_ROTATION],
-          colorR: scalarArray[base + S_COLOR_R],
-          colorG: scalarArray[base + S_COLOR_G],
-          colorB: scalarArray[base + S_COLOR_B],
-          startSize: generalData.startValues.startSize[particleIndex],
-          startOpacity: generalData.startValues.startOpacity[particleIndex],
-          startColorR: generalData.startValues.startColorR[particleIndex],
-          startColorG: generalData.startValues.startColorG[particleIndex],
-          startColorB: generalData.startValues.startColorB[particleIndex],
-          rotationSpeed: generalData.lifetimeValues.rotationOverLifetime ? generalData.lifetimeValues.rotationOverLifetime[particleIndex] : 0,
-          noiseOffset: generalData.noise.offsets ? generalData.noise.offsets[particleIndex] : 0,
-          startFrame: scalarArray[base + S_START_FRAME],
-          orbitalOffset: {
-            x: startPositions[particleIndex].x,
-            y: startPositions[particleIndex].y,
-            z: startPositions[particleIndex].z
-          }
-        }
-      );
-    } else {
-      scalarInterleavedBuffer.needsUpdate = true;
-      applyModifiers({
-        delta: 0,
-        generalData,
-        normalizedConfig,
-        attributes: mappedAttributes,
-        scalarArray,
-        particleLifetimePercentage: 0,
-        particleIndex
-      });
-    }
-  };
-  const subEmitterArr = subEmitters ?? [];
-  const deathSubEmitters = subEmitterArr.filter(
-    (s) => (s.trigger ?? "DEATH" /* DEATH */) === "DEATH" /* DEATH */
-  );
-  const birthSubEmitters = subEmitterArr.filter(
-    (s) => s.trigger === "BIRTH" /* BIRTH */
-  );
-  const subEmitterInstancesMap = /* @__PURE__ */ new Map();
-  for (const cfg of subEmitterArr) {
-    subEmitterInstancesMap.set(cfg, []);
-  }
-  const cleanupCompletedInstances = (instances) => {
-    for (let i = instances.length - 1; i >= 0; i--) {
-      const sub = instances[i];
-      const geomAttrs = sub.instance.geometry?.attributes;
-      const isActiveAttr = geomAttrs ? geomAttrs.isActive ?? geomAttrs.instanceIsActive : void 0;
-      if (!isActiveAttr) {
-        sub.dispose();
-        instances.splice(i, 1);
-        continue;
-      }
-      let hasActive = false;
-      for (let j = 0; j < isActiveAttr.count; j++) {
-        if (isActiveAttr.getX(j)) {
-          hasActive = true;
-          break;
-        }
-      }
-      if (!hasActive) {
-        sub.dispose();
-        instances.splice(i, 1);
-      }
-    }
-  };
-  const spawnSubEmitters = (configs, position, velocity, spawnNow) => {
-    const parentObj = particleSystem.parent;
-    _subLocalPosition.copy(position);
-    if (parentObj) {
-      parentObj.updateMatrixWorld();
-      parentObj.worldToLocal(_subLocalPosition);
-    }
-    for (const subConfig of configs) {
-      const instances = subEmitterInstancesMap.get(subConfig);
-      const maxInst = subConfig.maxInstances ?? 32;
-      if (instances.length >= maxInst) {
-        cleanupCompletedInstances(instances);
-        if (instances.length >= maxInst) continue;
-      }
-      const inheritVelocity = subConfig.inheritVelocity ?? 0;
-      const subSystem = createParticleSystem(
-        {
-          ...subConfig.config,
-          looping: false,
-          // Sub-emitters must always use CPU simulation because their compute
-          // nodes cannot be dispatched independently by the parent system.
-          simulationBackend: "CPU" /* CPU */,
-          transform: {
-            ...subConfig.config.transform,
-            position: new THREE5.Vector3(
-              _subLocalPosition.x,
-              _subLocalPosition.y,
-              _subLocalPosition.z
-            )
-          },
-          renderer: {
-            ...subConfig.config.renderer ?? {},
-            ...subConfig.config.renderer?.rendererType ? {} : renderer.rendererType === "MESH" /* MESH */ || renderer.rendererType === "TRAIL" /* TRAIL */ ? {} : { rendererType: renderer.rendererType }
-          },
-          ...inheritVelocity > 0 ? {
-            startSpeed: (typeof subConfig.config.startSpeed === "number" ? subConfig.config.startSpeed : typeof subConfig.config.startSpeed === "object" && subConfig.config.startSpeed !== null && "min" in subConfig.config.startSpeed ? subConfig.config.startSpeed.min ?? 0 : 0) + velocity.length() * inheritVelocity
-          } : {}
-        },
-        spawnNow
-      );
-      if (parentObj) parentObj.add(subSystem.instance);
-      instances.push(subSystem);
-    }
-  };
-  let trailMesh;
-  let trailGeometry;
-  let trailPositionAttr;
-  let trailAlphaAttr;
-  let trailColorAttr;
-  let trailNextAttr;
-  let trailHalfWidthAttr;
-  let trailUVAttr;
-  let trailIndexAttr;
-  let trailWidthCurveFn;
-  let trailOpacityCurveFn;
-  let trailColorOverTrailFns;
-  if (useTrail && trailConfig) {
-    const trailLength = trailConfig.length;
-    const verticesPerParticle = trailLength * 2;
-    const totalVertices = maxParticles * verticesPerParticle;
-    const indicesPerParticle = (trailLength - 1) * 6;
-    const totalIndices = maxParticles * indicesPerParticle;
-    trailGeometry = new THREE5.BufferGeometry();
-    const trailPositions = new Float32Array(totalVertices * 3);
-    const trailNextPositions = new Float32Array(totalVertices * 3);
-    const trailAlphas = new Float32Array(totalVertices);
-    const trailColors = new Float32Array(totalVertices * 4);
-    const trailOffsets = new Float32Array(totalVertices);
-    const trailHalfWidths = new Float32Array(totalVertices);
-    const trailUVs = new Float32Array(totalVertices * 2);
-    const trailIndices = new Uint32Array(totalIndices);
-    for (let p = 0; p < maxParticles; p++) {
-      const vertBase = p * verticesPerParticle;
-      const idxBase = p * indicesPerParticle;
-      for (let s = 0; s < trailLength; s++) {
-        trailOffsets[vertBase + s * 2] = -1;
-        trailOffsets[vertBase + s * 2 + 1] = 1;
-      }
+  let trailGeometry = null;
+  if (ribbonPipeline && trailDesc) {
+    const rb = ribbonPipeline.buffers;
+    const g = new THREE3.BufferGeometry();
+    g.setAttribute("position", rb.position);
+    g.setAttribute("trailNext", rb.next);
+    g.setAttribute("trailUVColor", rb.uvColorA);
+    g.setAttribute("trailColorBA", rb.colorB);
+    const idx = new Uint32Array(maxParticles * (trailLength - 1) * 6);
+    let o = 0;
+    for (let pIdx = 0; pIdx < maxParticles; pIdx++) {
       for (let s = 0; s < trailLength - 1; s++) {
-        const i = idxBase + s * 6;
-        const v = vertBase + s * 2;
-        trailIndices[i] = v;
-        trailIndices[i + 1] = v + 1;
-        trailIndices[i + 2] = v + 2;
-        trailIndices[i + 3] = v + 1;
-        trailIndices[i + 4] = v + 3;
-        trailIndices[i + 5] = v + 2;
+        const b = pIdx * trailLength * 2 + s * 2;
+        idx[o++] = b;
+        idx[o++] = b + 1;
+        idx[o++] = b + 2;
+        idx[o++] = b + 1;
+        idx[o++] = b + 3;
+        idx[o++] = b + 2;
       }
     }
-    trailPositionAttr = new THREE5.BufferAttribute(trailPositions, 3);
-    trailPositionAttr.setUsage(THREE5.DynamicDrawUsage);
-    trailNextAttr = new THREE5.BufferAttribute(trailNextPositions, 3);
-    trailNextAttr.setUsage(THREE5.DynamicDrawUsage);
-    trailAlphaAttr = new THREE5.BufferAttribute(trailAlphas, 1);
-    trailAlphaAttr.setUsage(THREE5.DynamicDrawUsage);
-    trailColorAttr = new THREE5.BufferAttribute(trailColors, 4);
-    trailColorAttr.setUsage(THREE5.DynamicDrawUsage);
-    trailHalfWidthAttr = new THREE5.BufferAttribute(trailHalfWidths, 1);
-    trailHalfWidthAttr.setUsage(THREE5.DynamicDrawUsage);
-    trailUVAttr = new THREE5.BufferAttribute(trailUVs, 2);
-    trailUVAttr.setUsage(THREE5.DynamicDrawUsage);
-    trailIndexAttr = new THREE5.BufferAttribute(trailIndices, 1);
-    trailGeometry.setAttribute("position", trailPositionAttr);
-    trailGeometry.setAttribute("trailNext", trailNextAttr);
-    trailGeometry.setAttribute("trailAlpha", trailAlphaAttr);
-    trailGeometry.setAttribute("trailColor", trailColorAttr);
-    trailGeometry.setAttribute(
-      "trailOffset",
-      new THREE5.BufferAttribute(trailOffsets, 1)
-    );
-    trailGeometry.setAttribute("trailHalfWidth", trailHalfWidthAttr);
-    trailGeometry.setAttribute("trailUV", trailUVAttr);
-    trailGeometry.setIndex(trailIndexAttr);
-    const trailUniformValues = {
-      map: { value: particleMap },
-      useMap: { value: !!particleMap },
-      discardBackgroundColor: { value: renderer.discardBackgroundColor },
-      backgroundColor: { value: renderer.backgroundColor },
-      backgroundColorTolerance: { value: renderer.backgroundColorTolerance },
-      softParticlesEnabled: { value: softParticlesEnabled },
+    g.setIndex(new THREE3.BufferAttribute(idx, 1));
+    g.setDrawRange(0, maxParticles * trailLength * 2);
+    trailGeometry = g;
+  }
+  const trailMaterial = trailGeometry ? factory.createTSLTrailMaterial(
+    {
+      map: { value: normalizedConfig.map ?? getDefaultTexture() },
+      useMap: { value: !!normalizedConfig.map },
+      discardBackgroundColor: { value: !!normalizedConfig.renderer.discardBackgroundColor },
+      backgroundColor: { value: normalizedConfig.renderer.backgroundColor ?? { r: 1, g: 1, b: 1 } },
+      backgroundColorTolerance: { value: normalizedConfig.renderer.backgroundColorTolerance ?? 0 },
+      softParticlesEnabled: { value: !!normalizedConfig.renderer.softParticles?.enabled },
       softParticlesIntensity: {
-        value: Math.max(renderer.softParticles?.intensity ?? 1, 1e-3)
+        value: Math.max(normalizedConfig.renderer.softParticles?.intensity ?? 1, 1e-3)
       },
       sceneDepthTexture: {
-        value: renderer.softParticles?.depthTexture ?? null
+        value: normalizedConfig.renderer.softParticles?.depthTexture ?? null
       },
-      cameraNearFar: { value: new THREE5.Vector2(0.1, 1e3) }
+      cameraNearFar: { value: new THREE3.Vector2(0.1, 1e3) }
+    },
+    {
+      transparent: !!normalizedConfig.renderer.transparent,
+      blending: toBlendingConstant(normalizedConfig.renderer.blending),
+      depthTest: normalizedConfig.renderer.depthTest !== false,
+      depthWrite: normalizedConfig.renderer.depthWrite !== false
+    }
+  ) : null;
+  const particleSystem = trailGeometry ? new THREE3.Mesh(trailGeometry, trailMaterial) : useInstancing ? new THREE3.Mesh(geometry, material) : new THREE3.Points(geometry, material);
+  particleSystem.frustumCulled = false;
+  for (const e of subEntries) {
+    const cb = e.pipeline.buffers;
+    const childMax = e.pipeline.allocatorCount - 1;
+    const childGeometry = e.instanced ? (() => {
+      const g = new THREE3.InstancedBufferGeometry();
+      const quad = new Float32Array([-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0]);
+      const idx = new Uint16Array([0, 1, 2, 0, 2, 3]);
+      g.setAttribute("position", new THREE3.BufferAttribute(quad, 3));
+      g.setIndex(new THREE3.BufferAttribute(idx, 1));
+      g.instanceCount = childMax;
+      g.setAttribute("instanceOffset", cb.position);
+      g.setAttribute("instanceColor", cb.color);
+      g.setAttribute("instanceParticleState", cb.particleState);
+      g.setAttribute("instanceStartValues", cb.startValues);
+      return g;
+    })() : (() => {
+      const g = new THREE3.BufferGeometry();
+      g.setAttribute("position", cb.position);
+      g.setAttribute("color", cb.color);
+      g.setAttribute("particleState", cb.particleState);
+      g.setAttribute("startValues", cb.startValues);
+      g.setDrawRange(0, childMax);
+      return g;
+    })();
+    const childUniforms = {
+      ...sharedUniforms,
+      useInstancing: { value: e.instanced }
     };
-    const trailMaterial = useTSL ? _tslMaterialFactory.createTSLTrailMaterial(
-      trailUniformValues,
-      rendererConfig
-    ) : new THREE5.ShaderMaterial({
-      uniforms: trailUniformValues,
-      vertexShader: trail_vertex_shader_glsl_default,
-      fragmentShader: trail_fragment_shader_glsl_default,
-      ...rendererConfig,
-      side: THREE5.DoubleSide
-    });
-    trailMesh = new THREE5.Mesh(trailGeometry, trailMaterial);
-    trailMesh.frustumCulled = false;
-    const trailCameraPos = new THREE5.Vector3();
-    trailMesh.onBeforeRender = (_renderer, _scene, camera) => {
-      camera.getWorldPosition(trailCameraPos);
-      if (softParticlesEnabled && camera.isPerspectiveCamera) {
-        const perspCam = camera;
-        trailUniformValues.cameraNearFar.value.set(
-          perspCam.near,
-          perspCam.far
+    const childMaterial = factory.createTSLParticleMaterial(
+      e.effectiveRendererType,
+      childUniforms,
+      rendererConfig,
+      true
+    );
+    const childObject = e.instanced ? new THREE3.Mesh(childGeometry, childMaterial) : new THREE3.Points(childGeometry, childMaterial);
+    childObject.frustumCulled = false;
+    particleSystem.add(childObject);
+    e.object = childObject;
+  }
+  if (undefined !== false) {
+    const required = useInstancing ? [
+      "position",
+      // quad / mesh vertex positions
+      "instanceOffset",
+      // GPU particle position
+      "instanceColor",
+      // GPU particle RGBA
+      "instanceParticleState",
+      // GPU packed state vec4
+      "instanceStartValues"
+      // GPU packed initial-state vec4
+    ] : ["position", "color", "particleState", "startValues"];
+    for (const name of required) {
+      if (!geometry.getAttribute(name)) {
+        throw new Error(
+          "three-particles: " + (useInstancing ? "instanced" : "POINTS") + " geometry " + name + " is missing its required contract attribute."
         );
       }
-    };
-    generalData.trailCameraPosition = trailCameraPos;
-    trailWidthCurveFn = getCurveFunctionFromConfig(
-      generalData.particleSystemId,
-      trailConfig.widthOverTrail
-    );
-    trailOpacityCurveFn = getCurveFunctionFromConfig(
-      generalData.particleSystemId,
-      trailConfig.opacityOverTrail
-    );
-    if (trailConfig.colorOverTrail?.isActive) {
-      trailColorOverTrailFns = {
-        r: getCurveFunctionFromConfig(
-          generalData.particleSystemId,
-          normalizeTrailCurve(trailConfig.colorOverTrail.r, defaultTrailCurve)
-        ),
-        g: getCurveFunctionFromConfig(
-          generalData.particleSystemId,
-          normalizeTrailCurve(trailConfig.colorOverTrail.g, defaultTrailCurve)
-        ),
-        b: getCurveFunctionFromConfig(
-          generalData.particleSystemId,
-          normalizeTrailCurve(trailConfig.colorOverTrail.b, defaultTrailCurve)
+    }
+    const contractIdentity = useInstancing ? [
+      ["instanceOffset", buffers.position],
+      ["instanceColor", buffers.color],
+      ["instanceParticleState", buffers.particleState],
+      ["instanceStartValues", buffers.startValues]
+    ] : [
+      ["position", buffers.position],
+      ["color", buffers.color],
+      ["particleState", buffers.particleState],
+      ["startValues", buffers.startValues]
+    ];
+    for (const [name, buf] of contractIdentity) {
+      if (geometry.getAttribute(name) !== buf) {
+        throw new Error(
+          `three-particles: attribute "${name}" is not the compute-owned storage buffer.`
+        );
+      }
+    }
+    const kind = pipeline.shapeUniforms.shapeKind.value;
+    if (!(kind >= 0 && kind <= 4)) {
+      throw new Error(
+        `three-particles: gpuShapeKind ${kind} outside 0..4 (SPHERE..BOX).`
+      );
+    }
+    if (!(maxParticles > 0)) {
+      throw new Error("three-particles: maxParticles must be > 0.");
+    }
+    if (pipeline.allocatorCount !== maxParticles + 1) {
+      throw new Error(
+        "three-particles: allocator capacity must equal maxParticles + 1."
+      );
+    }
+    const passLayouts = [
+      ...pipeline.passLayouts ?? [],
+      ...ribbonPipeline?.passLayouts ?? [],
+      ...subEntries.flatMap((e) => [
+        ...e.init.passLayouts ?? [],
+        ...(e.pipeline.passLayouts ?? []).map(
+          (p) => ({ ...p, name: `child:${p.name}` })
         )
-      };
+      ])
+    ];
+    for (const pass of passLayouts) {
+      if (pass.storageBindings > 8) {
+        throw new Error(
+          `${pass.name}: ${pass.storageBindings} storage buffers > guaranteed limit 8`
+        );
+      }
+    }
+    if (trailDesc && trailDesc.meta !== pipeline.trailMeta) {
+      throw new Error("three-particles: trail ring meta buffer mismatch.");
+    }
+    for (const f of fifos) {
+      const n = f.counter.array.length;
+      if (n !== 2) {
+        throw new Error(
+          "three-particles: sub-emitter FIFO must expose exactly 2 ping-pong counter slots."
+        );
+      }
+      const p = f.payload.array.length;
+      if (p !== 2 * 6 * f.capacity) {
+        throw new Error(
+          "three-particles: sub-emitter FIFO payload length must be 2 * 6 * capacity."
+        );
+      }
     }
   }
-  let particleSystem = useInstancing || useMesh ? new THREE5.Mesh(geometry, material) : new THREE5.Points(geometry, material);
-  if (useInstancing || softParticlesEnabled || useGPUCompute) {
-    particleSystem.onBeforeRender = (glRenderer, _scene, camera) => {
-      if (useInstancing) {
-        const size = glRenderer.getSize(new THREE5.Vector2());
-        sharedUniforms.viewportHeight.value = size.y * glRenderer.getPixelRatio();
-      }
-      if (softParticlesEnabled && camera.isPerspectiveCamera) {
-        const perspCam = camera;
-        sharedUniforms.cameraNearFar.value.set(
-          perspCam.near,
-          perspCam.far
-        );
-      }
-    };
+  const _numOr = (v, d) => typeof v === "number" && Number.isFinite(v) ? v : d;
+  const xform = normalizedConfig.transform;
+  if (xform?.position) {
+    particleSystem.position.set(
+      _numOr(xform.position.x, 0),
+      _numOr(xform.position.y, 0),
+      _numOr(xform.position.z, 0)
+    );
   }
-  if (useTrail && trailMesh) {
-    material.visible = false;
-    particleSystem.add(trailMesh);
+  if (xform?.rotation) {
+    particleSystem.rotation.set(
+      THREE3.MathUtils.degToRad(_numOr(xform.rotation.x, 0)),
+      THREE3.MathUtils.degToRad(_numOr(xform.rotation.y, 0)),
+      THREE3.MathUtils.degToRad(_numOr(xform.rotation.z, 0))
+    );
   }
-  particleSystem.position.copy(transform.position);
-  particleSystem.rotation.x = THREE5.MathUtils.degToRad(transform.rotation.x);
-  particleSystem.rotation.y = THREE5.MathUtils.degToRad(transform.rotation.y);
-  particleSystem.rotation.z = THREE5.MathUtils.degToRad(transform.rotation.z);
-  particleSystem.scale.copy(transform.scale);
-  const mappedAttributes = {
-    position: aPosition,
-    isActive: aIsActive,
-    lifetime: aLifetime,
-    startLifetime: aStartLifetime,
-    startFrame: aStartFrame,
-    size: aSize,
-    rotation: aRotation,
-    color: aColor,
-    ...useMesh ? { quat: aQuat } : {}
-  };
-  const calculatedCreationTime = now + calculateValue(generalData.particleSystemId, startDelay) * 1e3;
+  if (xform?.scale) {
+    particleSystem.scale.set(
+      _numOr(xform.scale.x, 1),
+      _numOr(xform.scale.y, 1),
+      _numOr(xform.scale.z, 1)
+    );
+  }
+  particleSystem.updateMatrix();
+  particleSystem.updateMatrixWorld(true);
   if (normalizedConfig.simulationSpace === "WORLD" /* WORLD */) {
     particleSystem.matrixWorldAutoUpdate = false;
     particleSystem.matrixWorld.identity();
   }
-  const hasDeathSubEmitters = deathSubEmitters.length > 0;
-  const hasBirthSubEmitters = birthSubEmitters.length > 0;
-  const onParticleDeath = hasDeathSubEmitters ? (particleIndex, positionArr, velocity, deathNow) => {
-    const posIdx = particleIndex * 3;
-    _subEmitterPosition.set(
-      positionArr[posIdx],
-      positionArr[posIdx + 1],
-      positionArr[posIdx + 2]
-    );
-    if (simulationSpace === "LOCAL" /* LOCAL */) {
-      particleSystem.updateMatrixWorld();
-      particleSystem.localToWorld(_subEmitterPosition);
-    }
-    spawnSubEmitters(
-      deathSubEmitters,
-      _subEmitterPosition,
-      velocity,
-      deathNow
-    );
-  } : void 0;
-  const onParticleBirth = hasBirthSubEmitters ? (particleIndex, positionArr, velocity, birthNow) => {
-    const posIdx = particleIndex * 3;
-    _subEmitterPosition.set(
-      positionArr[posIdx],
-      positionArr[posIdx + 1],
-      positionArr[posIdx + 2]
-    );
-    if (simulationSpace === "LOCAL" /* LOCAL */) {
-      particleSystem.updateMatrixWorld();
-      particleSystem.localToWorld(_subEmitterPosition);
-    }
-    spawnSubEmitters(
-      birthSubEmitters,
-      _subEmitterPosition,
-      velocity,
-      birthNow
-    );
-  } : void 0;
-  const instanceData = {
+  const generalData = {
+    particleSystemId: _particleSystemId++,
+    normalizedLifetimePercentage: 0,
+    distanceFromLastEmitByDistance: 0,
+    lastWorldPosition: new THREE3.Vector3(-99999),
+    currentWorldPosition: new THREE3.Vector3(-99999),
+    worldPositionChange: new THREE3.Vector3(),
+    sourceWorldMatrix: new THREE3.Matrix4(),
+    worldQuaternion: new THREE3.Quaternion(),
+    wrapperQuaternion: new THREE3.Quaternion(),
+    worldScale: new THREE3.Vector3(1, 1, 1),
+    worldEuler: new THREE3.Euler(),
+    gravityVelocity: new THREE3.Vector3(0, 0, 0),
+    startValues: {},
+    linearVelocityData: void 0,
+    orbitalVelocityData: void 0,
+    lifetimeValues: {},
+    creationTimes: new Float32Array(0),
+    cpuDirtyParticleWatermark: -1,
+    highWaterIndex: 0,
+    noise: {
+      isActive: normalizedConfig.noise.isActive,
+      strength: normalizedConfig.noise.strength,
+      // Oracle `0.15 * strength`; the single fbmMax division lives inside the
+      // FBM sum (CPU: FBM.get3; GPU: the octave loop amp / fbmMax).
+      noisePower: 0.15 * normalizedConfig.noise.strength,
+      frequency: normalizedConfig.noise.frequency,
+      positionAmount: normalizedConfig.noise.positionAmount,
+      rotationAmount: normalizedConfig.noise.rotationAmount,
+      sizeAmount: normalizedConfig.noise.sizeAmount,
+      fbmMax: 2 - Math.pow(2, -normalizedConfig.noise.octaves)
+    },
+    isEnabled: true,
+    burstStates: normalizedConfig.emission.bursts?.length ? normalizedConfig.emission.bursts.map(() => ({
+      cyclesExecuted: 0,
+      lastCycleTime: 0,
+      probabilityPassed: false
+    })) : void 0
+  };
+  const props = {
     particleSystem,
-    mappedAttributes,
-    scalarArray,
-    scalarInterleavedBuffer,
-    elapsedUniform: sharedUniforms.elapsed,
+    mappedAttributes: {
+      position: buffers.position,
+      isActive: buffers.orbitalIsActive,
+      lifetime: buffers.particleState,
+      startLifetime: buffers.startValues,
+      startFrame: buffers.particleState,
+      size: buffers.particleState,
+      rotation: buffers.particleState,
+      color: buffers.color
+    },
+    // ?? Deprecated zero-size sentinels (GPU-only v4) ????
+    // These legacy CPU particle-state fields are not authoritative anymore: the
+    // compute kernels own the state in GPU storage. Only the TRAIL path (which
+    // throws in v4) consumed them, so they are 0-length placeholders.
+    scalarArray: new Float32Array(0),
+    scalarInterleavedBuffer: new THREE3.InterleavedBuffer(
+      new Float32Array(0),
+      SCALAR_STRIDE
+    ),
+    elapsedUniform,
     generalData,
-    onUpdate,
-    onComplete,
-    creationTime: calculatedCreationTime,
-    lastEmissionTime: calculatedCreationTime,
-    duration,
-    looping,
-    simulationSpace,
-    gravity,
-    normalizedForceFields,
-    normalizedCollisionPlanes,
-    emission,
+    onUpdate: () => {
+    },
+    onComplete: () => {
+    },
+    creationTime: now + (normalizedConfig.startDelay || 0),
+    lastEmissionTime: now,
+    emissionAccumulator: 0,
+    duration: normalizedConfig.duration,
+    looping: normalizedConfig.looping,
+    simulationSpace: normalizedConfig.simulationSpace,
+    gravity: normalizedConfig.gravity,
+    normalizedForceFields: forceFields,
+    normalizedCollisionPlanes: collisionPlanes,
+    emission: normalizedConfig.emission,
     normalizedConfig,
     iterationCount: 0,
-    velocities,
-    freeList,
-    deactivateParticle,
-    activateParticle,
-    onParticleDeath,
-    onParticleBirth,
-    useGPUCompute: useGPUCompute && gpuPipeline !== null,
-    computePipeline: gpuPipeline ?? void 0,
+    velocities: [],
+    freeList: [],
+    deactivateParticle: () => {
+    },
+    killParticle: () => {
+    },
+    activateParticle: () => {
+    },
+    computePipeline: pipeline,
+    useGPUCompute: true,
     computeDispatchReady: false,
-    ...useTrail ? {
-      trailMesh,
-      trailPositionAttr,
-      trailAlphaAttr,
-      trailColorAttr,
-      trailNextAttr,
-      trailHalfWidthAttr,
-      trailUVAttr,
-      trailWidthCurveFn,
-      trailOpacityCurveFn,
-      trailColorOverTrailFns,
-      trailConfig: {
-        length: trailConfig.length,
-        width: trailConfig.width,
-        minVertexDistance: trailConfig.minVertexDistance,
-        maxTime: trailConfig.maxTime,
-        smoothing: trailConfig.smoothing,
-        smoothingSubdivisions: trailConfig.smoothingSubdivisions,
-        twistPrevention: trailConfig.twistPrevention,
-        ribbonId: trailConfig.ribbonId
-      }
-    } : {}
+    maxParticles,
+    material,
+    geometry,
+    rrType,
+    requestedRendererType,
+    effectiveRendererType: rrType,
+    sharedUniforms,
+    allComputeNodes: [
+      ...pipeline.computeNodes ?? [],
+      ...ribbonPipeline ? [ribbonPipeline.ribbonNode] : [],
+      ...subEntries.flatMap((e) => [
+        e.init.commandBuildNode,
+        e.init.childInitNode,
+        ...e.init.counterClearNode != null ? [e.init.counterClearNode] : [],
+        ...e.pipeline.computeNodes ?? []
+      ])
+    ],
+    passNames: [
+      ...pipeline.passNames ?? ["emit", "simulate"],
+      ...ribbonPipeline ? ["trail-ribbon"] : [],
+      ...subEntries.flatMap((e, ei) => [
+        `sub${ei}:command-build`,
+        `sub${ei}:child-init`,
+        `sub${ei}:counter-clear`,
+        `sub${ei}:child-emit`,
+        `sub${ei}:child-sim`
+      ])
+    ],
+    fifoBaseStride,
+    ribbonUniforms: ribbonPipeline ? ribbonPipeline.uniforms : void 0,
+    ribbonBuffers: ribbonPipeline ? ribbonPipeline.buffers : void 0,
+    frameParity: 0,
+    subEntries: subEntries.map((e) => ({
+      fifo: { capacity: e.fifo.capacity, windowSize: e.fifo.windowSize },
+      requestedRendererType: e.requestedRendererType,
+      effectiveRendererType: e.effectiveRendererType,
+      pipeline: e.pipeline,
+      init: e.init,
+      gravity: e.gravity,
+      noise: e.noise,
+      rate: e.rate,
+      acc: 0,
+      isWorld: e.selfPose.isWorld,
+      quat: [e.selfPose.qx, e.selfPose.qy, e.selfPose.qz, e.selfPose.qw],
+      scale: [e.selfPose.sx, e.selfPose.sy, e.selfPose.sz],
+      position: [
+        _numOr(e.cfg.transform?.position?.x, 0),
+        _numOr(e.cfg.transform?.position?.y, 0),
+        _numOr(e.cfg.transform?.position?.z, 0)
+      ]
+    }))
   };
-  createdParticleSystems.push(instanceData);
-  const resumeEmitter = () => generalData.isEnabled = true;
-  const pauseEmitter = () => generalData.isEnabled = false;
-  const dispose = () => {
-    for (const instances of subEmitterInstancesMap.values()) {
-      for (const sub of instances) sub.dispose();
-      instances.length = 0;
+  for (const e of subEntries) {
+    if (!e.object) continue;
+    const tf = e.cfg.transform;
+    if (tf?.position) {
+      e.object.position.set(
+        _numOr(tf.position.x, 0),
+        _numOr(tf.position.y, 0),
+        _numOr(tf.position.z, 0)
+      );
     }
+    if (tf?.rotation) {
+      e.object.rotation.set(
+        THREE3.MathUtils.degToRad(_numOr(tf.rotation.x, 0)),
+        THREE3.MathUtils.degToRad(_numOr(tf.rotation.y, 0)),
+        THREE3.MathUtils.degToRad(_numOr(tf.rotation.z, 0))
+      );
+    }
+    if (tf?.scale) {
+      e.object.scale.set(
+        _numOr(tf.scale.x, 1),
+        _numOr(tf.scale.y, 1),
+        _numOr(tf.scale.z, 1)
+      );
+    }
+    e.object.updateMatrix();
+    const q = new THREE3.Quaternion().setFromEuler(
+      new THREE3.Euler(
+        THREE3.MathUtils.degToRad(_numOr(tf?.rotation?.x, 0)),
+        THREE3.MathUtils.degToRad(_numOr(tf?.rotation?.y, 0)),
+        THREE3.MathUtils.degToRad(_numOr(tf?.rotation?.z, 0)),
+        "XYZ"
+      )
+    );
+    const entry = props.subEntries?.[subEntries.indexOf(e)];
+    if (entry) {
+      entry.quat = [q.x, q.y, q.z, q.w];
+      entry.scale = [
+        _numOr(tf?.scale?.x, 1),
+        _numOr(tf?.scale?.y, 1),
+        _numOr(tf?.scale?.z, 1)
+      ];
+    }
+  }
+  createdParticleSystems.push(props);
+  const _dbgPassCounts = [
+    ...(pipeline.passLayouts ?? []).map(
+      (p) => [p.name, p.storageBindings]
+    ),
+    ...(ribbonPipeline?.passLayouts ?? []).map(
+      (p) => [p.name, p.storageBindings]
+    ),
+    ...subEntries.flatMap((e, ei) => [
+      ...(e.init.passLayouts ?? []).map(
+        (p) => [`sub${ei}:${p.name}`, p.storageBindings]
+      ),
+      ...(e.pipeline.passLayouts ?? []).map(
+        (p) => [`sub${ei}:${p.name}`, p.storageBindings]
+      )
+    ])
+  ];
+  const _dbgMaxPass = _dbgPassCounts.reduce((m, p) => Math.max(m, p[1]), 0);
+  if (typeof console !== "undefined" && console.log) {
+    const logCfg = normalizedConfig;
+    const shpU = pipeline.shapeUniforms;
+    const sv = logCfg.startValues;
+    const u = pipeline.uniforms;
+    console.log(`[PS:create] system #${generalData.particleSystemId}`, {
+      rendererType: rrType,
+      requestedRendererType,
+      effectiveRendererType: rrType,
+      simulationSpace: normalizedConfig.simulationSpace,
+      maxParticles,
+      useInstancing
+    });
+    console.log(`[PS:config] system #${generalData.particleSystemId}`, {
+      shape: {
+        publicKind: logCfg.shape?.shape ?? null,
+        gpuShapeKind: shpU.shapeKind?.value ?? 0,
+        radius: shpU.radius?.value ?? logCfg.shape?.radius ?? null,
+        radiusThickness: shpU.radiusThickness?.value ?? null,
+        arcDeg: shpU.arcDeg?.value ?? null,
+        coneAngleDeg: shpU.coneAngleDeg?.value ?? null,
+        rectScale: [shpU.rectScaleX?.value, shpU.rectScaleY?.value],
+        rectRotationDeg: [shpU.rectRotXDeg?.value, shpU.rectRotYDeg?.value],
+        boxScale: [shpU.boxSX?.value, shpU.boxSY?.value, shpU.boxSZ?.value],
+        boxEmitFrom: shpU.boxEmitFrom?.value ?? null
+      },
+      transform: {
+        position: xform?.position ?? null,
+        rotation: xform?.rotation ?? null,
+        scale: xform?.scale ?? null
+      },
+      emission: {
+        rateOverTime: logCfg.emission?.rateOverTime ?? 0,
+        rateOverDistance: logCfg.emission?.rateOverDistance ?? 0,
+        bursts: logCfg.emission?.bursts?.length ?? 0
+      },
+      startValues: {
+        lifetime: sv?.startLifetime ?? null,
+        speed: sv?.startSpeed ?? null,
+        size: sv?.startSize ?? null,
+        rotation: sv?.startRotation ?? null,
+        color: sv?.startColor ?? null,
+        opacity: sv?.startOpacity ?? null
+      },
+      textureId: config.textureId ?? config._editorData?.textureId ?? null,
+      textureResolved: !!normalizedConfig.map,
+      forceFieldCount: forceFields.length,
+      collisionPlaneCount: collisionPlanes.length,
+      subEmitterCount: (normalizedConfig.subEmitters ?? []).length,
+      trailEnabled: !!trailDesc,
+      modifiers: {
+        linearVelocity: !!logCfg.velocityOverLifetime?.isActive && (u.linearVelX !== void 0 || u.axisLinXMin !== void 0 || !!(logCfg.velocityOverLifetime?.linear && Object.values(logCfg.velocityOverLifetime.linear).some(
+          (value) => value !== void 0 && value !== 0
+        ))),
+        orbitalVelocity: !!logCfg.velocityOverLifetime?.isActive && !!(logCfg.velocityOverLifetime?.orbital && Object.values(logCfg.velocityOverLifetime.orbital).some(
+          (value) => value !== void 0 && value !== 0
+        )),
+        sizeOverLifetime: !!normalizedConfig.sizeOverLifetime?.isActive,
+        opacityOverLifetime: !!normalizedConfig.opacityOverLifetime?.isActive,
+        colorOverLifetime: !!normalizedConfig.colorOverLifetime?.isActive,
+        rotationOverLifetime: !!normalizedConfig.rotationOverLifetime?.isActive,
+        noise: !!normalizedConfig.noise?.isActive
+      }
+    });
+    console.log(
+      `[PS:pipeline] system #${generalData.particleSystemId}: ${(props.passNames ?? []).join(" -> ") || "emit -> simulate"} | storageBindings=${_dbgPassCounts.map((p) => `${p[0]}=${p[1]}\u22648`).join(" ")} | packedFloats=${pipeline.buffers.packedData?.length ?? 0}`
+    );
+  }
+  const update = (cycleData) => {
+    updateParticleSystemInstance(props, cycleData);
+  };
+  const resumeEmitter = () => {
+    generalData.isEnabled = true;
+  };
+  const pauseEmitter = () => {
+    generalData.isEnabled = false;
+  };
+  const dispose = () => {
     destroyParticleSystem(particleSystem);
   };
-  const update = (cycleData) => {
-    updateParticleSystemInstance(instanceData, cycleData);
-    for (const instances of subEmitterInstancesMap.values()) {
-      for (const sub of instances) sub.update(cycleData);
-    }
-  };
-  const updateConfig = (partialConfig) => {
-    ObjectUtils.deepMerge(instanceData.normalizedConfig, partialConfig, {
+  const updateConfig = (partial) => {
+    ObjectUtils.deepMerge(normalizedConfig, partial, {
       applyToFirstObject: true,
       skippedProperties: []
     });
-    const cfg = instanceData.normalizedConfig;
-    if (partialConfig.gravity !== void 0) {
-      instanceData.gravity = cfg.gravity;
-    }
-    if (partialConfig.duration !== void 0)
-      instanceData.duration = cfg.duration;
-    if (partialConfig.looping !== void 0) instanceData.looping = cfg.looping;
-    if (partialConfig.simulationSpace !== void 0)
-      instanceData.simulationSpace = cfg.simulationSpace;
-    if (partialConfig.emission !== void 0)
-      instanceData.emission = cfg.emission;
-    if (partialConfig.forceFields !== void 0) {
-      instanceData.normalizedForceFields = normalizeForceFields(
-        cfg.forceFields
-      );
-    }
-    if (partialConfig.collisionPlanes !== void 0) {
-      instanceData.normalizedCollisionPlanes = normalizeCollisionPlanes(
-        cfg.collisionPlanes
-      );
-    }
-    if (partialConfig.noise !== void 0) {
-      const n = cfg.noise;
-      generalData.noise = {
-        isActive: n.isActive,
-        strength: n.strength,
-        noisePower: 0.15 * n.strength,
-        frequency: n.frequency,
-        positionAmount: n.positionAmount,
-        rotationAmount: n.rotationAmount,
-        sizeAmount: n.sizeAmount,
-        fbmMax: 2 - Math.pow(2, -n.octaves),
-        sampler: n.isActive ? new dist_FBM({
-          seed: Math.random(),
-          scale: n.frequency,
-          octaves: n.octaves
-        }) : void 0,
-        offsets: n.useRandomOffset ? generalData.noise.offsets ?? Array.from({ length: maxParticles }, () => Math.random() * 100) : void 0
-      };
-    }
   };
   return {
     instance: particleSystem,
@@ -18517,480 +17866,375 @@ var createParticleSystem = (config = DEFAULT_PARTICLE_SYSTEM_CONFIG, externalNow
     dispose,
     update,
     updateConfig,
-    computeNode: gpuPipeline?.computeNode ?? null
+    /**
+     * ?? Deprecated synchronous active count ????
+     * Returns -1 (= unsupported) in the GPU-only engine: the authoritative count
+     * is `maxParticles - allocator[0]` which lives in GPU storage and is only
+     * available through an explicit (throttled) `getArrayBufferAsync` read-back.
+     */
+    getActiveParticleCount: () => -1,
+    computeNode: props.allComputeNodes && props.allComputeNodes.length > 0 ? props.allComputeNodes : pipeline.computeNodes ?? pipeline.computeNode,
+    /**
+         * ?? Temporary one-shot GPU debug handle (deprecated, no per-frame cost) ????
+         * getActiveParticleCount() stays -1; this object is the raw material for an
+         * explicit 
+    enderer.getArrayBufferAsync(...) read-back (bytes, multiples of 4).
+         * lastEmitCount() mirrors uEmitCount, the u32 count written per frame.
+         */
+    gpuDebug: {
+      maxParticles,
+      allocatorCount: pipeline.allocatorCount,
+      /** Canonical requested vs effective GPU renderer classes (§2). */
+      requestedRendererType,
+      effectiveRendererType: rrType,
+      /** u32 birth system seed for this pipeline (written ONCE at create). */
+      systemSeed: pipeline.uniforms.seed.value,
+      buffers: pipeline.buffers,
+      emitNode: pipeline.emitNode,
+      simNode: pipeline.simNode,
+      passNames: pipeline.passNames ?? ["emit", "simulate"],
+      allPassNames: props.passNames ?? [],
+      storageBindingCount: _dbgMaxPass,
+      passBindingCounts: _dbgPassCounts,
+      lastEmitCount: () => pipeline.uniforms.emitCount.value,
+      /**
+       * Per-sub-emitter-child canonical pairs (§2/§21): each child pool's own
+       * requested vs effective renderer class + its events-per-frame.
+       */
+      subEmitters: (subEntries ?? []).map((e) => ({
+        requestedRendererType: e.requestedRendererType ?? null,
+        effectiveRendererType: e.effectiveRendererType,
+        perEvent: e.perEvent
+      })),
+      /** Decode summary for the `[PS:config]` / `[PS:pipeline]` logs. */
+      snapshot: () => {
+        const shp = normalizedConfig.shape;
+        const branch = shp.shape === "CONE" ? shp.cone : shp.shape === "CIRCLE" ? shp.circle : shp.sphere;
+        const tex = normalizedConfig.map;
+        return {
+          systemId: generalData.particleSystemId,
+          // Canonical effective + original requested renderer classes (§2).
+          effectiveRendererType: rrType,
+          requestedRendererType,
+          rendererType: rrType,
+          simulationSpace: normalizedConfig.simulationSpace,
+          maxParticles,
+          shape: {
+            publicShape: shp.shape,
+            gpuShapeKind: pipeline.shapeUniforms?.shapeKind?.value ?? 0,
+            radius: branch?.radius ?? null,
+            radiusThickness: branch?.radiusThickness ?? null,
+            arcDeg: branch?.arc ?? null,
+            coneAngleDeg: shp.shape === "CONE" ? shp.cone?.angle ?? null : null,
+            rectScale: shp.rectangle?.scale ?? null,
+            rectRotation: shp.rectangle?.rotation ?? null,
+            boxScale: shp.box?.scale ?? null,
+            boxEmitFrom: shp.box?.emitFrom ?? null
+          },
+          textureId: config.textureId ?? config._editorData?.textureId ?? null,
+          textureResolved: !!normalizedConfig.map,
+          textureDimensions: tex?.image ? [tex.image.width ?? 0, tex.image.height ?? 0] : null,
+          forceFieldCount: (normalizedConfig.forceFields ?? []).length,
+          collisionPlaneCount: (normalizedConfig.collisionPlanes ?? []).length,
+          subEmitterCount: (normalizedConfig.subEmitters ?? []).length,
+          trailEnabled: !!normalizedConfig.renderer.trail
+        };
+      }
+    }
   };
 };
+var _lastUploadStampMap = /* @__PURE__ */ new WeakMap();
+var _cmdUploadSeen = /* @__PURE__ */ new WeakSet();
 var updateParticleSystemInstance = (props, { now, delta, elapsed }) => {
   const {
-    onUpdate,
     generalData,
-    onComplete,
+    normalizedConfig,
     particleSystem,
     elapsedUniform,
     creationTime,
-    lastEmissionTime,
-    duration,
-    looping,
-    emission,
-    normalizedConfig,
-    iterationCount,
-    velocities,
-    freeList,
-    deactivateParticle,
-    activateParticle,
-    simulationSpace,
-    gravity,
     normalizedForceFields,
     normalizedCollisionPlanes,
-    onParticleDeath,
-    onParticleBirth,
-    mappedAttributes: ma,
-    useGPUCompute,
-    computePipeline
+    emission,
+    computePipeline: pipeline,
+    maxParticles = 0,
+    allComputeNodes,
+    subEntries,
+    fifoBaseStride = 0,
+    ribbonUniforms
   } = props;
-  const hasForceFields = normalizedForceFields.length > 0;
-  const hasCollisionPlanes = normalizedCollisionPlanes.length > 0;
+  if (!pipeline) return;
+  const u = pipeline.uniforms;
+  const dur = normalizedConfig.duration;
   const lifetime = now - creationTime;
-  const normalizedLifetime = lifetime % (duration * 1e3);
-  generalData.normalizedLifetimePercentage = Math.max(
-    Math.min(normalizedLifetime / (duration * 1e3), 1),
-    0
-  );
-  const {
-    lastWorldPosition,
-    currentWorldPosition,
-    worldPositionChange,
-    worldQuaternion,
-    worldEuler,
-    gravityVelocity,
-    sourceWorldMatrix,
-    isEnabled
-  } = generalData;
-  _lastWorldPositionSnapshot.copy(lastWorldPosition);
+  const loop = normalizedConfig.looping;
+  const iterationTimeMs = loop ? lifetime % (dur * 1e3) : lifetime;
+  generalData.normalizedLifetimePercentage = Math.max(Math.min(iterationTimeMs / 1e3 / dur, 1), 0);
   elapsedUniform.value = elapsed;
-  if (simulationSpace === "WORLD" /* WORLD */) {
+  const gv = generalData.gravityVelocity;
+  gv.set(0, normalizedConfig.gravity, 0);
+  if (normalizedConfig.simulationSpace === "WORLD" /* WORLD */) {
     particleSystem.updateMatrix();
+    _tmpM1.copy(particleSystem.matrix);
     if (particleSystem.parent) {
       particleSystem.parent.updateMatrixWorld();
-      sourceWorldMatrix.multiplyMatrices(
-        particleSystem.parent.matrixWorld,
-        particleSystem.matrix
-      );
-    } else {
-      sourceWorldMatrix.copy(particleSystem.matrix);
+      _tmpM1.premultiply(particleSystem.parent.matrixWorld);
     }
-    sourceWorldMatrix.decompose(
-      currentWorldPosition,
-      worldQuaternion,
+    _tmpM1.decompose(
+      generalData.currentWorldPosition,
+      generalData.worldQuaternion,
       generalData.worldScale
     );
-    generalData.wrapperQuaternion.copy(worldQuaternion);
-    particleSystem.matrixWorld.identity();
   } else {
     particleSystem.updateMatrixWorld();
-    particleSystem.getWorldPosition(currentWorldPosition);
-    particleSystem.getWorldQuaternion(worldQuaternion);
+    particleSystem.getWorldPosition(generalData.currentWorldPosition);
+    particleSystem.getWorldQuaternion(generalData.worldQuaternion);
     particleSystem.getWorldScale(generalData.worldScale);
-    generalData.wrapperQuaternion.identity();
+    _tmpQ1.copy(generalData.worldQuaternion).invert();
+    gv.applyQuaternion(_tmpQ1);
+    gv.x /= generalData.worldScale.x || 1;
+    gv.y /= generalData.worldScale.y || 1;
+    gv.z /= generalData.worldScale.z || 1;
   }
-  if (lastWorldPosition.x !== -99999) {
-    worldPositionChange.set(
-      currentWorldPosition.x - lastWorldPosition.x,
-      currentWorldPosition.y - lastWorldPosition.y,
-      currentWorldPosition.z - lastWorldPosition.z
-    );
-  } else {
-    worldPositionChange.set(0, 0, 0);
+  if (generalData.lastWorldPosition.x !== -99999) {
+    _lastWorldPositionSnapshot.copy(generalData.lastWorldPosition);
+    generalData.distanceFromLastEmitByDistance += _lastWorldPositionSnapshot.distanceTo(generalData.currentWorldPosition);
   }
-  if (isEnabled) {
-    generalData.distanceFromLastEmitByDistance += worldPositionChange.length();
-  }
-  lastWorldPosition.copy(currentWorldPosition);
-  worldEuler.setFromQuaternion(worldQuaternion);
-  if (simulationSpace === "WORLD" /* WORLD */) {
-    gravityVelocity.set(0, gravity, 0);
-  } else {
-    gravityVelocity.set(0, gravity, 0);
-    _inverseQuat.copy(worldQuaternion).invert();
-    gravityVelocity.applyQuaternion(_inverseQuat);
-    const sx = generalData.worldScale.x || 1;
-    const sy = generalData.worldScale.y || 1;
-    const sz = generalData.worldScale.z || 1;
-    gravityVelocity.x /= sx;
-    gravityVelocity.y /= sy;
-    gravityVelocity.z /= sz;
-  }
-  if (hasForceFields) {
-    if (simulationSpace === "LOCAL" /* LOCAL */) {
-      _inverseQuat.copy(worldQuaternion).invert();
-    }
-    _localForceFields.length = normalizedForceFields.length;
-    for (let i = 0; i < normalizedForceFields.length; i++) {
-      const src = normalizedForceFields[i];
-      let dst = _localForceFields[i];
-      if (!dst) {
-        dst = {
-          isActive: true,
-          type: "POINT" /* POINT */,
-          position: new THREE5.Vector3(),
-          direction: new THREE5.Vector3(),
-          strength: 0,
-          range: 0,
-          falloff: "LINEAR" /* LINEAR */
-        };
-        _localForceFields[i] = dst;
-      }
-      dst.isActive = src.isActive;
-      dst.type = src.type;
-      dst.strength = src.strength;
-      dst.range = src.range;
-      dst.falloff = src.falloff;
-      if (simulationSpace === "WORLD" /* WORLD */) {
-        dst.position.copy(src.position);
-        dst.direction.copy(src.direction);
-      } else {
-        _localForceFieldPos.copy(src.position);
-        particleSystem.worldToLocal(_localForceFieldPos);
-        dst.position.copy(_localForceFieldPos);
-        _localForceFieldDir.copy(src.direction);
-        _localForceFieldDir.applyQuaternion(_inverseQuat);
-        dst.direction.copy(_localForceFieldDir);
+  generalData.lastWorldPosition.copy(generalData.currentWorldPosition);
+  let emitCount = 0;
+  if (generalData.isEnabled && (loop || iterationTimeMs < dur * 1e3)) {
+    const lastEmit = props.lastEmissionTime;
+    const emissionDelta = now - lastEmit;
+    if (emissionDelta > 0) {
+      props.lastEmissionTime = now;
+      if (emission.rateOverTime) {
+        props.emissionAccumulator += calculateValue(
+          generalData.particleSystemId,
+          emission.rateOverTime,
+          generalData.normalizedLifetimePercentage
+        ) * (emissionDelta / 1e3);
       }
     }
-  }
-  if (hasCollisionPlanes) {
-    if (simulationSpace === "LOCAL" /* LOCAL */ && !hasForceFields) {
-      _inverseQuat.copy(worldQuaternion).invert();
-    }
-    _localCollisionPlanes.length = normalizedCollisionPlanes.length;
-    for (let i = 0; i < normalizedCollisionPlanes.length; i++) {
-      const src = normalizedCollisionPlanes[i];
-      let dst = _localCollisionPlanes[i];
-      if (!dst) {
-        dst = {
-          isActive: true,
-          position: new THREE5.Vector3(),
-          normal: new THREE5.Vector3(),
-          mode: "KILL" /* KILL */,
-          dampen: 0.5,
-          lifetimeLoss: 0
-        };
-        _localCollisionPlanes[i] = dst;
-      }
-      dst.isActive = src.isActive;
-      dst.mode = src.mode;
-      dst.dampen = src.dampen;
-      dst.lifetimeLoss = src.lifetimeLoss;
-      if (simulationSpace === "WORLD" /* WORLD */) {
-        dst.position.copy(src.position);
-        dst.normal.copy(src.normal);
-      } else {
-        _localCollisionPlanePos.copy(src.position);
-        particleSystem.worldToLocal(_localCollisionPlanePos);
-        dst.position.copy(_localCollisionPlanePos);
-        _localCollisionPlaneNormal.copy(src.normal);
-        _localCollisionPlaneNormal.applyQuaternion(_inverseQuat);
-        dst.normal.copy(_localCollisionPlaneNormal);
-      }
-    }
-  }
-  const creationTimes = generalData.creationTimes;
-  const scalarArr = props.scalarArray;
-  const positionArr = ma.position.array;
-  const creationTimesLength = creationTimes.length;
-  if (useGPUCompute && computePipeline) {
-    const cp = computePipeline;
-    setUniformFloat(cp.uniforms.delta, delta);
-    setUniformFloat(cp.uniforms.deltaMs, delta * 1e3);
-    setUniformVec3(
-      cp.uniforms.gravityVelocity,
-      gravityVelocity.x,
-      gravityVelocity.y,
-      gravityVelocity.z
-    );
-    const noiseData = generalData.noise;
-    setUniformFloat(cp.uniforms.noiseStrength, noiseData.strength);
-    setUniformFloat(
-      cp.uniforms.noisePower,
-      noiseData.noisePower / noiseData.fbmMax
-    );
-    setUniformFloat(cp.uniforms.noiseFrequency, noiseData.frequency);
-    setUniformFloat(cp.uniforms.noisePositionAmount, noiseData.positionAmount);
-    setUniformFloat(cp.uniforms.noiseRotationAmount, noiseData.rotationAmount);
-    setUniformFloat(cp.uniforms.noiseSizeAmount, noiseData.sizeAmount);
-    if (cp.forceFieldInfo && hasForceFields && _tslMaterialFactory?.encodeForceFieldsForGPU) {
-      const encodedFF = _tslMaterialFactory.encodeForceFieldsForGPU(
-        _localForceFields,
+    emitCount += Math.floor(props.emissionAccumulator);
+    if (emitCount > 0) props.emissionAccumulator -= emitCount;
+    if (emission.rateOverDistance && generalData.distanceFromLastEmitByDistance > 0) {
+      const r = calculateValue(
         generalData.particleSystemId,
+        emission.rateOverDistance,
         generalData.normalizedLifetimePercentage
       );
-      const curveArr = cp.buffers.curveData.array;
-      curveArr.set(encodedFF, cp.forceFieldInfo.offset);
-      cp.buffers.curveData.needsUpdate = true;
-      setUniformFloat(
-        cp.forceFieldInfo.countUniform,
-        normalizedForceFields.length
-      );
-    }
-    if (cp.collisionPlaneInfo && hasCollisionPlanes && _tslMaterialFactory?.encodeCollisionPlanesForGPU) {
-      const encodedCP = _tslMaterialFactory.encodeCollisionPlanesForGPU(
-        _localCollisionPlanes
-      );
-      const curveArr = cp.buffers.curveData.array;
-      curveArr.set(encodedCP, cp.collisionPlaneInfo.offset);
-      cp.buffers.curveData.needsUpdate = true;
-      setUniformFloat(
-        cp.collisionPlaneInfo.countUniform,
-        normalizedCollisionPlanes.length
-      );
-    }
-    if (_tslMaterialFactory?.flushEmitQueue) {
-      _tslMaterialFactory.flushEmitQueue(cp.buffers);
-    }
-    props.computeDispatchReady = true;
-    for (let index = 0; index < creationTimesLength; index++) {
-      const base = index * SCALAR_STRIDE;
-      if (scalarArr[base + S_IS_ACTIVE]) {
-        const particleLifetime = now - creationTimes[index];
-        if (particleLifetime > scalarArr[base + S_START_LIFETIME]) {
-          if (onParticleDeath)
-            onParticleDeath(index, positionArr, velocities[index], now);
-          deactivateParticle(index);
-        } else if (onParticleDeath) {
-          const velocity = velocities[index];
-          velocity.x -= gravityVelocity.x * delta;
-          velocity.y -= gravityVelocity.y * delta;
-          velocity.z -= gravityVelocity.z * delta;
-          if (hasForceFields) {
-            applyForceFields({
-              particleSystemId: generalData.particleSystemId,
-              forceFields: _localForceFields,
-              velocity,
-              positionArr,
-              positionIndex: index * 3,
-              delta,
-              systemLifetimePercentage: generalData.normalizedLifetimePercentage
-            });
-          }
-          const positionIndex = index * 3;
-          positionArr[positionIndex] += velocity.x * delta;
-          positionArr[positionIndex + 1] += velocity.y * delta;
-          positionArr[positionIndex + 2] += velocity.z * delta;
-          if (generalData.orbitalVelocityData) {
-            const orbData = generalData.orbitalVelocityData[index];
-            const { speed, positionOffset, valueModifiers } = orbData;
-            const pctLife = particleLifetime / scalarArr[base + S_START_LIFETIME];
-            positionArr[positionIndex] -= positionOffset.x;
-            positionArr[positionIndex + 1] -= positionOffset.y;
-            positionArr[positionIndex + 2] -= positionOffset.z;
-            const sx = valueModifiers.x ? valueModifiers.x(pctLife) : speed.x;
-            const sy = valueModifiers.y ? valueModifiers.y(pctLife) : speed.y;
-            const sz = valueModifiers.z ? valueModifiers.z(pctLife) : speed.z;
-            _shadowOrbitalEuler.set(sx * delta, sz * delta, sy * delta);
-            positionOffset.applyEuler(_shadowOrbitalEuler);
-            positionArr[positionIndex] += positionOffset.x;
-            positionArr[positionIndex + 1] += positionOffset.y;
-            positionArr[positionIndex + 2] += positionOffset.z;
-          }
-          if (hasCollisionPlanes) {
-            applyCollisionPlanes({
-              collisionPlanes: _localCollisionPlanes,
-              velocity,
-              positionArr,
-              positionIndex,
-              scalarArr,
-              scalarBase: base,
-              deactivateParticle: (pi) => {
-                if (onParticleDeath)
-                  onParticleDeath(pi, positionArr, velocities[pi], now);
-                deactivateParticle(pi);
-              },
-              particleIndex: index
-            });
-          }
-        }
+      if (r > 0) {
+        const n2 = Math.floor(generalData.distanceFromLastEmitByDistance * r);
+        emitCount += n2;
+        generalData.distanceFromLastEmitByDistance = Math.max(
+          generalData.distanceFromLastEmitByDistance - n2 / r,
+          0
+        );
       }
-    }
-  } else {
-    let positionNeedsUpdate = false;
-    let scalarNeedsUpdate = false;
-    _modifierParams.delta = delta;
-    _modifierParams.generalData = generalData;
-    _modifierParams.normalizedConfig = normalizedConfig;
-    _modifierParams.attributes = ma;
-    _modifierParams.scalarArray = scalarArr;
-    for (let index = 0; index < creationTimesLength; index++) {
-      const base = index * SCALAR_STRIDE;
-      if (scalarArr[base + S_IS_ACTIVE]) {
-        const particleLifetime = now - creationTimes[index];
-        if (particleLifetime > scalarArr[base + S_START_LIFETIME]) {
-          if (onParticleDeath)
-            onParticleDeath(index, positionArr, velocities[index], now);
-          deactivateParticle(index);
-        } else {
-          const velocity = velocities[index];
-          velocity.x -= gravityVelocity.x * delta;
-          velocity.y -= gravityVelocity.y * delta;
-          velocity.z -= gravityVelocity.z * delta;
-          if (hasForceFields) {
-            applyForceFields({
-              particleSystemId: generalData.particleSystemId,
-              forceFields: _localForceFields,
-              velocity,
-              positionArr,
-              positionIndex: index * 3,
-              delta,
-              systemLifetimePercentage: generalData.normalizedLifetimePercentage
-            });
-          }
-          if (gravity !== 0 || velocity.x !== 0 || velocity.y !== 0 || velocity.z !== 0) {
-            const positionIndex = index * 3;
-            positionArr[positionIndex] += velocity.x * delta;
-            positionArr[positionIndex + 1] += velocity.y * delta;
-            positionArr[positionIndex + 2] += velocity.z * delta;
-            positionNeedsUpdate = true;
-          }
-          if (hasCollisionPlanes) {
-            const killed = applyCollisionPlanes({
-              collisionPlanes: _localCollisionPlanes,
-              velocity,
-              positionArr,
-              positionIndex: index * 3,
-              scalarArr,
-              scalarBase: base,
-              deactivateParticle: (pi) => {
-                if (onParticleDeath)
-                  onParticleDeath(pi, positionArr, velocities[pi], now);
-                deactivateParticle(pi);
-              },
-              particleIndex: index
-            });
-            if (killed) {
-              positionNeedsUpdate = true;
-              continue;
-            }
-          }
-          scalarArr[base + S_LIFETIME] = particleLifetime;
-          scalarNeedsUpdate = true;
-          _modifierParams.particleLifetimePercentage = particleLifetime / scalarArr[base + S_START_LIFETIME];
-          _modifierParams.particleIndex = index;
-          applyModifiers(_modifierParams);
-        }
-      }
-    }
-    if (positionNeedsUpdate) ma.position.needsUpdate = true;
-    if (scalarNeedsUpdate) props.scalarInterleavedBuffer.needsUpdate = true;
-  }
-  if (isEnabled && (looping || lifetime < duration * 1e3)) {
-    const emissionDelta = now - lastEmissionTime;
-    const neededParticlesByTime = emission.rateOverTime ? Math.floor(
-      calculateValue(
-        generalData.particleSystemId,
-        emission.rateOverTime,
-        generalData.normalizedLifetimePercentage
-      ) * (emissionDelta / 1e3)
-    ) : 0;
-    const rateOverDistance = emission.rateOverDistance ? calculateValue(
-      generalData.particleSystemId,
-      emission.rateOverDistance,
-      generalData.normalizedLifetimePercentage
-    ) : 0;
-    const neededParticlesByDistance = rateOverDistance > 0 && generalData.distanceFromLastEmitByDistance > 0 ? Math.floor(
-      generalData.distanceFromLastEmitByDistance / (1 / rateOverDistance)
-    ) : 0;
-    const useDistanceStep = neededParticlesByDistance > 0;
-    if (useDistanceStep) {
-      _distanceStep.x = (currentWorldPosition.x - _lastWorldPositionSnapshot.x) / neededParticlesByDistance;
-      _distanceStep.y = (currentWorldPosition.y - _lastWorldPositionSnapshot.y) / neededParticlesByDistance;
-      _distanceStep.z = (currentWorldPosition.z - _lastWorldPositionSnapshot.z) / neededParticlesByDistance;
-    }
-    let neededParticles = neededParticlesByTime + neededParticlesByDistance;
-    if (rateOverDistance > 0 && neededParticlesByDistance >= 1) {
-      generalData.distanceFromLastEmitByDistance = 0;
     }
     if (emission.bursts && generalData.burstStates) {
       const bursts = emission.bursts;
-      const burstStates = generalData.burstStates;
-      const currentIterationTime = normalizedLifetime;
+      const states = generalData.burstStates;
+      const tSec = iterationTimeMs / 1e3;
       for (let i = 0; i < bursts.length; i++) {
-        const burst = bursts[i];
-        const state = burstStates[i];
-        const burstTimeMs = burst.time * 1e3;
-        const cycles = burst.cycles ?? 1;
-        const intervalMs = (burst.interval ?? 0) * 1e3;
-        const probability = burst.probability ?? 1;
-        if (looping && currentIterationTime < burstTimeMs && state.cyclesExecuted > 0) {
-          state.cyclesExecuted = 0;
-          state.lastCycleTime = 0;
-          state.probabilityPassed = false;
+        const b = bursts[i];
+        const s = states[i];
+        const cyc = b.cycles ?? 1;
+        const iv = b.interval ?? 0;
+        const prob = b.probability ?? 1;
+        if (loop && tSec < (b.time ?? 0) && s.cyclesExecuted > 0) {
+          s.cyclesExecuted = 0;
+          s.lastCycleTime = 0;
+          s.probabilityPassed = false;
         }
-        if (state.cyclesExecuted >= cycles) continue;
-        const nextCycleTime = burstTimeMs + state.cyclesExecuted * intervalMs;
-        if (currentIterationTime >= nextCycleTime) {
-          if (state.cyclesExecuted === 0) {
-            state.probabilityPassed = Math.random() < probability;
-          }
-          if (state.probabilityPassed) {
-            const burstCount = Math.floor(
-              calculateValue(
-                generalData.particleSystemId,
-                burst.count,
-                generalData.normalizedLifetimePercentage
-              )
+        if (s.cyclesExecuted >= cyc) continue;
+        const next = (b.time ?? 0) + s.cyclesExecuted * iv;
+        if (tSec >= next) {
+          if (s.cyclesExecuted === 0) s.probabilityPassed = Math.random() < prob;
+          if (s.probabilityPassed) {
+            emitCount += Math.floor(
+              calculateValue(generalData.particleSystemId, b.count, generalData.normalizedLifetimePercentage)
             );
-            neededParticles += burstCount;
           }
-          state.cyclesExecuted++;
-          state.lastCycleTime = currentIterationTime;
+          s.cyclesExecuted++;
+          s.lastCycleTime = tSec;
         }
       }
     }
-    if (neededParticles > 0) {
-      let generatedParticlesByDistanceNeeds = 0;
-      for (let i = 0; i < neededParticles; i++) {
-        if (freeList.length === 0) break;
-        const particleIndex = freeList.pop();
-        _tempPosition.x = 0;
-        _tempPosition.y = 0;
-        _tempPosition.z = 0;
-        if (useDistanceStep && generatedParticlesByDistanceNeeds < neededParticlesByDistance) {
-          _tempPosition.x = _distanceStep.x * generatedParticlesByDistanceNeeds;
-          _tempPosition.y = _distanceStep.y * generatedParticlesByDistanceNeeds;
-          _tempPosition.z = _distanceStep.z * generatedParticlesByDistanceNeeds;
-          generatedParticlesByDistanceNeeds++;
-        }
-        activateParticle({
-          particleIndex,
-          activationTime: now,
-          position: _tempPosition
-        });
-        if (onParticleBirth)
-          onParticleBirth(
-            particleIndex,
-            ma.position.array,
-            velocities[particleIndex],
-            now
-          );
-        props.lastEmissionTime = now;
-      }
-    }
-    if (onUpdate)
-      onUpdate({
-        particleSystem,
-        delta,
-        elapsed,
-        lifetime,
-        normalizedLifetime,
-        iterationCount: iterationCount + 1
-      });
-  } else if (onComplete)
-    onComplete({
-      particleSystem
-    });
-  if (props.trailMesh) {
-    updateTrailGeometry(props, now);
+    if (emitCount > maxParticles) emitCount = maxParticles;
   }
+  u.delta.value = delta;
+  u.deltaMs.value = delta * 1e3;
+  u.gravityVelocity.value.copy(gv);
+  u.emitCount.value = emitCount;
+  pipeline.emitNode.count = Math.max(1, emitCount);
+  if (pipeline.subBirthEventsNode) {
+    pipeline.subBirthEventsNode.count = Math.max(1, emitCount);
+  }
+  const n = generalData.noise;
+  if (u.noiseStrength) u.noiseStrength.value = n.strength;
+  if (u.noisePower) u.noisePower.value = n.noisePower;
+  if (u.noiseFrequency) u.noiseFrequency.value = n.frequency;
+  if (u.noisePositionAmount) u.noisePositionAmount.value = n.positionAmount;
+  if (u.noiseRotationAmount) u.noiseRotationAmount.value = n.rotationAmount;
+  if (u.noiseSizeAmount) u.noiseSizeAmount.value = n.sizeAmount;
+  const pose = pipeline.emitterPose;
+  if (pose) {
+    if (normalizedConfig.simulationSpace === "WORLD" /* WORLD */) {
+      particleSystem.updateMatrix();
+      _tmpM1.copy(particleSystem.matrix);
+      if (particleSystem.parent) {
+        particleSystem.parent.updateMatrixWorld();
+        _tmpM1.premultiply(particleSystem.parent.matrixWorld);
+      }
+      _tmpM1.decompose(_tmpV1, _tmpQ1, _tmpV2);
+      pose.positionW.value.set(_tmpV1.x, _tmpV1.y, _tmpV1.z, 1);
+      pose.wrapperQuat.value.set(_tmpQ1.x, _tmpQ1.y, _tmpQ1.z, _tmpQ1.w);
+      pose.worldScale.value.set(_tmpV2.x || 1, _tmpV2.y || 1, _tmpV2.z || 1);
+    } else {
+      pose.positionW.value.set(0, 0, 0, 0);
+      pose.wrapperQuat.value.set(0, 0, 0, 1);
+      pose.worldScale.value.set(1, 1, 1);
+    }
+  }
+  const parity = (props.frameParity ?? 0) % 2;
+  const fifoBase = parity;
+  if (u.fifoBase) u.fifoBase.value = fifoBase;
+  if (u.nowMs) u.nowMs.value = now;
+  if (ribbonUniforms?.nowMs) ribbonUniforms.nowMs.value = now;
+  for (const e of subEntries ?? []) {
+    const cp = e.pipeline;
+    if (!cp) continue;
+    const cu = cp.uniforms;
+    if (cu.delta) cu.delta.value = delta;
+    if (cu.deltaMs) cu.deltaMs.value = delta * 1e3;
+    if (cu.nowMs) cu.nowMs.value = now;
+    if (cu.gravityVelocity) {
+      cu.gravityVelocity.value.set(
+        0,
+        e.gravity,
+        0
+      );
+    }
+    if (e.noise) {
+      if (cu.noiseStrength) cu.noiseStrength.value = e.noise.strength;
+      if (cu.noisePower) cu.noisePower.value = e.noise.noisePower;
+      if (cu.noiseFrequency) cu.noiseFrequency.value = e.noise.frequency;
+      if (cu.noisePositionAmount) cu.noisePositionAmount.value = e.noise.positionAmount;
+      if (cu.noiseRotationAmount) cu.noiseRotationAmount.value = e.noise.rotationAmount;
+      if (cu.noiseSizeAmount) cu.noiseSizeAmount.value = e.noise.sizeAmount;
+    }
+    if (cu.fifoBase) cu.fifoBase.value = fifoBase;
+    if (e.init.uniforms.fifoBase) e.init.uniforms.fifoBase.value = fifoBase;
+    let childEmit = 0;
+    if (e.rate > 0) {
+      e.acc += e.rate * delta / 1;
+      childEmit = Math.floor(e.acc);
+      if (childEmit > 0) e.acc -= childEmit;
+    }
+    const childCapacity = Math.max(2, (cp.allocatorCount ?? 2) - 1);
+    if (childEmit > childCapacity) childEmit = childCapacity;
+    if (cp.emitNode) cp.emitNode.count = Math.max(1, childEmit);
+    if (cu.emitCount) cu.emitCount.value = childEmit;
+    const cpose = cp.emitterPose;
+    if (cpose) {
+      if (e.isWorld === 1) {
+        cpose.positionW.value.set(e.position[0], e.position[1], e.position[2], 1);
+        cpose.wrapperQuat.value.set(e.quat[0], e.quat[1], e.quat[2], e.quat[3]);
+        cpose.worldScale.value.set(e.scale[0], e.scale[1], e.scale[2]);
+      } else {
+        cpose.positionW.value.set(0, 0, 0, 0);
+        cpose.wrapperQuat.value.set(0, 0, 0, 1);
+        cpose.worldScale.value.set(1, 1, 1);
+      }
+    }
+    const ip = e.init.uniforms;
+    if (ip.positionW && ip.wrapperQuat) {
+      if (e.isWorld === 1) {
+        ip.positionW.value.set(e.position[0], e.position[1], e.position[2], 1);
+        ip.wrapperQuat.value.set(e.quat[0], e.quat[1], e.quat[2], e.quat[3]);
+      } else {
+        ip.positionW.value.set(0, 0, 0, 0);
+        ip.wrapperQuat.value.set(0, 0, 0, 1);
+      }
+    }
+  }
+  const ffInfo = pipeline.forceFieldInfo;
+  const cInfo = pipeline.collisionPlaneInfo ?? null;
+  if ((ffInfo || cInfo) && _tslMaterialFactory) {
+    const cdArr = pipeline.buffers.packedData;
+    const cdNode = pipeline.packedDataNode;
+    if (ffInfo && normalizedForceFields.length > 0) {
+      const encFF = _tslMaterialFactory.encodeForceFieldsForGPU(normalizedForceFields, generalData.particleSystemId, generalData.normalizedLifetimePercentage);
+      let changedFF = false;
+      for (let k = 0; k < encFF.length; k++) if (cdArr[ffInfo.offset + k] !== encFF[k]) {
+        changedFF = true;
+        break;
+      }
+      if (changedFF) {
+        cdArr.set(encFF, ffInfo.offset);
+        cdNode.addUpdateRange(ffInfo.offset, encFF.length);
+        cdNode.needsUpdate = true;
+      }
+      ffInfo.countUniform.value = normalizedForceFields.length;
+    }
+    if (cInfo && normalizedCollisionPlanes.length > 0) {
+      const encCP = _tslMaterialFactory.encodeCollisionPlanesForGPU(normalizedCollisionPlanes);
+      let changedCP = false;
+      for (let k = 0; k < encCP.length; k++) if (cdArr[cInfo.offset + k] !== encCP[k]) {
+        changedCP = true;
+        break;
+      }
+      if (changedCP) {
+        cdArr.set(encCP, cInfo.offset);
+        cdNode.addUpdateRange(cInfo.offset, encCP.length);
+        cdNode.needsUpdate = true;
+      }
+      cInfo.countUniform.value = normalizedCollisionPlanes.length;
+    }
+  }
+  const bufs = pipeline.buffers;
+  let stamp = _lastUploadStampMap.get(bufs);
+  if (stamp === void 0 || stamp === 0) {
+    for (const key of Object.keys(bufs)) {
+      const a = bufs[key];
+      if (a && "needsUpdate" in a) a.needsUpdate = true;
+    }
+    _lastUploadStampMap.set(bufs, 1);
+  } else {
+    _lastUploadStampMap.set(bufs, stamp + 1);
+  }
+  for (const e of subEntries ?? []) {
+    const cb = e.pipeline?.buffers;
+    if (cb && !_lastUploadStampMap.has(cb)) {
+      for (const key of Object.keys(cb)) {
+        const a = cb[key];
+        if (a && "needsUpdate" in a) a.needsUpdate = true;
+      }
+      _lastUploadStampMap.set(cb, 1);
+    }
+    const cmd = e.init.commandBuffer;
+    if (cmd && "needsUpdate" in cmd && !_cmdUploadSeen.has(cmd)) {
+      cmd.needsUpdate = true;
+      _cmdUploadSeen.add(cmd);
+    }
+  }
+  const rb = props.ribbonBuffers;
+  if (rb && !_lastUploadStampMap.has(rb)) {
+    for (const key of Object.keys(rb)) {
+      const a = rb[key];
+      if (a && "needsUpdate" in a) a.needsUpdate = true;
+    }
+    _lastUploadStampMap.set(rb, 1);
+  }
+  props.computeDispatchReady = true;
+  props.iterationCount++;
+  props.frameParity = (props.frameParity ?? 0) ^ 1;
+  if (props.trailMesh) updateTrailGeometry(props, now);
 };
+var _tmpQ1 = new __WEBPACK_EXTERNAL_MODULE_three_Quaternion__();
+var _tmpV1 = new __WEBPACK_EXTERNAL_MODULE_three_Vector3__();
+var _tmpV2 = new __WEBPACK_EXTERNAL_MODULE_three_Vector3__();
+var _tmpM1 = new __WEBPACK_EXTERNAL_MODULE_three_Matrix4__();
 var catmullRom = (out, outIdx, p0x, p0y, p0z, p1x, p1y, p1z, p2x, p2y, p2z, p3x, p3y, p3z, t) => {
   const t2 = t * t;
   const t3 = t2 * t;
@@ -19099,6 +18343,7 @@ var updateTrailGeometry = (props, now) => {
   const ribbonId = trailConfig.ribbonId;
   const trailScalarArr = props.scalarArray;
   const positionArr = ma.position.array;
+  const prevFilled = generalData.trailPrevFilledCount;
   const trailPosArr = trailPositionAttr.array;
   const trailAlphaArr = trailAlphaAttr.array;
   const trailColorArr = trailColorAttr.array;
@@ -19106,13 +18351,14 @@ var updateTrailGeometry = (props, now) => {
   const trailUVArr = trailUVAttrCached.array;
   const trailHalfWidthArr = trailHalfWidthAttrCached.array;
   const verticesPerParticle = trailLength * 2;
-  const creationTimesLength = generalData.creationTimes.length;
+  const hwm = generalData.highWaterIndex;
+  const creationTimesLength = hwm > 0 ? hwm : generalData.creationTimes.length;
   let hasUpdates = false;
   const useRibbon = ribbonId !== void 0;
   let ribbonLeader = -1;
   if (useRibbon) {
     if (!_ribbonIndices || _ribbonIndicesSize < creationTimesLength) {
-      _ribbonIndices = new Uint16Array(creationTimesLength);
+      _ribbonIndices = new Uint32Array(creationTimesLength);
       _ribbonIndicesSize = creationTimesLength;
     }
     _ribbonCount = 0;
@@ -19284,12 +18530,15 @@ var updateTrailGeometry = (props, now) => {
           }
         }
       }
+      const prevFilledSlots = prevFilled ? prevFilled[index] : trailLength;
+      if (prevFilled) prevFilled[index] = finalCount;
       for (let s = 0; s < trailLength; s++) {
         const vIdx = (vertBase + s * 2) * 3;
         const cIdx = (vertBase + s * 2) * 4;
         const aIdx = vertBase + s * 2;
         const uvIdxBase = (vertBase + s * 2) * 2;
         if (s >= finalCount) {
+          if (s >= prevFilledSlots) break;
           clearTrailVertex(
             vIdx,
             cIdx,
@@ -19451,11 +18700,13 @@ var updateTrailGeometry = (props, now) => {
           prevNormal[nIdx + 2] = cnz;
         }
       }
-    } else if (historyCount[index] > 0) {
+    } else if (historyCount[index] > 0 || prevFilled && prevFilled[index] > 0) {
       hasUpdates = true;
       historyCount[index] = 0;
       historyIndex[index] = 0;
-      for (let s = 0; s < trailLength; s++) {
+      const clearSlots = prevFilled ? prevFilled[index] : trailLength;
+      if (prevFilled) prevFilled[index] = 0;
+      for (let s = 0; s < clearSlots; s++) {
         const vIdx = (vertBase + s * 2) * 3;
         const cIdx = (vertBase + s * 2) * 4;
         const aIdx = vertBase + s * 2;
@@ -19549,12 +18800,15 @@ var updateTrailGeometry = (props, now) => {
     const leaderCg = trailScalarArr[leaderBase + S_COLOR_G];
     const leaderCb = trailScalarArr[leaderBase + S_COLOR_B];
     const leaderCa = trailScalarArr[leaderBase + S_COLOR_A];
+    const leaderPrevFilled = prevFilled ? prevFilled[leader] : trailLength;
+    if (prevFilled) prevFilled[leader] = filledCount;
     for (let s = 0; s < trailLength; s++) {
       const vIdx = (leaderVertBase + s * 2) * 3;
       const cIdx = (leaderVertBase + s * 2) * 4;
       const aIdx = leaderVertBase + s * 2;
       const uvIdxBase = (leaderVertBase + s * 2) * 2;
       if (s >= filledCount) {
+        if (s >= leaderPrevFilled) break;
         clearTrailVertex(
           vIdx,
           cIdx,
@@ -19710,7 +18964,9 @@ var updateTrailGeometry = (props, now) => {
     for (let ri = 1; ri < _ribbonCount; ri++) {
       const pIdx = _ribbonIndices[ri];
       const pVertBase = pIdx * verticesPerParticle;
-      for (let s = 0; s < trailLength; s++) {
+      const pClearSlots = prevFilled ? prevFilled[pIdx] : trailLength;
+      if (prevFilled) prevFilled[pIdx] = 0;
+      for (let s = 0; s < pClearSlots; s++) {
         const vIdx = (pVertBase + s * 2) * 3;
         const cIdx = (pVertBase + s * 2) * 4;
         const aIdx = pVertBase + s * 2;
@@ -19762,10 +19018,10 @@ for (const [id, fn] of Object.entries(curveFunctionIdMap)) {
 }
 function serializeAny(value, key) {
   if (value === null || value === void 0) return value;
-  if (value instanceof THREE5.Vector3)
+  if (value instanceof THREE3.Vector3)
     return { x: value.x, y: value.y, z: value.z };
-  if (value instanceof THREE5.Vector2) return { x: value.x, y: value.y };
-  if (value instanceof THREE5.Texture) return void 0;
+  if (value instanceof THREE3.Vector2) return { x: value.x, y: value.y };
+  if (value instanceof THREE3.Texture) return void 0;
   if (typeof value === "function") return void 0;
   if (Array.isArray(value)) return value.map((item) => serializeAny(item));
   if (typeof value === "object") {
@@ -19836,12 +19092,12 @@ function deserializeCurveOrValue(value) {
 function deserializeVector3(raw) {
   if (!raw || typeof raw !== "object") return void 0;
   const { x = 0, y = 0, z = 0 } = raw;
-  return new THREE5.Vector3(x, y, z);
+  return new THREE3.Vector3(x, y, z);
 }
 function deserializeVector2(raw) {
   if (!raw || typeof raw !== "object") return void 0;
   const { x = 1, y = 1 } = raw;
-  return new THREE5.Vector2(x, y);
+  return new THREE3.Vector2(x, y);
 }
 function deserializeConfig(raw) {
   const config = {};
@@ -19890,7 +19146,7 @@ function deserializeConfig(raw) {
     config.shape = raw["shape"];
   if (raw["renderer"] && typeof raw["renderer"] === "object") {
     const r = raw["renderer"];
-    const blending = typeof r["blending"] === "string" ? blendingMap[r["blending"]] ?? THREE5.NormalBlending : r["blending"] ?? THREE5.NormalBlending;
+    const blending = typeof r["blending"] === "string" ? blendingMap[r["blending"]] ?? THREE3.NormalBlending : r["blending"] ?? THREE3.NormalBlending;
     config.renderer = { ...r, blending };
   }
   if (raw["velocityOverLifetime"] && typeof raw["velocityOverLifetime"] === "object") {
@@ -20000,9 +19256,8 @@ function deserializeParticleSystem(json) {
 //# sourceMappingURL=index.js.map
 ;// external "three/tsl"
 
-;// external "three/webgpu"
-
 ;// ./dist/webgpu.js
+
 
 
 
@@ -20081,15 +19336,13 @@ function createCollisionPlaneTSL(sCurveData, collisionPlaneOffset, collisionPlan
         __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(signedDist.lessThan(0), () => {
           __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(mode.lessThan(0.5), () => {
             ps.x.assign(startLife.add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1)));
-          });
-          __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(mode.greaterThanEqual(0.5).and(mode.lessThan(1.5)), () => {
+          }).ElseIf(mode.lessThan(1.5), () => {
             pos.assign(pos.sub(planeNormal.mul(signedDist)));
             const velDotN = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_dot__(vel, planeNormal);
             __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(velDotN.lessThan(0), () => {
               vel.assign(vel.sub(planeNormal.mul(velDotN)));
             });
-          });
-          __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(mode.greaterThanEqual(1.5), () => {
+          }).Else(() => {
             pos.assign(pos.sub(planeNormal.mul(signedDist)));
             const vDotN = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_dot__(vel, planeNormal);
             const reflected = vel.sub(planeNormal.mul(vDotN.mul(2)));
@@ -20133,12 +19386,14 @@ var webgpu_createBezierCurveFunction = (particleSystemId, bezierPoints) => {
       if (percentage > 1) return bezierPoints[bezierPoints.length - 1].y;
       let start = 0;
       let stop = bezierPoints.length - 1;
-      bezierPoints.find((point, index) => {
-        const result = percentage < (point.percentage ?? 0);
-        if (result) stop = index;
-        else if (point.percentage !== void 0) start = index;
-        return result;
-      });
+      for (let i = 0; i < bezierPoints.length; i++) {
+        const point = bezierPoints[i];
+        if (percentage < (point.percentage ?? 0)) {
+          stop = i;
+          break;
+        }
+        if (point.percentage !== void 0) start = i;
+      }
       const n = stop - start;
       const calculatedPercentage = (percentage - (bezierPoints[start].percentage ?? 0)) / ((bezierPoints[stop].percentage ?? 1) - (bezierPoints[start].percentage ?? 0));
       let value = 0;
@@ -20167,6 +19422,16 @@ var webgpu_getCurveFunctionFromConfig = (particleSystemId, lifetimeCurve) => {
   }
   if (lifetimeCurve.type === "EASING" /* EASING */) {
     return lifetimeCurve.curveFunction;
+  }
+  const raw = lifetimeCurve;
+  if (Array.isArray(raw.bezierPoints)) {
+    return webgpu_createBezierCurveFunction(
+      particleSystemId,
+      raw.bezierPoints
+    );
+  }
+  if (typeof raw.curveFunction === "function") {
+    return raw.curveFunction;
   }
   throw new Error(`Unsupported value type: ${lifetimeCurve}`);
 };
@@ -20295,24 +19560,29 @@ function createForceFieldTSL(sCurveData, forceFieldOffset, forceFieldCount) {
 
 // src/js/effects/three-particles/webgpu/curve-bake.ts
 var CURVE_RESOLUTION = 256;
-function bakeCurveIntoBuffer(buffer, writeOffset, particleSystemId, curve) {
+function bakeCurve(curveFn, resolution = CURVE_RESOLUTION) {
+  const samples = new Float32Array(resolution);
+  const lastIndex = resolution - 1;
+  for (let i = 0; i < resolution; i++) {
+    const t = lastIndex === 0 ? 0 : i / lastIndex;
+    samples[i] = curveFn(t);
+  }
+  return samples;
+}
+function bakeCurveIntoBuffer(buffer2, writeOffset, particleSystemId, curve) {
   const curveFn = webgpu_getCurveFunctionFromConfig(particleSystemId, curve);
   const lastIndex = CURVE_RESOLUTION - 1;
   for (let i = 0; i < CURVE_RESOLUTION; i++) {
     const t = i / lastIndex;
-    buffer[writeOffset + i] = curveFn(t);
+    buffer2[writeOffset + i] = curveFn(t);
   }
   return writeOffset + CURVE_RESOLUTION;
 }
-function bakeVelocityAxisIntoBuffer(buffer, writeOffset, particleSystemId, value) {
+function bakeVelocityAxisIntoBuffer(buffer2, writeOffset, particleSystemId, value) {
   if (webgpu_isLifeTimeCurve(value)) {
-    return bakeCurveIntoBuffer(buffer, writeOffset, particleSystemId, value);
+    return bakeCurveIntoBuffer(buffer2, writeOffset, particleSystemId, value);
   }
-  const constantValue = webgpu_calculateValue(particleSystemId, value, 0.5);
-  for (let i = 0; i < CURVE_RESOLUTION; i++) {
-    buffer[writeOffset + i] = constantValue;
-  }
-  return writeOffset + CURVE_RESOLUTION;
+  return writeOffset;
 }
 function bakeParticleSystemCurves(normalizedConfig, particleSystemId) {
   let curveCount = 0;
@@ -20326,12 +19596,13 @@ function bakeParticleSystemCurves(normalizedConfig, particleSystemId) {
   const hasOpacityOverLifetime = opacityOverLifetime.isActive;
   const hasColorOverLifetime = colorOverLifetime.isActive;
   const isVelActive = velocityOverLifetime.isActive;
-  const hasLinearVelX = isVelActive && velocityOverLifetime.linear.x !== void 0 && velocityOverLifetime.linear.x !== 0;
-  const hasLinearVelY = isVelActive && velocityOverLifetime.linear.y !== void 0 && velocityOverLifetime.linear.y !== 0;
-  const hasLinearVelZ = isVelActive && velocityOverLifetime.linear.z !== void 0 && velocityOverLifetime.linear.z !== 0;
-  const hasOrbitalVelX = isVelActive && velocityOverLifetime.orbital.x !== void 0 && velocityOverLifetime.orbital.x !== 0;
-  const hasOrbitalVelY = isVelActive && velocityOverLifetime.orbital.y !== void 0 && velocityOverLifetime.orbital.y !== 0;
-  const hasOrbitalVelZ = isVelActive && velocityOverLifetime.orbital.z !== void 0 && velocityOverLifetime.orbital.z !== 0;
+  const isCurveAxis = (v) => isVelActive && v !== void 0 && webgpu_isLifeTimeCurve(v);
+  const hasLinearVelX = isCurveAxis(velocityOverLifetime.linear.x);
+  const hasLinearVelY = isCurveAxis(velocityOverLifetime.linear.y);
+  const hasLinearVelZ = isCurveAxis(velocityOverLifetime.linear.z);
+  const hasOrbitalVelX = isCurveAxis(velocityOverLifetime.orbital.x);
+  const hasOrbitalVelY = isCurveAxis(velocityOverLifetime.orbital.y);
+  const hasOrbitalVelZ = isCurveAxis(velocityOverLifetime.orbital.z);
   if (hasSizeOverLifetime) curveCount++;
   if (hasOpacityOverLifetime) curveCount++;
   if (hasColorOverLifetime) curveCount += 3;
@@ -20553,451 +19824,1197 @@ __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_Fn__(
   }
 );
 
+// src/js/effects/three-particles/color-utils.ts
+var webgpu_sRGBToLinear = (c) => c < 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+
 // src/js/effects/three-particles/webgpu/compute-modifiers.ts
-var INIT_STRIDE = 28;
-function createModifierStorageBuffers(maxParticles, instanced, curveData, hasForceFields = false, hasCollisionPlanes = false) {
+var SUB_EMITTER_EVENT_STRIDE = 6;
+var subEmitterWindowSize = (capacity) => SUB_EMITTER_EVENT_STRIDE * Math.max(1, capacity);
+var asU32 = (n) => n.nodeType === "uint" ? n : n.toUint();
+var pcgRawU32 = (seedU) => {
+  const stateU = asU32(seedU).mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(747796405)).add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(2891336453));
+  const wordU = stateU.shiftRight(stateU.shiftRight(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(28)).add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(4))).bitXor(stateU).mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(277803737));
+  return wordU.shiftRight(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(22)).bitXor(wordU);
+};
+var pcg01 = (seedU) => pcgRawU32(seedU).toFloat().mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1 / 4294967296));
+var mixBirthSeed = (birthNoU, systemSeedU, channelU) => asU32(birthNoU).mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(2654435761)).bitXor(asU32(systemSeedU)).bitXor(asU32(channelU));
+var randomChannel = (birthNoU, systemSeedU, channelU) => pcg01(mixBirthSeed(birthNoU, systemSeedU, channelU));
+var stableSeedU32 = (birthNoU, systemSeedU) => pcgRawU32(mixBirthSeed(birthNoU, systemSeedU, CH.STABLE_SEED)).bitAnd(
+  __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(16777215)
+);
+var stableSeedFromExt = (extW) => extW.toUint();
+var nextSystemSeed = () => Math.floor(Math.random() * 4294967296) >>> 0;
+var CH = {
+  SHAPE_A: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(1),
+  SHAPE_B: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(2),
+  SHAPE_C: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(3),
+  START_FRAME: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(4),
+  SPEED: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(5),
+  SIZE: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(6),
+  ROTATION: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(7),
+  OPACITY: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(8),
+  LIFETIME: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(9),
+  COLOR: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(10),
+  ROTOL: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(11),
+  STABLE_SEED: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(12),
+  LIN_X: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(13),
+  LIN_Y: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(14),
+  LIN_Z: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(15),
+  ORB_X: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(16),
+  ORB_Y: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(17),
+  ORB_Z: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(18),
+  NOISE_PHASE: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(19)
+};
+var createSubEmitterFifoAttribute = (capacity) => ({
+  counter: new __WEBPACK_EXTERNAL_MODULE_three_webgpu_84e9d76f_StorageBufferAttribute__(new Uint32Array(2), 1),
+  payload: new __WEBPACK_EXTERNAL_MODULE_three_webgpu_84e9d76f_StorageBufferAttribute__(
+    new Float32Array(
+      2 * SUB_EMITTER_EVENT_STRIDE * Math.max(1, capacity)
+    ),
+    1
+  ),
+  trigger: 1,
+  capacity: Math.max(1, capacity),
+  windowSize: subEmitterWindowSize(capacity)
+});
+function createModifierStorageBuffers(maxParticles, instanced, curveData, hasForceFields = false, hasCollisionPlanes = false, trailLength = 0) {
   const Cls = instanced ? __WEBPACK_EXTERNAL_MODULE_three_webgpu_84e9d76f_StorageInstancedBufferAttribute__ : __WEBPACK_EXTERNAL_MODULE_three_webgpu_84e9d76f_StorageBufferAttribute__;
   const curveLen = Math.max(curveData.length, 1);
   const ffSize = hasForceFields ? FORCE_FIELD_DATA_SIZE : 0;
   const cpSize = hasCollisionPlanes ? COLLISION_PLANE_DATA_SIZE : 0;
-  const totalLen = curveLen + maxParticles * INIT_STRIDE + ffSize + cpSize;
-  const combined = new Float32Array(totalLen);
-  combined.set(curveData.length > 0 ? curveData : new Float32Array([0]));
+  const packedData = new Float32Array(curveLen + ffSize + cpSize);
+  packedData.set(curveData, 0);
+  const allocatorCount = maxParticles + 1;
+  const allocatorData = new Uint32Array(allocatorCount);
+  allocatorData[0] = 0;
+  for (let i = 0; i < maxParticles; i++) allocatorData[i + 1] = i;
+  const trailMeta = trailLength > 0 ? new __WEBPACK_EXTERNAL_MODULE_three_webgpu_84e9d76f_StorageBufferAttribute__(
+    new Uint32Array(Math.max(1, maxParticles) * 2),
+    1
+  ) : null;
   return {
-    // Position and velocity use vec4 (w=padding) to avoid WebGPU vec3→vec4
-    // storage buffer alignment conversion that breaks itemSize-based type resolution.
-    position: new Cls(new Float32Array(maxParticles * 4), 4),
-    velocity: new __WEBPACK_EXTERNAL_MODULE_three_webgpu_84e9d76f_StorageBufferAttribute__(new Float32Array(maxParticles * 4), 4),
-    color: new Cls(new Float32Array(maxParticles * 4), 4),
-    // (lifetime, size, rotation, startFrame)
-    particleState: new Cls(new Float32Array(maxParticles * 4), 4),
-    // (startLifetime, startSize, startOpacity, startColorR)
-    startValues: new Cls(new Float32Array(maxParticles * 4), 4),
-    // (startColorG, startColorB, rotationSpeed, noiseOffset)
-    startColorsExt: new __WEBPACK_EXTERNAL_MODULE_three_webgpu_84e9d76f_StorageBufferAttribute__(
-      new Float32Array(maxParticles * 4),
-      4
-    ),
-    // (orbitalOffset.x, .y, .z, isActive)
-    orbitalIsActive: new __WEBPACK_EXTERNAL_MODULE_three_webgpu_84e9d76f_StorageBufferAttribute__(
-      new Float32Array(maxParticles * 4),
-      4
-    ),
-    // Curve data + emit queue tail (single buffer, 8th binding)
-    curveData: new __WEBPACK_EXTERNAL_MODULE_three_webgpu_84e9d76f_StorageBufferAttribute__(combined, 1)
+    buffers: {
+      position: new Cls(new Float32Array(maxParticles * 4), 4),
+      velocity: new __WEBPACK_EXTERNAL_MODULE_three_webgpu_84e9d76f_StorageBufferAttribute__(new Float32Array(maxParticles * 4), 4),
+      color: new Cls(new Float32Array(maxParticles * 4), 4),
+      particleState: new Cls(new Float32Array(maxParticles * 4), 4),
+      startValues: new Cls(new Float32Array(maxParticles * 4), 4),
+      startColorsExt: new __WEBPACK_EXTERNAL_MODULE_three_webgpu_84e9d76f_StorageBufferAttribute__(new Float32Array(maxParticles * 4), 4),
+      orbitalIsActive: new __WEBPACK_EXTERNAL_MODULE_three_webgpu_84e9d76f_StorageBufferAttribute__(new Float32Array(maxParticles * 4), 4),
+      allocator: new __WEBPACK_EXTERNAL_MODULE_three_webgpu_84e9d76f_StorageBufferAttribute__(allocatorData, 1),
+      trailMeta,
+      packedData
+    },
+    allocatorCount
   };
 }
-var _emitCounts = /* @__PURE__ */ new WeakMap();
-var _curveDataLengths = /* @__PURE__ */ new WeakMap();
-var _currentEmitIndices = /* @__PURE__ */ new WeakMap();
-var _previousEmitIndices = /* @__PURE__ */ new WeakMap();
-function writeParticleToModifierBuffers(buffers, index, data) {
-  const curveLen = _curveDataLengths.get(buffers.curveData) ?? 0;
-  const arr = buffers.curveData.array;
-  const base = curveLen + index * INIT_STRIDE;
-  arr[base] = data.position.x;
-  arr[base + 1] = data.position.y;
-  arr[base + 2] = data.position.z;
-  arr[base + 3] = 1;
-  arr[base + 4] = data.velocity.x;
-  arr[base + 5] = data.velocity.y;
-  arr[base + 6] = data.velocity.z;
-  arr[base + 7] = 0;
-  arr[base + 8] = data.colorR;
-  arr[base + 9] = data.colorG;
-  arr[base + 10] = data.colorB;
-  arr[base + 11] = data.colorA;
-  arr[base + 12] = 0;
-  arr[base + 13] = data.size;
-  arr[base + 14] = data.rotation;
-  arr[base + 15] = data.startFrame;
-  arr[base + 16] = data.orbitalOffset.x;
-  arr[base + 17] = data.orbitalOffset.y;
-  arr[base + 18] = data.orbitalOffset.z;
-  arr[base + 19] = 1;
-  arr[base + 20] = data.startLifetime;
-  arr[base + 21] = data.startSize;
-  arr[base + 22] = data.startOpacity;
-  arr[base + 23] = data.startColorR;
-  arr[base + 24] = data.startColorG;
-  arr[base + 25] = data.startColorB;
-  arr[base + 26] = data.rotationSpeed;
-  arr[base + 27] = data.noiseOffset;
-  _emitCounts.set(
-    buffers.curveData,
-    (_emitCounts.get(buffers.curveData) ?? 0) + 1
-  );
-  let indices = _currentEmitIndices.get(buffers.curveData);
-  if (!indices) {
-    indices = [];
-    _currentEmitIndices.set(buffers.curveData, indices);
-  }
-  indices.push(index);
-  const i4 = index * 4;
-  const svArr = buffers.startValues.array;
-  svArr[i4] = data.startLifetime;
-  svArr[i4 + 1] = data.startSize;
-  svArr[i4 + 2] = data.startOpacity;
-  svArr[i4 + 3] = data.startColorR;
-  const sceArr = buffers.startColorsExt.array;
-  sceArr[i4] = data.startColorG;
-  sceArr[i4 + 1] = data.startColorB;
-  sceArr[i4 + 2] = data.rotationSpeed;
-  sceArr[i4 + 3] = data.noiseOffset;
-}
-function registerCurveDataLength(buffers, curveDataLength) {
-  _curveDataLengths.set(buffers.curveData, curveDataLength);
-}
-function flushEmitQueue(buffers) {
-  const count = _emitCounts.get(buffers.curveData) ?? 0;
-  const curveLen = _curveDataLengths.get(buffers.curveData) ?? 0;
-  const arr = buffers.curveData.array;
-  const current = _currentEmitIndices.get(buffers.curveData);
-  const previous = _previousEmitIndices.get(buffers.curveData);
-  let clearedAny = false;
-  if (previous && previous.length > 0) {
-    const currentSet = current && current.length > 0 ? new Set(current) : null;
-    for (let i = 0; i < previous.length; i++) {
-      const p = previous[i];
-      if (!currentSet || !currentSet.has(p)) {
-        const flagOffset = curveLen + p * INIT_STRIDE + 3;
-        if (arr[flagOffset] > 0.5) {
-          arr[flagOffset] = 0;
-          clearedAny = true;
-        }
-      }
-    }
-  }
-  if (count > 0 || clearedAny) {
-    buffers.curveData.needsUpdate = true;
-  }
-  if (current && current.length > 0) {
-    let prevArr = _previousEmitIndices.get(buffers.curveData);
-    if (!prevArr) {
-      prevArr = [];
-      _previousEmitIndices.set(buffers.curveData, prevArr);
-    }
-    prevArr.length = current.length;
-    for (let i = 0; i < current.length; i++) {
-      prevArr[i] = current[i];
-    }
-    current.length = 0;
-  } else {
-    const prevArr = _previousEmitIndices.get(buffers.curveData);
-    if (prevArr) prevArr.length = 0;
-    if (current) current.length = 0;
-  }
-  _emitCounts.set(buffers.curveData, 0);
-  return count;
-}
-function deactivateParticleInModifierBuffers(_buffers, _index) {
-}
 function createCurveLookup(sCurveData) {
-  return __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_Fn__(
-    ({
-      curveIndex,
-      t
-    }) => {
-      const clamped = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_min__(t, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1));
-      const pos = clamped.mul(CURVE_RESOLUTION - 1);
-      const idx0 = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_floor__(pos);
-      const f = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_fract__(pos);
-      const base = curveIndex.mul(CURVE_RESOLUTION);
-      const v0 = sCurveData.element(base.add(idx0));
-      const v1 = sCurveData.element(
-        base.add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_min__(idx0.add(1), __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(CURVE_RESOLUTION - 1)))
-      );
-      return __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__(v0, v1, f);
-    }
-  );
+  return __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_Fn__(({ curveIndex, t }) => {
+    const clamped = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_min__(t, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1));
+    const pos = clamped.mul(CURVE_RESOLUTION - 1);
+    const idx0 = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_floor__(pos);
+    const f = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_fract__(pos);
+    const base = curveIndex.mul(CURVE_RESOLUTION);
+    const v0 = sCurveData.element(base.add(idx0));
+    const v1 = sCurveData.element(base.add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_min__(idx0.add(1), __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(CURVE_RESOLUTION - 1))));
+    return __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__(v0, v1, f);
+  });
 }
-function createModifierComputeUpdate(buffers, maxParticles, curveMap, flags, forceFieldCount = 0, collisionPlaneCount = 0) {
+function shapeEmitNodes(u, rA, rB, rC, rSpeed) {
+  const DEG = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0.01745329);
+  const uRadius = u.radius;
+  const uRadiusThickness = u.thickness;
+  const thetaS = rA.mul(u.arcDeg).mul(DEG);
+  const cosPhi = rB.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(2)).sub(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1));
+  const sinPhi = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_sqrt__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1).sub(cosPhi.mul(cosPhi)));
+  const dirSx = sinPhi.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_cos__(thetaS));
+  const dirSy = sinPhi.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_sin__(thetaS));
+  const dirSz = cosPhi;
+  const distS = uRadius.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1).sub(uRadiusThickness)).add(uRadius.mul(uRadiusThickness).mul(rC));
+  const pSx = dirSx.mul(distS);
+  const pSy = dirSy.mul(distS);
+  const pSz = dirSz.mul(distS);
+  const spS = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__(u.speedMin, u.speedMax, rSpeed);
+  const vSx = dirSx.mul(spS);
+  const vSy = dirSy.mul(spS);
+  const vSz = dirSz.mul(spS);
+  const thetaB = rA.mul(u.arcDeg).mul(DEG);
+  const dirBx = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_cos__(thetaB);
+  const dirBy = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_sin__(thetaB);
+  const distB = uRadius.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1).sub(uRadiusThickness)).add(uRadius.mul(uRadiusThickness).mul(rB));
+  const pBx = dirBx.mul(distB);
+  const pBy = dirBy.mul(distB);
+  const pBz = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0);
+  const nAngle = distB.div(uRadius.max(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1e-6))).mul(u.coneAngleDeg.mul(DEG));
+  const spB = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__(u.speedMin, u.speedMax, rSpeed);
+  const sinNA = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_sin__(nAngle);
+  const vCx = dirBx.mul(sinNA).mul(spB);
+  const vCy = dirBy.mul(sinNA).mul(spB);
+  const vCz = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_cos__(nAngle).mul(spB);
+  const vIx = dirBx.mul(spB);
+  const vIy = dirBy.mul(spB);
+  const vIz = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0);
+  const rxOff = rA.mul(u.rectSX).sub(u.rectSX.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0.5)));
+  const ryOff = rB.mul(u.rectSY).sub(u.rectSY.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0.5)));
+  const rotXr = u.rectRX.mul(DEG);
+  const rotYr = u.rectRY.mul(DEG);
+  const pRx = rxOff.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_cos__(rotYr));
+  const pRy = ryOff.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_cos__(rotXr));
+  const pRz = rxOff.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_sin__(rotYr)).sub(ryOff.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_sin__(rotXr)));
+  const halfX = u.boxSX.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0.5));
+  const halfY = u.boxSY.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0.5));
+  const halfZ = u.boxSZ.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0.5));
+  const pVx = rA.mul(u.boxSX).sub(halfX);
+  const pVy = rB.mul(u.boxSY).sub(halfY);
+  const pVz = rC.mul(u.boxSZ).sub(halfZ);
+  const side = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_floor__(rA.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(6))).min(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(5));
+  const pa = side.sub(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_floor__(side.div(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(3))).mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(3)));
+  const a0 = side.greaterThan(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(2)).select(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1), __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0));
+  const isPa0 = pa.equal(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0));
+  const isPa1 = pa.equal(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1));
+  const shX = isPa0.select(a0, isPa1.select(rC, rB));
+  const shY = isPa0.select(rB, isPa1.select(a0, rC));
+  const shZ = isPa0.select(rC, isPa1.select(rB, a0));
+  const pShx = shX.mul(u.boxSX).sub(halfX);
+  const pShy = shY.mul(u.boxSY).sub(halfY);
+  const pShz = shZ.mul(u.boxSZ).sub(halfZ);
+  const edge = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_floor__(rB.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(4))).min(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(3));
+  const lowEdge = edge.lessThan(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(2));
+  const e1 = lowEdge.select(rC, edge.sub(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(2)));
+  const e2 = lowEdge.select(edge, rC);
+  const edX = isPa0.select(a0, isPa1.select(e2, e1));
+  const edY = isPa0.select(e1, isPa1.select(a0, e2));
+  const edZ = isPa0.select(e2, isPa1.select(e1, a0));
+  const pEdx = edX.mul(u.boxSX).sub(halfX);
+  const pEdy = edY.mul(u.boxSY).sub(halfY);
+  const pEdz = edZ.mul(u.boxSZ).sub(halfZ);
+  const boxFrom = u.boxFrom;
+  const pBX = boxFrom.equal(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0)).select(pVx, boxFrom.equal(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1)).select(pShx, pEdx));
+  const pBY = boxFrom.equal(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0)).select(pVy, boxFrom.equal(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1)).select(pShy, pEdy));
+  const pBZ = boxFrom.equal(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0)).select(pVz, boxFrom.equal(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1)).select(pShz, pEdz));
+  const vPlaneZ = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__(u.speedMin, u.speedMax, rSpeed);
+  const kind = u.kind;
+  const isSphereKind = kind.equal(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0));
+  const isConeKind = kind.equal(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1));
+  const isCircleKind = kind.equal(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(2));
+  const isRectKind = kind.equal(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(3));
+  const planeX = isRectKind.select(pRx, pBX);
+  const planeY = isRectKind.select(pRy, pBY);
+  const planeZ = isRectKind.select(pRz, pBZ);
+  const isDiscKind = isConeKind.or(isCircleKind);
+  const discX = isDiscKind.select(pBx, planeX);
+  const discY = isDiscKind.select(pBy, planeY);
+  const discZ = isDiscKind.select(pBz, planeZ);
+  const px = isSphereKind.select(pSx, discX);
+  const py = isSphereKind.select(pSy, discY);
+  const pz = isSphereKind.select(pSz, discZ);
+  const cOrI_X = isConeKind.select(vCx, vIx);
+  const cOrI_Y = isConeKind.select(vCy, vIy);
+  const cOrI_Z = isConeKind.select(vCz, vIz);
+  const isDisc = isConeKind.or(isCircleKind);
+  const nonSphereVX = isDisc.select(cOrI_X, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0));
+  const nonSphereVY = isDisc.select(cOrI_Y, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0));
+  const nonSphereVZ = isDisc.select(cOrI_Z, vPlaneZ);
+  const vx = isSphereKind.select(vSx, nonSphereVX);
+  const vy = isSphereKind.select(vSy, nonSphereVY);
+  const vz = isSphereKind.select(vSz, nonSphereVZ);
+  return { px, py, pz, vx, vy, vz };
+}
+function quatRotateNodes(x, y, z, q) {
+  const qx = q.x;
+  const qy = q.y;
+  const qz = q.z;
+  const qw = q.w;
+  const projD = qx.mul(x).add(qy.mul(y)).add(qz.mul(z)).mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(2));
+  const scaleV = qw.mul(qw).mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(2)).sub(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1));
+  const twoW = qw.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(2));
+  return [
+    x.mul(scaleV).add(qx.mul(projD)).add(qy.mul(z).sub(qz.mul(y)).mul(twoW)),
+    y.mul(scaleV).add(qy.mul(projD)).add(qz.mul(x).sub(qx.mul(z)).mul(twoW)),
+    z.mul(scaleV).add(qz.mul(projD)).add(qx.mul(y).sub(qy.mul(x)).mul(twoW))
+  ];
+}
+function createModifierComputeUpdate(buffers, maxParticles, curveMap, flags, shapeParams, forceFieldCount = 0, collisionPlaneCount = 0, subFifos = [], trailDesc, velocityValues) {
   const uDelta = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0));
   const uDeltaMs = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0));
+  const uNowMs = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0));
   const uGravityVelocity = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(new __WEBPACK_EXTERNAL_MODULE_three_Vector3__(0, 0, 0));
+  const uSystemSeed = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(nextSystemSeed(), "uint");
+  const uSeed = uSystemSeed;
+  const uEmitCount = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(0, "uint");
   const uNoiseStrength = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0));
   const uNoisePower = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0));
   const uNoiseFrequency = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1));
   const uNoisePosAmount = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0));
   const uNoiseRotAmount = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0));
   const uNoiseSizeAmount = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0));
-  const sPosition = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(buffers.position, "vec4", maxParticles);
-  const sVelocity = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(buffers.velocity, "vec4", maxParticles);
-  const sColor = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(buffers.color, "vec4", maxParticles);
-  const sParticleState = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(buffers.particleState, "vec4", maxParticles);
-  const sStartValues = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(buffers.startValues, "vec4", maxParticles);
-  const sStartColorsExt = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(buffers.startColorsExt, "vec4", maxParticles);
-  const sOrbitalIsActive = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(
-    buffers.orbitalIsActive,
-    "vec4",
-    maxParticles
-  );
-  const sCurveData = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(
-    buffers.curveData,
-    "float",
-    buffers.curveData.array.length
-  );
-  const curveLen = Math.max(curveMap.data.length, 1);
-  const lookupCurve = createCurveLookup(sCurveData);
-  const forceFieldOffset = curveLen + maxParticles * INIT_STRIDE;
-  const forceFieldNodes = flags.forceFields ? createForceFieldTSL(sCurveData, forceFieldOffset, forceFieldCount) : null;
-  const ffSize = flags.forceFields ? FORCE_FIELD_DATA_SIZE : 0;
-  const collisionPlaneOffset = forceFieldOffset + ffSize;
-  const collisionPlaneNodes = flags.collisionPlanes ? createCollisionPlaneTSL(
-    sCurveData,
-    collisionPlaneOffset,
-    collisionPlaneCount
-  ) : null;
-  const computeKernel = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_Fn__(() => {
-    const i = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_instanceIndex__;
-    const initBase = i.mul(INIT_STRIDE).add(curveLen);
-    const initFlag = sCurveData.element(initBase.add(3));
-    __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(initFlag.greaterThan(0.5), () => {
-      sPosition.element(i).assign(
-        __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(
-          sCurveData.element(initBase),
-          sCurveData.element(initBase.add(1)),
-          sCurveData.element(initBase.add(2)),
-          0
-        )
-      );
-      sVelocity.element(i).assign(
-        __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(
-          sCurveData.element(initBase.add(4)),
-          sCurveData.element(initBase.add(5)),
-          sCurveData.element(initBase.add(6)),
-          0
-        )
-      );
-      sColor.element(i).assign(
-        __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(
-          sCurveData.element(initBase.add(8)),
-          sCurveData.element(initBase.add(9)),
-          sCurveData.element(initBase.add(10)),
-          sCurveData.element(initBase.add(11))
-        )
-      );
-      sParticleState.element(i).assign(
-        __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(
-          sCurveData.element(initBase.add(12)),
-          sCurveData.element(initBase.add(13)),
-          sCurveData.element(initBase.add(14)),
-          sCurveData.element(initBase.add(15))
-        )
-      );
-      sOrbitalIsActive.element(i).assign(
-        __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(
-          sCurveData.element(initBase.add(16)),
-          sCurveData.element(initBase.add(17)),
-          sCurveData.element(initBase.add(18)),
-          sCurveData.element(initBase.add(19))
-        )
-      );
-      sStartValues.element(i).assign(
-        __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(
-          sCurveData.element(initBase.add(20)),
-          sCurveData.element(initBase.add(21)),
-          sCurveData.element(initBase.add(22)),
-          sCurveData.element(initBase.add(23))
-        )
-      );
-      sStartColorsExt.element(i).assign(
-        __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(
-          sCurveData.element(initBase.add(24)),
-          sCurveData.element(initBase.add(25)),
-          sCurveData.element(initBase.add(26)),
-          sCurveData.element(initBase.add(27))
-        )
-      );
-      sCurveData.element(initBase.add(3)).assign(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0));
+  const shapeUniforms = {};
+  const sh = (name, v) => {
+    const u = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(v));
+    shapeUniforms[name] = u;
+    return u;
+  };
+  const uShape = sh("shapeKind", shapeParams.shapeKind);
+  const uRadius = sh("radius", shapeParams.radius);
+  const uRadiusThickness = sh("radiusThickness", shapeParams.radiusThickness);
+  const uArcDeg = sh("arcDeg", shapeParams.arcDeg);
+  const uConeAngleDeg = sh("coneAngleDeg", shapeParams.coneAngleDeg);
+  const uRectRX = sh("rectangleRotXDeg", shapeParams.rectangleRotXDeg);
+  const uRectRY = sh("rectangleRotYDeg", shapeParams.rectangleRotYDeg);
+  const uRectSX = sh("rectangleScaleX", shapeParams.rectangleScaleX);
+  const uRectSY = sh("rectangleScaleY", shapeParams.rectangleScaleY);
+  const uBoxSX = sh("boxScaleX", shapeParams.boxScaleX);
+  const uBoxSY = sh("boxScaleY", shapeParams.boxScaleY);
+  const uBoxSZ = sh("boxScaleZ", shapeParams.boxScaleZ);
+  const uBoxEmitFrom = sh("boxEmitFrom", shapeParams.boxEmitFrom);
+  const uEmitterPos = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(new __WEBPACK_EXTERNAL_MODULE_three_Vector4__(0, 0, 0, 0));
+  const uWrapperQuat = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(new __WEBPACK_EXTERNAL_MODULE_three_Vector4__(0, 0, 0, 1));
+  const uWorldScale = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(new __WEBPACK_EXTERNAL_MODULE_three_Vector3__(1, 1, 1));
+  const uSpeedMin = sh("speedMin", shapeParams.speedMin);
+  const uSpeedMax = sh("speedMax", shapeParams.speedMax);
+  const uSizeMin = sh("sizeMin", shapeParams.sizeMin);
+  const uSizeMax = sh("sizeMax", shapeParams.sizeMax);
+  const uRotMin = sh("rotMin", shapeParams.rotMin);
+  const uRotMax = sh("rotMax", shapeParams.rotMax);
+  const uRotOLMin = sh("rotOverLifeMin", shapeParams.rotOverLifeMin);
+  const uRotOLMax = sh("rotOverLifeMax", shapeParams.rotOverLifeMax);
+  const uOpMin = sh("opacityMin", shapeParams.opacityMin);
+  const uOpMax = sh("opacityMax", shapeParams.opacityMax);
+  const uLifeMin = sh("lifeMin", shapeParams.lifeMin);
+  const uLifeMax = sh("lifeMax", shapeParams.lifeMax);
+  const uCRR = sh("colorRMin", webgpu_sRGBToLinear(shapeParams.colorRMin));
+  const uCRX = sh("colorRMax", webgpu_sRGBToLinear(shapeParams.colorRMax));
+  const uCGR = sh("colorGMin", webgpu_sRGBToLinear(shapeParams.colorGMin));
+  const uCGX = sh("colorGMax", webgpu_sRGBToLinear(shapeParams.colorGMax));
+  const uCBR = sh("colorBMin", webgpu_sRGBToLinear(shapeParams.colorBMin));
+  const uCBX = sh("colorBMax", webgpu_sRGBToLinear(shapeParams.colorBMax));
+  const uFrMin = sh("startFrameMin", shapeParams.startFrameMin);
+  const uFrMax = sh("startFrameMax", shapeParams.startFrameMax);
+  const sPos = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(buffers.position, "vec4", maxParticles);
+  const sVel = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(buffers.velocity, "vec4", maxParticles);
+  const sCol = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(buffers.color, "vec4", maxParticles);
+  const sPS = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(buffers.particleState, "vec4", maxParticles);
+  const sSV = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(buffers.startValues, "vec4", maxParticles);
+  const sEx = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(buffers.startColorsExt, "vec4", maxParticles);
+  const sOIA = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(buffers.orbitalIsActive, "vec4", maxParticles);
+  const allocatorCount = maxParticles + 1;
+  __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(maxParticles);
+  const ringModU = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(maxParticles);
+  const sAllocator = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(buffers.allocator, "uint", Math.max(1, allocatorCount)).toAtomic();
+  const sCD = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_buffer__(buffers.packedData, "float", buffers.packedData.length);
+  const lookupCurve = createCurveLookup(sCD);
+  const uFifoBase = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0), "uint");
+  const fifoNodes = subFifos.map((f) => ({
+    trigger: f.trigger,
+    capacity: Math.max(1, f.capacity),
+    windowSize: subEmitterWindowSize(Math.max(1, f.capacity)),
+    count: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(
+      f.counter,
+      "uint",
+      Math.max(1, f.counter.array.length)
+    ).toAtomic(),
+    payload: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(
+      f.payload,
+      "float",
+      Math.max(1, f.payload.array.length)
+    )
+  }));
+  const birthFifos = fifoNodes.filter((f) => f.trigger === 0);
+  const deathFifos = fifoNodes.filter((f) => f.trigger === 1);
+  const hasDeathFifo = deathFifos.length > 0;
+  const writeFifoEvent = (f, x, y, z, vx, vy, vz) => {
+    const winBase = uFifoBase.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(f.windowSize)).toVar();
+    const oldCount = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(
+      __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_atomicAdd__(f.count.element(uFifoBase), __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(1))
+    ).toVar();
+    __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(oldCount.lessThan(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(f.capacity)), () => {
+      const b = winBase.add(oldCount.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(SUB_EMITTER_EVENT_STRIDE)));
+      f.payload.element(b).assign(x);
+      f.payload.element(b.add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1))).assign(y);
+      f.payload.element(b.add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(2))).assign(z);
+      f.payload.element(b.add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(3))).assign(vx);
+      f.payload.element(b.add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(4))).assign(vy);
+      f.payload.element(b.add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(5))).assign(vz);
     });
-    const oiaVec = sOrbitalIsActive.element(i).toVar();
-    __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(oiaVec.w.greaterThanEqual(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0.5)), () => {
-      const pos = sPosition.element(i).xyz.toVar();
-      const vel = sVelocity.element(i).xyz.toVar();
-      const ps = sParticleState.element(i).toVar();
-      const sv = sStartValues.element(i);
-      ps.x;
-      const startLife = sv.x;
-      vel.assign(vel.sub(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec3__(uGravityVelocity).mul(uDelta)));
-      if (forceFieldNodes) {
-        forceFieldNodes.apply({ pos, vel, delta: uDelta });
-      }
-      pos.assign(pos.add(vel.mul(uDelta)));
-      if (collisionPlaneNodes) {
-        collisionPlaneNodes.apply({
+  };
+  const trailRows = trailDesc ? trailDesc.length + 1 : 0;
+  const sTrail = trailDesc ? __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(trailDesc.attribute, "vec4", trailRows * maxParticles) : null;
+  const sTrailMeta = trailDesc && buffers.trailMeta ? __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(buffers.trailMeta, "uint", maxParticles * 2).toAtomic() : null;
+  const curveLen = Math.max(curveMap.data.length, 1);
+  const forceFieldOffset = curveLen;
+  const collisionOffset = forceFieldOffset + (flags.forceFields ? FORCE_FIELD_DATA_SIZE : 0);
+  const ffNodes = flags.forceFields ? createForceFieldTSL(sCD, forceFieldOffset, forceFieldCount) : null;
+  const cpNodes = flags.collisionPlanes ? createCollisionPlaneTSL(sCD, collisionOffset, collisionPlaneCount) : null;
+  const parseAxis = (rawAxis, curveIdx) => {
+    if (curveIdx >= 0) {
+      return { ci: curveIdx, min: 0, max: 0, isRange: false };
+    }
+    if (rawAxis && typeof rawAxis === "object" && "min" in rawAxis && "max" in rawAxis) {
+      const mn = Number(rawAxis.min) || 0;
+      const mx = Number(rawAxis.max) || 0;
+      return { ci: -1, min: mn, max: mx, isRange: mn !== mx };
+    }
+    const c = typeof rawAxis === "number" ? rawAxis : 0;
+    return { ci: -1, min: c, max: c, isRange: false };
+  };
+  const vv = velocityValues ?? {
+    linear: [void 0, void 0, void 0],
+    orbital: [void 0, void 0, void 0]
+  };
+  const linAxes = [
+    parseAxis(vv.linear[0], curveMap.linearVelX),
+    parseAxis(vv.linear[1], curveMap.linearVelY),
+    parseAxis(vv.linear[2], curveMap.linearVelZ)
+  ];
+  const orbAxes = [
+    parseAxis(vv.orbital[0], curveMap.orbitalVelX),
+    parseAxis(vv.orbital[1], curveMap.orbitalVelY),
+    parseAxis(vv.orbital[2], curveMap.orbitalVelZ)
+  ];
+  const axisUniforms = /* @__PURE__ */ new Map();
+  for (const a of [...linAxes, ...orbAxes]) {
+    if (a.isRange) {
+      axisUniforms.set(a, [__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(a.min)), __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(a.max))]);
+    }
+  }
+  const simAxis = (a, lifePct, particleSeed, salt) => {
+    if (a.ci >= 0) {
+      return lookupCurve({
+        curveIndex: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(a.ci),
+        t: lifePct
+      });
+    }
+    if (a.isRange) {
+      const [mn, mx] = axisUniforms.get(a);
+      return __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__(
+        mn,
+        mx,
+        pcg01(particleSeed.toUint().mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(2654435761)).bitXor(salt))
+      );
+    }
+    return __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(a.min);
+  };
+  const emitKernel = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_Fn__(() => {
+    const i = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_instanceIndex__;
+    __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(i.lessThan(uEmitCount), () => {
+      const birthNo = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_atomicAdd__(sAllocator.element(0), __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(1)).toVar();
+      const slotIdx = birthNo.mod(ringModU).toVar();
+      const rcA = randomChannel(birthNo, uSystemSeed, CH.SHAPE_A);
+      const rcB = randomChannel(birthNo, uSystemSeed, CH.SHAPE_B);
+      const rcC = randomChannel(birthNo, uSystemSeed, CH.SHAPE_C);
+      const rcSpeed = randomChannel(birthNo, uSystemSeed, CH.SPEED);
+      const rcSize = randomChannel(birthNo, uSystemSeed, CH.SIZE);
+      const rcRot = randomChannel(birthNo, uSystemSeed, CH.ROTATION);
+      const rcOpacity = randomChannel(birthNo, uSystemSeed, CH.OPACITY);
+      const rcSheet = randomChannel(birthNo, uSystemSeed, CH.START_FRAME);
+      const rcLife = randomChannel(birthNo, uSystemSeed, CH.LIFETIME);
+      const rcColor = randomChannel(birthNo, uSystemSeed, CH.COLOR);
+      const rcRotOl = randomChannel(birthNo, uSystemSeed, CH.ROTOL);
+      const shE = shapeEmitNodes(
+        {
+          kind: uShape,
+          radius: uRadius,
+          thickness: uRadiusThickness,
+          arcDeg: uArcDeg,
+          coneAngleDeg: uConeAngleDeg,
+          rectRX: uRectRX,
+          rectRY: uRectRY,
+          rectSX: uRectSX,
+          rectSY: uRectSY,
+          boxSX: uBoxSX,
+          boxSY: uBoxSY,
+          boxSZ: uBoxSZ,
+          boxFrom: uBoxEmitFrom,
+          speedMin: uSpeedMin,
+          speedMax: uSpeedMax
+        },
+        rcA,
+        rcB,
+        rcC,
+        rcSpeed
+      );
+      const pxL = shE.px;
+      const pyL = shE.py;
+      const pzL = shE.pz;
+      const vxL = shE.vx;
+      const vyL = shE.vy;
+      const vzL = shE.vz;
+      const [rotPX, rotPY, rotPZ] = quatRotateNodes(pxL, pyL, pzL, uWrapperQuat);
+      const [rotVX, rotVY, rotVZ] = quatRotateNodes(vxL, vyL, vzL, uWrapperQuat);
+      const isWorld = uEmitterPos.w.greaterThan(0.5);
+      const sxf = isWorld.select(uWorldScale.x, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1));
+      const syf = isWorld.select(uWorldScale.y, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1));
+      const szf = isWorld.select(uWorldScale.z, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1));
+      const ox = rotPX.mul(sxf).add(uEmitterPos.x);
+      const oy = rotPY.mul(syf).add(uEmitterPos.y);
+      const oz = rotPZ.mul(szf).add(uEmitterPos.z);
+      const opac = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__(uOpMin, uOpMax, rcOpacity);
+      const clR = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__(uCRR, uCRX, rcColor);
+      const clG = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__(uCGR, uCGX, rcColor);
+      const clB = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__(uCBR, uCBX, rcColor);
+      const slife = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__(uLifeMin, uLifeMax, rcLife).mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1e3));
+      const ssize = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__(uSizeMin, uSizeMax, rcSize);
+      const srot = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__(uRotMin, uRotMax, rcRot);
+      const startFrame = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_floor__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__(uFrMin, uFrMax, rcSheet)).toVar();
+      const rotSpeed = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__(uRotOLMin, uRotOLMax, rcRotOl);
+      const stableSeedU = stableSeedU32(birthNo, uSystemSeed);
+      sPos.element(slotIdx).assign(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(ox, oy, oz, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0)));
+      sVel.element(slotIdx).assign(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(rotVX, rotVY, rotVZ, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0)));
+      sCol.element(slotIdx).assign(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(clR, clG, clB, opac));
+      sPS.element(slotIdx).assign(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0), ssize, srot, startFrame));
+      sSV.element(slotIdx).assign(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(slife, ssize, opac, clR));
+      sEx.element(slotIdx).assign(
+        __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(clG, clB, rotSpeed, stableSeedU.toFloat())
+      );
+      sOIA.element(slotIdx).assign(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(rotPX, rotPY, rotPZ, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1)));
+    });
+  });
+  const emitNode = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_compute__(emitKernel(), maxParticles);
+  const noiseOctavesCount = Math.max(1, Math.round(shapeParams.noiseOctaves || 1));
+  const noiseFbmMax = 2 - Math.pow(2, -noiseOctavesCount);
+  if (!Number.isFinite(noiseFbmMax) || noiseFbmMax <= 0) {
+    throw new Error(
+      `three-particles: invalid FBM normalization ${noiseFbmMax}`
+    );
+  }
+  const simKernel = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_Fn__(() => {
+    const i = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_instanceIndex__;
+    __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(i).lessThan(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(maxParticles)), () => {
+      const oiaVec = sOIA.element(i).toVar();
+      __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(oiaVec.w.greaterThanEqual(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0.5)), () => {
+        const pos = sPos.element(i).xyz.toVar();
+        const vel = sVel.element(i).xyz.toVar();
+        const ps = sPS.element(i).toVar();
+        const sv = sSV.element(i);
+        const ex = sEx.element(i);
+        const startLife = sv.x;
+        const life = ps.x;
+        const lifePct = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_min__(life.div(startLife), __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1));
+        vel.assign(vel.sub(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec3__(uGravityVelocity).mul(uDelta)));
+        if (ffNodes) ffNodes.apply({ pos, vel, delta: uDelta });
+        pos.assign(pos.add(vel.mul(uDelta)));
+        if (cpNodes) cpNodes.apply({
           pos,
           vel,
           oiaVec,
-          sColorNode: sColor,
+          sColorNode: sCol,
           ps,
           startLife,
           particleIdx: i,
-          sOrbitalIsActiveNode: sOrbitalIsActive
+          sOrbitalIsActiveNode: sOIA
         });
-      }
-      const lifePct = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_min__(ps.x.div(startLife), __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1));
-      ps.x.assign(ps.x.add(uDeltaMs));
-      if (flags.linearVelocity) {
-        const lvx = curveMap.linearVelX >= 0 ? lookupCurve({
-          curveIndex: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(curveMap.linearVelX),
-          t: lifePct
-        }) : __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0);
-        const lvy = curveMap.linearVelY >= 0 ? lookupCurve({
-          curveIndex: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(curveMap.linearVelY),
-          t: lifePct
-        }) : __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0);
-        const lvz = curveMap.linearVelZ >= 0 ? lookupCurve({
-          curveIndex: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(curveMap.linearVelZ),
-          t: lifePct
-        }) : __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0);
-        pos.assign(pos.add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec3__(lvx, lvy, lvz).mul(uDelta)));
-      }
-      if (flags.orbitalVelocity) {
-        const offset = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec3__(oiaVec.x, oiaVec.y, oiaVec.z).toVar();
-        pos.assign(pos.sub(offset));
-        const ovx = curveMap.orbitalVelX >= 0 ? lookupCurve({
-          curveIndex: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(curveMap.orbitalVelX),
-          t: lifePct
-        }) : __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0);
-        const ovy = curveMap.orbitalVelY >= 0 ? lookupCurve({
-          curveIndex: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(curveMap.orbitalVelY),
-          t: lifePct
-        }) : __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0);
-        const ovz = curveMap.orbitalVelZ >= 0 ? lookupCurve({
-          curveIndex: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(curveMap.orbitalVelZ),
-          t: lifePct
-        }) : __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0);
-        const ax = ovx.mul(uDelta);
-        const ay = ovz.mul(uDelta);
-        const az = ovy.mul(uDelta);
-        const cosAz = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_cos__(az);
-        const sinAz = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_sin__(az);
-        const zx = offset.x.mul(cosAz).sub(offset.y.mul(sinAz));
-        const zy = offset.x.mul(sinAz).add(offset.y.mul(cosAz));
-        const zz = offset.z;
-        const cosAy = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_cos__(ay);
-        const sinAy = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_sin__(ay);
-        const yx = zx.mul(cosAy).add(zz.mul(sinAy));
-        const yy = zy;
-        const yz = zx.negate().mul(sinAy).add(zz.mul(cosAy));
-        const cosAx = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_cos__(ax);
-        const sinAx = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_sin__(ax);
-        const fx = yx;
-        const fy = yy.mul(cosAx).sub(yz.mul(sinAx));
-        const fz = yy.mul(sinAx).add(yz.mul(cosAx));
-        offset.assign(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec3__(fx, fy, fz));
-        oiaVec.x.assign(offset.x);
-        oiaVec.y.assign(offset.y);
-        oiaVec.z.assign(offset.z);
-        pos.assign(pos.add(offset));
-      }
-      if (flags.sizeOverLifetime && curveMap.sizeOverLifetime >= 0) {
-        const multiplier = lookupCurve({
-          curveIndex: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(curveMap.sizeOverLifetime),
-          t: lifePct
-        });
-        ps.y.assign(sv.y.mul(multiplier));
-      }
-      if (flags.opacityOverLifetime && curveMap.opacityOverLifetime >= 0) {
-        const multiplier = lookupCurve({
-          curveIndex: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(curveMap.opacityOverLifetime),
-          t: lifePct
-        });
-        const col = sColor.element(i).toVar();
-        col.w.assign(sv.z.mul(multiplier));
-        sColor.element(i).assign(col);
-      }
-      if (flags.colorOverLifetime) {
-        const col = sColor.element(i).toVar();
-        const sce = sStartColorsExt.element(i);
-        if (curveMap.colorR >= 0) {
-          const rMul = lookupCurve({
-            curveIndex: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(curveMap.colorR),
-            t: lifePct
-          });
-          col.x.assign(sv.w.mul(rMul));
+        if (flags.linearVelocity) {
+          const lvx = simAxis(linAxes[0], lifePct, stableSeedFromExt(ex.w), CH.LIN_X);
+          const lvy = simAxis(linAxes[1], lifePct, stableSeedFromExt(ex.w), CH.LIN_Y);
+          const lvz = simAxis(linAxes[2], lifePct, stableSeedFromExt(ex.w), CH.LIN_Z);
+          pos.assign(pos.add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec3__(lvx, lvy, lvz).mul(uDelta)));
         }
-        if (curveMap.colorG >= 0) {
-          const gMul = lookupCurve({
-            curveIndex: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(curveMap.colorG),
-            t: lifePct
-          });
-          col.y.assign(sce.x.mul(gMul));
+        if (flags.orbitalVelocity) {
+          const offset = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec3__(oiaVec.x, oiaVec.y, oiaVec.z).toVar();
+          pos.assign(pos.sub(offset));
+          const oX = simAxis(orbAxes[0], lifePct, stableSeedFromExt(ex.w), CH.ORB_X);
+          const oY = simAxis(orbAxes[1], lifePct, stableSeedFromExt(ex.w), CH.ORB_Y);
+          const oZ = simAxis(orbAxes[2], lifePct, stableSeedFromExt(ex.w), CH.ORB_Z);
+          const angX = oX.mul(uDelta);
+          const angY = oZ.mul(uDelta);
+          const angZ = oY.mul(uDelta);
+          const c3 = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_cos__(angZ), s3 = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_sin__(angZ);
+          const zx = offset.x.mul(c3).sub(offset.y.mul(s3));
+          const zy = offset.x.mul(s3).add(offset.y.mul(c3));
+          const zz = offset.z;
+          const c2 = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_cos__(angY), s2 = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_sin__(angY);
+          const yx = zx.mul(c2).add(zz.mul(s2));
+          const yz = zx.mul(s2).negate().add(zz.mul(c2));
+          const yy = zy;
+          const c1 = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_cos__(angX), s1 = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_sin__(angX);
+          const fx = yx;
+          const fy = yy.mul(c1).sub(yz.mul(s1));
+          const fz = yy.mul(s1).add(yz.mul(c1));
+          pos.assign(pos.add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec3__(fx, fy, fz)));
+          oiaVec.assign(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(fx, fy, fz, oiaVec.w));
         }
-        if (curveMap.colorB >= 0) {
-          const bMul = lookupCurve({
-            curveIndex: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(curveMap.colorB),
-            t: lifePct
-          });
-          col.z.assign(sce.y.mul(bMul));
+        if (flags.sizeOverLifetime) {
+          const s = lookupCurve({ curveIndex: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(curveMap.sizeOverLifetime), t: lifePct });
+          ps.y.assign(s.mul(sv.y));
         }
-        sColor.element(i).assign(col);
-      }
-      if (flags.rotationOverLifetime) {
-        const sce = sStartColorsExt.element(i);
-        ps.z.assign(ps.z.add(sce.z.mul(uDelta).mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0.02))));
-      }
-      if (flags.noise) {
-        const sce = sStartColorsExt.element(i);
-        const noisePos = lifePct.add(sce.w).mul(10).mul(uNoiseStrength).mul(uNoiseFrequency);
-        const noiseX = snoise3D({ v: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec3__(noisePos, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0), __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0)) });
-        const noiseY = snoise3D({
-          v: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec3__(noisePos, noisePos, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0))
+        if (flags.opacityOverLifetime) {
+          const op = lookupCurve({ curveIndex: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(curveMap.opacityOverLifetime), t: lifePct });
+          const col = sCol.element(i).toVar();
+          col.w.assign(op.mul(sv.z));
+          sCol.element(i).assign(col);
+        }
+        if (flags.colorOverLifetime) {
+          const col = sCol.element(i).toVar();
+          const sce = sEx.element(i);
+          if (curveMap.colorR >= 0) {
+            col.x.assign(sv.w.mul(lookupCurve({ curveIndex: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(curveMap.colorR), t: lifePct })));
+          }
+          if (curveMap.colorG >= 0) {
+            col.y.assign(sce.x.mul(lookupCurve({ curveIndex: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(curveMap.colorG), t: lifePct })));
+          }
+          if (curveMap.colorB >= 0) {
+            col.z.assign(sce.y.mul(lookupCurve({ curveIndex: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(curveMap.colorB), t: lifePct })));
+          }
+          sCol.element(i).assign(col);
+        }
+        if (flags.rotationOverLifetime) {
+          ps.z.assign(ps.z.add(ex.z.mul(uDelta).mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0.02))));
+        }
+        if (flags.noise) {
+          const noiseOffset = shapeParams.noiseUseRandomOffset ? pcg01(
+            stableSeedFromExt(ex.w).toUint().mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(2654435761)).bitXor(CH.NOISE_PHASE)
+          ).mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(100)) : __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0);
+          const np = lifePct.add(noiseOffset).mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(10)).mul(uNoiseStrength).mul(uNoiseFrequency);
+          let noiseX = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0).toVar();
+          let noiseY = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0).toVar();
+          let noiseZ = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0).toVar();
+          let amp = 1;
+          let lac = 1;
+          for (let o = 0; o < noiseOctavesCount; o++) {
+            const t = np.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(lac));
+            const sc = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(amp / noiseFbmMax);
+            noiseX.assign(noiseX.add(snoise3D({ v: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec3__(t, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0), __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0)) }).mul(sc)));
+            noiseY.assign(noiseY.add(snoise3D({ v: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec3__(t, t, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0)) }).mul(sc)));
+            noiseZ.assign(noiseZ.add(snoise3D({ v: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec3__(t, t, t) }).mul(sc)));
+            amp *= 0.5;
+            lac *= 2;
+          }
+          __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(uNoisePosAmount.greaterThan(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1e-3)), () => {
+            pos.assign(
+              pos.add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec3__(noiseX, noiseY, noiseZ).mul(uNoisePower).mul(uNoisePosAmount))
+            );
+          });
+          __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(uNoiseRotAmount.greaterThan(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1e-3)), () => {
+            ps.z.assign(ps.z.add(noiseX.mul(uNoisePower).mul(uNoiseRotAmount)));
+          });
+          __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(uNoiseSizeAmount.greaterThan(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1e-3)), () => {
+            ps.y.assign(ps.y.add(noiseX.mul(uNoisePower).mul(uNoiseSizeAmount)));
+          });
+        }
+        ps.x.assign(ps.x.add(uDeltaMs));
+        sPos.element(i).assign(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(pos, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0)));
+        sVel.element(i).assign(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(vel, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0)));
+        sPS.element(i).assign(ps);
+        sOIA.element(i).assign(oiaVec);
+        __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(ps.x.greaterThan(startLife), () => {
+          const inactive = sOIA.element(i).toVar();
+          sOIA.element(i).assign(
+            __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(
+              inactive.x,
+              inactive.y,
+              inactive.z,
+              hasDeathFifo ? __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(-1) : __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0)
+            )
+          );
+          sCol.element(i).assign(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0), __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0), __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0), __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0)));
         });
-        const noiseZ = snoise3D({
-          v: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec3__(noisePos, noisePos, noisePos)
-        });
-        pos.assign(
-          pos.add(
-            __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec3__(noiseX, noiseY, noiseZ).mul(uNoisePower).mul(uNoisePosAmount)
-          )
-        );
-        __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(uNoiseRotAmount.greaterThan(1e-3), () => {
-          ps.z.assign(ps.z.add(noiseX.mul(uNoisePower).mul(uNoiseRotAmount)));
-        });
-        __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(uNoiseSizeAmount.greaterThan(1e-3), () => {
-          ps.y.assign(ps.y.add(noiseX.mul(uNoisePower).mul(uNoiseSizeAmount)));
-        });
-      }
-      sPosition.element(i).assign(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(pos, 0));
-      sVelocity.element(i).assign(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(vel, 0));
-      sParticleState.element(i).assign(ps);
-      sOrbitalIsActive.element(i).assign(oiaVec);
-      __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(ps.x.greaterThan(startLife), () => {
-        const deadOia = sOrbitalIsActive.element(i).toVar();
-        deadOia.w.assign(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0));
-        sOrbitalIsActive.element(i).assign(deadOia);
-        sColor.element(i).assign(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(0));
       });
     });
   });
-  const computeNode = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_compute__(computeKernel(), maxParticles);
+  const simNode = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_compute__(simKernel(), maxParticles);
+  let trailHistoryNode = null;
+  if (sTrail && sTrailMeta && trailDesc) {
+    const trailHistoryKernel = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_Fn__(() => {
+      const i = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_instanceIndex__;
+      __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(i).lessThan(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(maxParticles)), () => {
+        const oiaVec = sOIA.element(i).toVar();
+        const activeNow = oiaVec.w.greaterThanEqual(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0.5));
+        const pendingDeath = oiaVec.w.lessThan(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(-0.5));
+        __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(activeNow.or(pendingDeath), () => {
+          const pos = sPos.element(i).toVar();
+          const L = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(trailDesc.length);
+          __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(trailRows);
+          const curIdx = i.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(2));
+          const cursor = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_atomicLoad__(sTrailMeta.element(curIdx))).toVar();
+          const count = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(
+            __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_atomicLoad__(sTrailMeta.element(curIdx.add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(1))))
+          ).toVar();
+          const baseI = i.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(trailRows));
+          const prev = sTrail.element(baseI.add(cursor)).toVar();
+          const ddx = pos.x.sub(prev.x);
+          const ddy = pos.y.sub(prev.y);
+          const ddz = pos.z.sub(prev.z);
+          const dist = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_sqrt__(
+            ddx.mul(ddx).add(ddy.mul(ddy)).add(ddz.mul(ddz))
+          );
+          const firstSample = count.lessThan(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0.5));
+          const farEnough = dist.greaterThanEqual(
+            __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(Math.max(1e-6, trailDesc.minVertexDistance))
+          );
+          __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(firstSample.or(farEnough), () => {
+            const newCursor = cursor.greaterThanEqual(L.sub(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1))).select(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0), cursor.add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1)));
+            sTrail.element(baseI.add(newCursor)).assign(
+              __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(pos.x, pos.y, pos.z, uNowMs)
+            );
+            __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_atomicStore__(
+              sTrailMeta.element(curIdx),
+              newCursor.toUint()
+            );
+            __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_atomicStore__(
+              sTrailMeta.element(curIdx.add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(1))),
+              __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_min__(count.add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1)), __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(trailDesc.length)).toUint()
+            );
+          });
+        });
+      });
+    });
+    trailHistoryNode = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_compute__(trailHistoryKernel(), maxParticles);
+  }
+  let subBirthEventsNode = null;
+  if (birthFifos.length > 0) {
+    const subBirthKernel = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_Fn__(() => {
+      const i = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_instanceIndex__;
+      __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(i.lessThan(uEmitCount), () => {
+        const counterAfter = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_atomicLoad__(sAllocator.element(0)).toVar();
+        const birthNo = counterAfter.sub(uEmitCount).add(i).toVar();
+        const slot = birthNo.mod(ringModU).toVar();
+        const p = sPos.element(slot).toVar();
+        const v = sVel.element(slot).toVar();
+        for (const f of birthFifos) {
+          writeFifoEvent(f, p.x, p.y, p.z, v.x, v.y, v.z);
+        }
+      });
+    });
+    subBirthEventsNode = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_compute__(subBirthKernel(), maxParticles);
+  }
+  let subDeathEventsNode = null;
+  if (deathFifos.length > 0) {
+    const subDeathKernel = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_Fn__(() => {
+      const i = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_instanceIndex__;
+      __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(i).lessThan(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(maxParticles)), () => {
+        const oiaVec = sOIA.element(i).toVar();
+        __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(oiaVec.w.equal(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(-1)), () => {
+          const p = sPos.element(i).toVar();
+          const v = sVel.element(i).toVar();
+          for (const f of deathFifos) {
+            writeFifoEvent(f, p.x, p.y, p.z, v.x, v.y, v.z);
+          }
+          sOIA.element(i).assign(
+            __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(oiaVec.x, oiaVec.y, oiaVec.z, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0))
+          );
+        });
+      });
+    });
+    subDeathEventsNode = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_compute__(subDeathKernel(), maxParticles);
+  }
+  const layout = (name, storageNodes, uniformNodes) => ({
+    name,
+    storageBindings: new Set(storageNodes.filter((n) => n != null)).size,
+    uniformBindings: new Set(uniformNodes.filter((n) => n != null)).size
+  });
+  const basePool = [sPos, sVel, sCol, sPS, sSV, sEx, sOIA, sAllocator];
+  const emitUniforms = [
+    uEmitCount,
+    uSeed,
+    uShape,
+    uRadius,
+    uRadiusThickness,
+    uArcDeg,
+    uConeAngleDeg,
+    uRectRX,
+    uRectRY,
+    uRectSX,
+    uRectSY,
+    uBoxSX,
+    uBoxSY,
+    uBoxSZ,
+    uBoxEmitFrom,
+    uSpeedMin,
+    uSpeedMax,
+    uSizeMin,
+    uSizeMax,
+    uRotMin,
+    uRotMax,
+    uOpMin,
+    uOpMax,
+    uLifeMin,
+    uLifeMax,
+    uCRR,
+    uCRX,
+    uCGR,
+    uCGX,
+    uCBR,
+    uCBX,
+    uFrMin,
+    uFrMax,
+    uRotOLMin,
+    uRotOLMax,
+    uWrapperQuat,
+    uEmitterPos,
+    uWorldScale
+  ];
+  const simUniforms = [
+    uDelta,
+    uDeltaMs,
+    uGravityVelocity,
+    uNoiseStrength,
+    uNoisePower,
+    uNoiseFrequency,
+    uNoisePosAmount,
+    uNoiseRotAmount,
+    uNoiseSizeAmount,
+    sCD,
+    ...Array.from(axisUniforms.values()).flat()
+  ];
+  const passLayouts = [
+    layout("emit", basePool, emitUniforms),
+    layout("simulate", basePool, simUniforms)
+  ];
+  if (trailHistoryNode) {
+    passLayouts.push(
+      layout("trail-history", [sPos, sOIA, sTrail, sTrailMeta], [uNowMs])
+    );
+  }
+  if (subBirthEventsNode) {
+    passLayouts.push(
+      layout(
+        "sub-birth-events",
+        [
+          sAllocator,
+          sPos,
+          sVel,
+          ...birthFifos.flatMap((f) => [f.count, f.payload])
+        ],
+        [uEmitCount, uFifoBase]
+      )
+    );
+  }
+  if (subDeathEventsNode) {
+    passLayouts.push(
+      layout(
+        "sub-death-events",
+        [
+          sPos,
+          sVel,
+          sOIA,
+          ...deathFifos.flatMap((f) => [f.count, f.payload])
+        ],
+        [uFifoBase]
+      )
+    );
+  }
   return {
-    computeNode,
+    emitNode,
+    simNode,
+    trailHistoryNode,
+    subBirthEventsNode,
+    subDeathEventsNode,
+    computeNodes: [
+      emitNode,
+      ...subBirthEventsNode ? [subBirthEventsNode] : [],
+      simNode,
+      ...subDeathEventsNode ? [subDeathEventsNode] : [],
+      ...trailHistoryNode ? [trailHistoryNode] : []
+    ],
+    passLayouts,
     uniforms: {
       delta: uDelta,
       deltaMs: uDeltaMs,
+      nowMs: uNowMs,
       gravityVelocity: uGravityVelocity,
       noiseStrength: uNoiseStrength,
       noisePower: uNoisePower,
       noiseFrequency: uNoiseFrequency,
       noisePositionAmount: uNoisePosAmount,
       noiseRotationAmount: uNoiseRotAmount,
-      noiseSizeAmount: uNoiseSizeAmount
+      noiseSizeAmount: uNoiseSizeAmount,
+      emitCount: uEmitCount,
+      seed: uSeed,
+      /** Ping-pong FIFO window index for this frame (0 or 1). */
+      fifoBase: uFifoBase
     },
+    shapeUniforms,
     buffers,
-    curveDataLength: curveLen,
-    /** Force field offset and count uniform (null if no force fields). */
-    forceFieldInfo: forceFieldNodes ? {
-      offset: forceFieldOffset,
-      countUniform: forceFieldNodes.countUniform
-    } : null,
-    /** Collision plane offset and count uniform (null if no collision planes). */
-    collisionPlaneInfo: collisionPlaneNodes ? {
-      offset: collisionPlaneOffset,
-      countUniform: collisionPlaneNodes.countUniform
-    } : null
+    allocatorCount,
+    packedDataNode: sCD,
+    passNames: [
+      "emit",
+      ...subBirthEventsNode ? ["sub-birth-events"] : [],
+      "simulate",
+      ...subDeathEventsNode ? ["sub-death-events"] : [],
+      ...trailHistoryNode ? ["trail-history"] : []
+    ],
+    trailMeta: buffers.trailMeta,
+    // Emitter-pose uniforms, refreshed once per frame by the CPU (scalar only).
+    emitterPose: {
+      positionW: uEmitterPos,
+      wrapperQuat: uWrapperQuat,
+      worldScale: uWorldScale
+    },
+    forceFieldInfo: ffNodes ? { offset: forceFieldOffset, countUniform: ffNodes.countUniform } : null,
+    collisionPlaneInfo: cpNodes ? { offset: collisionOffset, countUniform: cpNodes.countUniform } : null
+  };
+}
+function createSubEmitterInitUpdate(child, childMax, childParams, parent, parentMax, fifo, inheritVelocity, particlesPerEvent, childVelValues) {
+  const capacity = Math.max(1, fifo.capacity);
+  const perEvent = Math.max(1, particlesPerEvent);
+  const windowSize = subEmitterWindowSize(capacity);
+  const uSystemSeed = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(nextSystemSeed(), "uint");
+  const uSeed = uSystemSeed;
+  const uInherit = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(Math.max(0, inheritVelocity)));
+  const uFifoBase = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0), "uint");
+  const uWrapperQuat = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(new __WEBPACK_EXTERNAL_MODULE_three_Vector4__(0, 0, 0, 1));
+  const uEmitterPos = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(new __WEBPACK_EXTERNAL_MODULE_three_Vector4__(0, 0, 0, 0));
+  const uWorldScale = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(new __WEBPACK_EXTERNAL_MODULE_three_Vector3__(1, 1, 1));
+  const cRadius = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.radius));
+  const cThickness = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.radiusThickness));
+  const cArc = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.arcDeg));
+  const cAngle = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.coneAngleDeg));
+  const cRRX = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.rectangleRotXDeg));
+  const cRRY = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.rectangleRotYDeg));
+  const cRSX = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.rectangleScaleX));
+  const cRSY = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.rectangleScaleY));
+  const cBSX = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.boxScaleX));
+  const cBSY = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.boxScaleY));
+  const cBSZ = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.boxScaleZ));
+  const cBF = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.boxEmitFrom));
+  const cKind = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.shapeKind));
+  const cSpeedMin = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.speedMin));
+  const cSpeedMax = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.speedMax));
+  const cSizeMin = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.sizeMin));
+  const cSizeMax = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.sizeMax));
+  const cRotMin = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.rotMin));
+  const cRotMax = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.rotMax));
+  const cOpMin = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.opacityMin));
+  const cOpMax = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.opacityMax));
+  const cLifeMin = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.lifeMin));
+  const cLifeMax = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.lifeMax));
+  const cCRR = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(webgpu_sRGBToLinear(childParams.colorRMin)));
+  const cCRX = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(webgpu_sRGBToLinear(childParams.colorRMax)));
+  const cCGR = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(webgpu_sRGBToLinear(childParams.colorGMin)));
+  const cCGX = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(webgpu_sRGBToLinear(childParams.colorGMax)));
+  const cCBR = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(webgpu_sRGBToLinear(childParams.colorBMin)));
+  const cCBX = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(webgpu_sRGBToLinear(childParams.colorBMax)));
+  const cFrMin = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.startFrameMin));
+  const cFrMax = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.startFrameMax));
+  const cPos = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(child.position, "vec4", childMax);
+  const cVel = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(child.velocity, "vec4", childMax);
+  const cCol = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(child.color, "vec4", childMax);
+  const cPS = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(child.particleState, "vec4", childMax);
+  const cSV = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(child.startValues, "vec4", childMax);
+  const cEx = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(child.startColorsExt, "vec4", childMax);
+  const cOIA = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(child.orbitalIsActive, "vec4", childMax);
+  const cAlloc = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(
+    child.allocator,
+    "uint",
+    Math.max(1, childMax + 1)
+  ).toAtomic();
+  __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childMax);
+  const cRingModU = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(childMax);
+  const commandBuffer = new __WEBPACK_EXTERNAL_MODULE_three_webgpu_84e9d76f_StorageBufferAttribute__(
+    new Float32Array(4 * (1 + capacity * perEvent)),
+    4
+  );
+  const fifoCounter = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(
+    fifo.counter,
+    "uint",
+    Math.max(1, fifo.counter.array.length)
+  ).toAtomic();
+  const fifoPayload = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(
+    fifo.payload,
+    "float",
+    Math.max(1, fifo.payload.array.length)
+  );
+  const sCmd = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(commandBuffer, "vec4", 1 + capacity * perEvent);
+  const cParseAxis = (rawAxis, ci) => {
+    if (rawAxis && typeof rawAxis === "object" && "min" in rawAxis) {
+      const mn = Number(rawAxis.min) || 0;
+      const mx = Number(rawAxis.max) || 0;
+      return { min: mn, max: mx, isRange: mn !== mx };
+    }
+    const c = typeof rawAxis === "number" ? rawAxis : 0;
+    return { min: c, max: c, isRange: false };
+  };
+  const cVv = childVelValues ?? {
+    linear: [void 0, void 0, void 0],
+    orbital: [void 0, void 0, void 0]
+  };
+  [0, 1, 2].map((k) => cParseAxis(cVv.linear[k]));
+  [0, 1, 2].map((k) => cParseAxis(cVv.orbital[k]));
+  const otherIdx = uFifoBase.equal(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0)).select(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(1), __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(0));
+  const counterClearKernel = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_Fn__(() => {
+    __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_atomicStore__(fifoCounter.element(otherIdx), __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(0));
+  });
+  const counterClearNode = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_compute__(counterClearKernel(), 1);
+  const commandBuildKernel = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_Fn__(() => {
+    const i = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_instanceIndex__;
+    const winBase = uFifoBase.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(windowSize)).toVar();
+    const count = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_atomicLoad__(fifoCounter.element(uFifoBase))).toVar();
+    __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(i).equal(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0)), () => {
+      sCmd.element(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0)).assign(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(count, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0), __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0), __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0)));
+    });
+    __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(i).lessThan(count), () => {
+      const eb = winBase.add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(i).mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(SUB_EMITTER_EVENT_STRIDE)));
+      const eX = fifoPayload.element(eb).toVar();
+      const eY = fifoPayload.element(eb.add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1))).toVar();
+      const eZ = fifoPayload.element(eb.add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(2))).toVar();
+      const vX = fifoPayload.element(eb.add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(3))).toVar();
+      const vY = fifoPayload.element(eb.add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(4))).toVar();
+      const vZ = fifoPayload.element(eb.add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(5))).toVar();
+      for (let jj = 0; jj < perEvent; jj++) {
+        const birthNo = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_atomicAdd__(cAlloc.element(0), __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(1)).toVar();
+        const slot = birthNo.mod(cRingModU).toVar();
+        const m = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(i.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(perEvent)).add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(jj)));
+        sCmd.element(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1).add(m.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(2)))).assign(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(slot.toFloat(), eX, eY, eZ));
+        sCmd.element(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(2).add(m.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(2)))).assign(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(vX, vY, vZ, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0)));
+      }
+    });
+  });
+  const commandBuildNode = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_compute__(commandBuildKernel(), capacity);
+  const childInitKernel = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_Fn__(() => {
+    const i = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_instanceIndex__;
+    const header = sCmd.element(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0)).toVar();
+    __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(i).lessThan(header.x.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(perEvent))), () => {
+      const m = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(i);
+      const mU = i;
+      const c0 = sCmd.element(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1).add(m.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(2)))).toVar();
+      const c1 = sCmd.element(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(2).add(m.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(2)))).toVar();
+      const slot = c0.x;
+      const eX = c0.y;
+      const eY = c0.z;
+      const eZ = c0.w;
+      const vX = c1.x;
+      const vY = c1.y;
+      const vZ = c1.z;
+      const parentSpeed = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_sqrt__(
+        vX.mul(vX).add(vY.mul(vY)).add(vZ.mul(vZ))
+      ).toVar();
+      const spAdd = parentSpeed.mul(uInherit);
+      {
+        const rcA = pcg01(mU.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(2654435761)).bitXor(uSystemSeed).bitXor(CH.SHAPE_A));
+        const rcB = pcg01(mU.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(2654435761)).bitXor(uSystemSeed).bitXor(CH.SHAPE_B));
+        const rcC = pcg01(mU.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(2654435761)).bitXor(uSystemSeed).bitXor(CH.SHAPE_C));
+        const rcSpeed = pcg01(mU.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(2654435761)).bitXor(uSystemSeed).bitXor(CH.SPEED));
+        const rcSize = pcg01(mU.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(2654435761)).bitXor(uSystemSeed).bitXor(CH.SIZE));
+        const rcRot = pcg01(mU.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(2654435761)).bitXor(uSystemSeed).bitXor(CH.ROTATION));
+        const rcOpacity = pcg01(mU.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(2654435761)).bitXor(uSystemSeed).bitXor(CH.OPACITY));
+        const rcSheet = pcg01(mU.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(2654435761)).bitXor(uSystemSeed).bitXor(CH.START_FRAME));
+        const rcLife = pcg01(mU.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(2654435761)).bitXor(uSystemSeed).bitXor(CH.LIFETIME));
+        const rcColor = pcg01(mU.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(2654435761)).bitXor(uSystemSeed).bitXor(CH.COLOR));
+        const rcRotOl = pcg01(mU.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(2654435761)).bitXor(uSystemSeed).bitXor(CH.ROTOL));
+        const shE = shapeEmitNodes(
+          {
+            kind: cKind,
+            radius: cRadius,
+            thickness: cThickness,
+            arcDeg: cArc,
+            coneAngleDeg: cAngle,
+            rectRX: cRRX,
+            rectRY: cRRY,
+            rectSX: cRSX,
+            rectSY: cRSY,
+            boxSX: cBSX,
+            boxSY: cBSY,
+            boxSZ: cBSZ,
+            boxFrom: cBF,
+            speedMin: cSpeedMin.add(spAdd),
+            speedMax: cSpeedMax.add(spAdd)
+          },
+          rcA,
+          rcB,
+          rcC,
+          rcSpeed
+        );
+        const [rx, ry, rz] = quatRotateNodes(
+          shE.px,
+          shE.py,
+          shE.pz,
+          uWrapperQuat
+        );
+        const [rvx, rvy, rvz] = quatRotateNodes(
+          shE.vx,
+          shE.vy,
+          shE.vz,
+          uWrapperQuat
+        );
+        const isWorld = uEmitterPos.w.greaterThan(0.5);
+        const sxf = isWorld.select(uWorldScale.x, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1));
+        const syf = isWorld.select(uWorldScale.y, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1));
+        const szf = isWorld.select(uWorldScale.z, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1));
+        const px = rx.mul(sxf).add(eX);
+        const py = ry.mul(syf).add(eY);
+        const pz = rz.mul(szf).add(eZ);
+        const opac = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__(cOpMin, cOpMax, rcOpacity);
+        const clR = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__(cCRR, cCRX, rcColor);
+        const clG = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__(cCGR, cCGX, rcColor);
+        const clB = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__(cCBR, cCBX, rcColor);
+        const slife = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__(cLifeMin, cLifeMax, rcLife).mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1e3));
+        const ssize = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__(cSizeMin, cSizeMax, rcSize);
+        const srot = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__(cRotMin, cRotMax, rcRot);
+        const startFrame = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_floor__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__(cFrMin, cFrMax, rcSheet)).toVar();
+        const rotSpeed = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_mix__(
+          __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.rotOverLifeMin),
+          __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(childParams.rotOverLifeMax),
+          rcRotOl
+        );
+        const stableSeedU = pcgRawU32(
+          mixBirthSeed(mU, uSystemSeed, CH.STABLE_SEED)
+        ).bitAnd(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uint__(16777215)).toVar();
+        cPos.element(slot).assign(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(px, py, pz, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0)));
+        cVel.element(slot).assign(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(rvx, rvy, rvz, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0)));
+        cCol.element(slot).assign(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(clR, clG, clB, opac));
+        cPS.element(slot).assign(
+          __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0), ssize, srot, startFrame)
+        );
+        cSV.element(slot).assign(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(slife, ssize, opac, clR));
+        cEx.element(slot).assign(
+          __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(clG, clB, rotSpeed, stableSeedU.toFloat())
+        );
+        cOIA.element(slot).assign(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(rx, ry, rz, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1)));
+      }
+    });
+  });
+  const childInitNode = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_compute__(
+    childInitKernel(),
+    Math.max(1, capacity * perEvent)
+  );
+  const initPassLayouts = [
+    {
+      name: "sub-command-build",
+      storageBindings: 4,
+      // fifoCounter, fifoPayload, allocator, commands
+      uniformBindings: 1
+      // uFifoBase
+    },
+    {
+      // command buffer + the 7 child pools; NO allocator here.
+      name: "sub-child-init",
+      storageBindings: 8,
+      uniformBindings: 35
+      // seed/inherit/pose + 30 child shape scalars
+    },
+    {
+      name: "sub-counter-clear",
+      storageBindings: 1,
+      uniformBindings: 1
+    }
+  ];
+  return {
+    commandBuildNode,
+    childInitNode,
+    counterClearNode,
+    commandBuffer,
+    passLayouts: initPassLayouts,
+    passName: fifo.trigger === 0 ? "sub-birth" : "sub-death",
+    counterClearPassName: "fifo-counter-clear",
+    uniforms: {
+      seed: uSeed,
+      fifoBase: uFifoBase,
+      inherit: uInherit,
+      positionW: uEmitterPos,
+      wrapperQuat: uWrapperQuat
+    },
+    buffers: child
+  };
+}
+function createTrailRibbonUpdate(desc) {
+  const L = desc.length;
+  const rows = L + 1;
+  const vertexCount = Math.max(1, desc.maxParticles) * Math.max(1, L);
+  const uNowMs = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0));
+  const activeFns = [
+    desc.curveFns.width ?? ((t) => t),
+    desc.curveFns.opacity ?? ((t) => t),
+    desc.curveFns.colorR ?? ((t) => t),
+    desc.curveFns.colorG ?? ((t) => t),
+    desc.curveFns.colorB ?? ((t) => t)
+  ];
+  const curveData = new Float32Array(activeFns.length * CURVE_RESOLUTION);
+  activeFns.forEach((fn, k) => {
+    curveData.set(bakeCurve(fn, CURVE_RESOLUTION), k * CURVE_RESOLUTION);
+  });
+  const IDX_WIDTH = 0;
+  const IDX_OPACITY = 1;
+  const IDX_CR = 2;
+  const IDX_CG = 3;
+  const IDX_CB = 4;
+  const aPos = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(desc.position, "vec4", vertexCount * 2);
+  const aNext = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(desc.next, "vec4", vertexCount * 2);
+  const aUVA = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(desc.uvColorA, "vec4", vertexCount * 2);
+  const aColB = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(desc.colorB, "vec4", vertexCount * 2);
+  const hist = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(desc.history, "vec4", rows * desc.maxParticles);
+  const sMeta = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(
+    desc.meta,
+    "uint",
+    Math.max(1, desc.meta.array.length)
+  ).toAtomic();
+  const pColor = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_storage__(desc.particleColor, "vec4", desc.maxParticles);
+  const sCD = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_buffer__(curveData, "float", curveData.length);
+  const lookupCurve = createCurveLookup(sCD);
+  const halfWidthBase = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(desc.width * 0.5);
+  const kernel = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_Fn__(() => {
+    const idx = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_instanceIndex__;
+    const lf = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(L);
+    const rowF = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(rows);
+    const i = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_floor__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(idx).div(lf));
+    const s = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(idx).sub(i.mul(lf));
+    __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(i.lessThan(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(desc.maxParticles)), () => {
+      const base = i.mul(rowF);
+      const cursor = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(
+        __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_atomicLoad__(sMeta.element(i.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(2))))
+      ).toVar();
+      const count = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(
+        __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_atomicLoad__(sMeta.element(i.mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(2)).add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1))))
+      ).toVar();
+      __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(count.greaterThan(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0.5)), () => {
+        const raw = cursor.sub(s).add(lf);
+        const si = raw.sub(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_floor__(raw.div(lf)).mul(lf));
+        const sample = hist.element(base.add(si)).toVar();
+        const nextRaw = si.add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1));
+        const ni = nextRaw.sub(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_floor__(nextRaw.div(lf)).mul(lf));
+        const nextSample = hist.element(base.add(ni)).toVar();
+        const t = count.greaterThan(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1.5)).select(s.div(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_max__(count.sub(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1)), __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1))), __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0));
+        const wScale = lookupCurve({
+          curveIndex: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(IDX_WIDTH),
+          t
+        });
+        const oScale = lookupCurve({
+          curveIndex: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(IDX_OPACITY),
+          t
+        });
+        const cr = lookupCurve({ curveIndex: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(IDX_CR), t });
+        const cg = lookupCurve({ curveIndex: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(IDX_CG), t });
+        const cb = lookupCurve({ curveIndex: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(IDX_CB), t });
+        const pcol = pColor.element(i).toVar();
+        const inRange = s.lessThan(count);
+        const ageOk = desc.maxTime > 0 ? uNowMs.sub(sample.w).lessThanEqual(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(desc.maxTime)) : inRange;
+        const alive = inRange.and(ageOk);
+        const hw = alive.select(halfWidthBase.mul(wScale), __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0));
+        const alpha = alive.select(oScale.mul(pcol.w), __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0));
+        const nPos = count.greaterThan(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(1.5)).select(nextSample.xyz, sample.xyz);
+        for (let side = 0; side < 2; side++) {
+          const vi = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(idx).mul(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(2)).add(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(side));
+          aPos.element(vi).assign(
+            __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(sample.x, sample.y, sample.z, hw)
+          );
+          aNext.element(vi).assign(
+            __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(nPos.x, nPos.y, nPos.z, alpha)
+          );
+          aUVA.element(vi).assign(
+            __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(side), t, cr.mul(pcol.x), cg.mul(pcol.y))
+          );
+          aColB.element(vi).assign(
+            __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(cb.mul(pcol.z), alpha, __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0), __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0))
+          );
+        }
+      });
+    });
+  });
+  const ribbonNode = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_compute__(kernel(), vertexCount);
+  return {
+    ribbonNode,
+    // 4 ribbon streams + history + meta + particle color = 7 storage bindings.
+    passLayouts: [
+      { name: "trail-ribbon", storageBindings: 7, uniformBindings: 2 }
+    ],
+    uniforms: { nowMs: uNowMs },
+    buffers: {
+      position: desc.position,
+      next: desc.next,
+      uvColorA: desc.uvColorA,
+      colorB: desc.colorB,
+      history: desc.history
+    }
   };
 }
 
@@ -21015,7 +21032,6 @@ function getDummyTexture() {
 function createParticleUniforms(sharedUniforms) {
   const dummy = getDummyTexture();
   const map = sharedUniforms.map.value ?? dummy;
-  if (map) map.colorSpace = __WEBPACK_EXTERNAL_MODULE_three_NoColorSpace__;
   return {
     uMap: map,
     uElapsed: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(sharedUniforms.elapsed.value)),
@@ -21142,7 +21158,7 @@ function createInstancedBillboardTSLMaterial(sharedUniforms, rendererConfig, gpu
   const vUv = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_varyingProperty__("vec2", "vUv");
   const vViewZ = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_varyingProperty__("float", "vViewZ");
   const vertexNode = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_Fn__(() => {
-    const clipPos = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(0, 0, 0, 0).toVar();
+    const clipPos = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(0, 0, 0, -1).toVar();
     __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(aColor.w.greaterThan(0), () => {
       vColor.assign(aColor.toVar());
       if (gpuCompute) {
@@ -21256,7 +21272,7 @@ function createMeshParticleTSLMaterial(sharedUniforms, rendererConfig, gpuComput
   const vNormal = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_varyingProperty__("vec3", "vNormal");
   const vViewZ = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_varyingProperty__("float", "vViewZ");
   const vertexSetup = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_Fn__(() => {
-    const clipPos = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(0, 0, 0, 0).toVar();
+    const clipPos = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(0, 0, 0, -1).toVar();
     __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_If__(aColor.w.greaterThan(0), () => {
       vColor.assign(aColor.toVar());
       if (gpuCompute) {
@@ -21397,7 +21413,7 @@ function createPointSpriteTSLMaterial(sharedUniforms, rendererConfig, gpuCompute
       uTiles: u.uTiles
     });
     const center = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec2__(0.5, 0.5);
-    const centered = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_pointUV__.sub(center);
+    const centered = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec2__(0, 0);
     const cosR = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_cos__(vRotation);
     const sinR = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_sin__(vRotation);
     const rotated = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec2__(
@@ -21446,7 +21462,6 @@ function createPointSpriteTSLMaterial(sharedUniforms, rendererConfig, gpuCompute
 function createTrailUniforms(trailUniforms) {
   const dummy = getDummyTexture();
   const map = trailUniforms.map.value ?? dummy;
-  if (map) map.colorSpace = __WEBPACK_EXTERNAL_MODULE_three_NoColorSpace__;
   return {
     uMap: map,
     uUseMap: __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_uniform__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(trailUniforms.useMap.value ? 1 : 0)),
@@ -21471,12 +21486,16 @@ function createTrailUniforms(trailUniforms) {
 }
 function createTrailRibbonTSLMaterial(trailUniforms, rendererConfig) {
   const u = createTrailUniforms(trailUniforms);
-  const aTrailAlpha = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_attribute__("trailAlpha");
-  const aTrailColor = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_attribute__("trailColor", "vec4");
-  const aTrailOffset = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_attribute__("trailOffset");
-  const aTrailHalfWidth = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_attribute__("trailHalfWidth");
-  const aTrailNext = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_attribute__("trailNext", "vec3");
-  const aTrailUV = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_attribute__("trailUV", "vec2");
+  const aPosPacked = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_attribute__("position", "vec4");
+  const aNextPacked = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_attribute__("trailNext", "vec4");
+  const aUvColorA = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_attribute__("trailUVColor", "vec4");
+  const aColorBA = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_attribute__("trailColorBA", "vec4");
+  const aTrailAlpha = aNextPacked.w;
+  const aTrailColor = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec4__(aUvColorA.z, aUvColorA.w, aColorBA.x, aColorBA.y);
+  const aTrailOffset = aUvColorA.x.sub(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_float__(0.5));
+  const aTrailHalfWidth = aPosPacked.w;
+  const aTrailNext = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec3__(aNextPacked.x, aNextPacked.y, aNextPacked.z);
+  const aTrailUV = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec2__(aUvColorA.x, aUvColorA.y);
   const vAlpha = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_varyingProperty__("float", "vAlpha");
   const vColor = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_varyingProperty__("vec4", "vColor");
   const vUv = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_varyingProperty__("vec2", "vUv");
@@ -21485,7 +21504,7 @@ function createTrailRibbonTSLMaterial(trailUniforms, rendererConfig) {
     vAlpha.assign(aTrailAlpha);
     vColor.assign(aTrailColor);
     vUv.assign(aTrailUV);
-    const current = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec3__(__WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_positionLocal__);
+    const current = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec3__(aPosPacked.x, aPosPacked.y, aPosPacked.z);
     const next = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_vec3__(aTrailNext);
     const rawTangent = next.sub(current);
     const tangentLen = __WEBPACK_EXTERNAL_MODULE_three_tsl_3a8d0cc7_length__(rawTangent);
@@ -21570,85 +21589,194 @@ function createTrailRibbonTSLMaterial(trailUniforms, rendererConfig) {
   material.colorNode = colorNode;
   return material;
 }
-
-// src/js/effects/three-particles/webgpu/tsl-materials.ts
 function createTSLParticleMaterial(rendererType, sharedUniforms, rendererConfig, gpuCompute = false) {
   switch (rendererType) {
     case "INSTANCED" /* INSTANCED */:
-      return createInstancedBillboardTSLMaterial(
-        sharedUniforms,
-        rendererConfig,
-        gpuCompute
-      );
+      return createInstancedBillboardTSLMaterial(sharedUniforms, rendererConfig, gpuCompute);
     case "MESH" /* MESH */:
-      return createMeshParticleTSLMaterial(
-        sharedUniforms,
-        rendererConfig,
-        gpuCompute
-      );
+      return createMeshParticleTSLMaterial(sharedUniforms, rendererConfig, gpuCompute);
     case "POINTS" /* POINTS */:
     default:
-      return createPointSpriteTSLMaterial(
-        sharedUniforms,
-        rendererConfig,
-        gpuCompute
-      );
+      return createPointSpriteTSLMaterial(sharedUniforms, rendererConfig, gpuCompute);
   }
 }
 function createTSLTrailMaterial(trailUniforms, rendererConfig) {
   return createTrailRibbonTSLMaterial(trailUniforms, rendererConfig);
 }
-function createComputePipeline(maxParticles, instanced, normalizedConfig, particleSystemId, forceFieldCount, collisionPlaneCount = 0) {
-  const bakedCurves = bakeParticleSystemCurves(
-    normalizedConfig,
-    particleSystemId
-  );
-  const { velocityOverLifetime } = normalizedConfig;
+var pair = (v) => {
+  if (typeof v === "number") return [v, v];
+  if (v && typeof v === "object") {
+    const o = v;
+    return [Number(o.min) || 0, Number(o.max) || 0];
+  }
+  return [0, 0];
+};
+var shapeKindOf = (t) => {
+  switch (t) {
+    case "SPHERE":
+      return 0;
+    case "CONE":
+      return 1;
+    case "CIRCLE":
+      return 2;
+    case "RECTANGLE":
+      return 3;
+    case "BOX":
+      return 4;
+    default:
+      return 0;
+  }
+};
+var boxEmitFromOf = (e) => e === "SHELL" ? 1 : e === "EDGE" ? 2 : 0;
+function encodeShapeEmitParams(normalizedConfig, particleSystemId) {
+  const bakedCurves = bakeParticleSystemCurves(normalizedConfig, particleSystemId);
+  const pairLocal = pair;
+  const [lifeMin, lifeMax] = pairLocal(normalizedConfig.startLifetime);
+  const [spdMin, spdMax] = pairLocal(normalizedConfig.startSpeed);
+  const [szMin, szMax] = pairLocal(normalizedConfig.startSize);
+  const [rotMin, rotMax] = pairLocal(normalizedConfig.startRotation);
+  const [opMin, opMax] = pairLocal(normalizedConfig.startOpacity);
+  const cMin = normalizedConfig.startColor.min || { r: 1, g: 1, b: 1 };
+  const cMax = normalizedConfig.startColor.max || { r: 1, g: 1, b: 1 };
+  const sf = normalizedConfig.textureSheetAnimation && normalizedConfig.textureSheetAnimation.startFrame || 0;
+  const sfPair = pairLocal(sf);
+  const shp = normalizedConfig.shape;
+  const sph = shp.sphere;
+  const cone = shp.cone;
+  const circ = shp.circle;
+  const rect = shp.rectangle;
+  const bx = shp.box;
+  const num = (v, fallback) => typeof v === "number" && Number.isFinite(v) ? v : fallback;
+  const kind = shapeKindOf(shp.shape);
+  return {
+    shapeKind: kind,
+    radius: shp.shape === "CONE" ? num(cone?.radius, 1) : shp.shape === "CIRCLE" ? num(circ?.radius, 1) : num(sph?.radius, 1),
+    radiusThickness: shp.shape === "CONE" ? num(cone?.radiusThickness, 1) : shp.shape === "CIRCLE" ? num(circ?.radiusThickness, 1) : num(sph?.radiusThickness, 1),
+    arcDeg: shp.shape === "CONE" ? num(cone?.arc, 360) : shp.shape === "CIRCLE" ? num(circ?.arc, 360) : num(sph?.arc, 360),
+    coneAngleDeg: num(cone?.angle, 90),
+    rectangleRotXDeg: num(rect?.rotation?.x, 0),
+    rectangleRotYDeg: num(rect?.rotation?.y, 0),
+    rectangleScaleX: num(rect?.scale?.x, 1),
+    rectangleScaleY: num(rect?.scale?.y, 1),
+    boxScaleX: num(bx?.scale?.x, 1),
+    boxScaleY: num(bx?.scale?.y, 1),
+    boxScaleZ: num(bx?.scale?.z, 1),
+    boxEmitFrom: boxEmitFromOf(bx?.emitFrom),
+    speedMin: spdMin,
+    speedMax: spdMax,
+    sizeMin: szMin,
+    sizeMax: szMax,
+    rotMin,
+    rotMax,
+    opacityMin: opMin,
+    opacityMax: opMax,
+    lifeMin,
+    lifeMax,
+    colorRMin: cMin.r,
+    colorRMax: cMax.r,
+    colorGMin: cMin.g,
+    colorGMax: cMax.g,
+    colorBMin: cMin.b,
+    colorBMax: cMax.b,
+    startFrameMin: sfPair[0],
+    startFrameMax: sfPair[1],
+    // Separate rotationOverLifetime range (never the startRotation pair).
+    rotOverLifeMin: (() => {
+      const rol = normalizedConfig.rotationOverLifetime;
+      return typeof rol?.min === "number" && Number.isFinite(rol.min) ? rol.min : 0;
+    })(),
+    rotOverLifeMax: (() => {
+      const rol = normalizedConfig.rotationOverLifetime;
+      return typeof rol?.max === "number" && Number.isFinite(rol.max) ? rol.max : 0;
+    })(),
+    noiseOctaves: num(normalizedConfig.noise?.octaves, 1),
+    noiseUseRandomOffset: !!normalizedConfig.noise?.useRandomOffset,
+    rotationCurveActive: normalizedConfig.rotationOverLifetime.isActive,
+    rotationalXCurve: bakedCurves.orbitalVelX ?? -1,
+    rotationalYCurve: bakedCurves.orbitalVelY ?? -1,
+    rotationalZCurve: bakedCurves.orbitalVelZ ?? -1,
+    linearXCurve: bakedCurves.linearVelX ?? -1,
+    linearYCurve: bakedCurves.linearVelY ?? -1,
+    linearZCurve: bakedCurves.linearVelZ ?? -1
+  };
+}
+function createComputePipeline(maxParticles, instanced, normalizedConfig, particleSystemId, forceFieldCount, collisionPlaneCount = 0, subFifos, trailDesc) {
+  const bakedCurves = bakeParticleSystemCurves(normalizedConfig, particleSystemId);
+  const v = normalizedConfig.velocityOverLifetime;
   const flags = {
     sizeOverLifetime: normalizedConfig.sizeOverLifetime.isActive,
     opacityOverLifetime: normalizedConfig.opacityOverLifetime.isActive,
     colorOverLifetime: normalizedConfig.colorOverLifetime.isActive,
     rotationOverLifetime: normalizedConfig.rotationOverLifetime.isActive,
-    linearVelocity: velocityOverLifetime.isActive && (webgpu_isLifeTimeCurve(velocityOverLifetime.linear.x ?? 0) || webgpu_isLifeTimeCurve(velocityOverLifetime.linear.y ?? 0) || webgpu_isLifeTimeCurve(velocityOverLifetime.linear.z ?? 0) || velocityOverLifetime.linear.x !== 0 || velocityOverLifetime.linear.y !== 0 || velocityOverLifetime.linear.z !== 0),
-    orbitalVelocity: velocityOverLifetime.isActive && (webgpu_isLifeTimeCurve(velocityOverLifetime.orbital.x ?? 0) || webgpu_isLifeTimeCurve(velocityOverLifetime.orbital.y ?? 0) || webgpu_isLifeTimeCurve(velocityOverLifetime.orbital.z ?? 0) || velocityOverLifetime.orbital.x !== 0 || velocityOverLifetime.orbital.y !== 0 || velocityOverLifetime.orbital.z !== 0),
+    linearVelocity: v.isActive && (webgpu_isLifeTimeCurve(v.linear.x ?? 0) || webgpu_isLifeTimeCurve(v.linear.y ?? 0) || webgpu_isLifeTimeCurve(v.linear.z ?? 0) || v.linear.x !== 0 || v.linear.y !== 0 || v.linear.z !== 0),
+    orbitalVelocity: v.isActive && (webgpu_isLifeTimeCurve(v.orbital.x ?? 0) || webgpu_isLifeTimeCurve(v.orbital.y ?? 0) || webgpu_isLifeTimeCurve(v.orbital.z ?? 0) || v.orbital.x !== 0 || v.orbital.y !== 0 || v.orbital.z !== 0),
     noise: normalizedConfig.noise.isActive,
     forceFields: forceFieldCount > 0,
     collisionPlanes: collisionPlaneCount > 0
   };
-  const buffers = createModifierStorageBuffers(
+  const shapeParams = encodeShapeEmitParams(
+    normalizedConfig,
+    particleSystemId
+  );
+  const velocityValues = {
+    linear: [v.linear.x, v.linear.y, v.linear.z],
+    orbital: [
+      v.orbital.x,
+      v.orbital.y,
+      v.orbital.z
+    ]
+  };
+  if (trailDesc && !trailDesc.meta) {
+    trailDesc.meta = new __WEBPACK_EXTERNAL_MODULE_three_webgpu_84e9d76f_StorageBufferAttribute__(
+      new Uint32Array(Math.max(1, maxParticles) * 2),
+      1
+    );
+  }
+  const built = createModifierStorageBuffers(
     maxParticles,
     instanced,
     bakedCurves.data,
     flags.forceFields,
-    flags.collisionPlanes
+    flags.collisionPlanes,
+    trailDesc ? trailDesc.length : 0
   );
+  if (trailDesc && built.buffers.trailMeta) {
+    trailDesc.meta = built.buffers.trailMeta;
+  }
   return createModifierComputeUpdate(
-    buffers,
+    built.buffers,
     maxParticles,
     bakedCurves,
     flags,
+    shapeParams,
     forceFieldCount,
-    collisionPlaneCount
+    collisionPlaneCount,
+    subFifos ?? [],
+    trailDesc,
+    velocityValues
   );
 }
 
 // src/webgpu.ts
-function enableWebGPU() {
+function enableWebGPU(renderer) {
   const factory = {
     createTSLParticleMaterial,
     createTSLTrailMaterial,
     createComputePipeline,
-    writeParticleToModifierBuffers,
-    deactivateParticleInModifierBuffers,
-    flushEmitQueue,
-    registerCurveDataLength,
     encodeForceFieldsForGPU,
-    encodeCollisionPlanesForGPU
+    encodeCollisionPlanesForGPU,
+    createSubEmitterFifoAttribute,
+    createSubEmitterInitUpdate,
+    createTrailRibbonUpdate,
+    encodeShapeEmitParams
   };
-  registerTSLMaterialFactory(factory);
+  return registerTSLMaterialFactory(
+    factory,
+    renderer !== void 0 ? { renderer } : void 0
+  );
 }
 
 
 //# sourceMappingURL=webgpu.js.map
 //# sourceMappingURL=webgpu.js.map
-export { createComputePipeline, createTSLParticleMaterial, createTSLTrailMaterial, deactivateParticleInModifierBuffers, enableWebGPU, encodeCollisionPlanesForGPU, encodeForceFieldsForGPU, flushEmitQueue, registerCurveDataLength, writeParticleToModifierBuffers };
+export { CH, assertNamed, createComputePipeline, createModifierStorageBuffers, createSubEmitterFifoAttribute, createSubEmitterInitUpdate, createTSLParticleMaterial, createTSLTrailMaterial, createTrailRibbonUpdate, enableWebGPU, encodeCollisionPlanesForGPU, encodeForceFieldsForGPU, encodeShapeEmitParams, mixBirthSeed, nextSystemSeed, normalizeBackgroundToVector3, normalizeDepthTextureValue, normalizeTextureValue, normalizeVector2Value, pcg01, pcgRawU32, randomChannel, resolveWebGPUEffectiveRendererType, subEmitterWindowSize };
