@@ -328,14 +328,29 @@ export type ModifierStorageBuffers = {
   packedData: Float32Array;
 };
 
+/** Actual per-pass resource budget derived from that pass's bound nodes. */
+export type PassLayout = {
+  name: string;
+  storageBindings: number;
+  uniformBindings: number;
+};
+
 /** The complete GPU-owned pipeline handle returned by `createComputePipeline`. */
 export type ModifierComputePipeline = {
   /** Emission compute node (dispatched before simulation each frame). */
   emitNode: ReturnType<typeof compute>;
   /** Per-frame simulation compute node. */
   simNode: ReturnType<typeof compute>;
-  /** Convenience: both nodes in dispatch order. */
+  /** Dedicated trail-history pass node (null when no TRAIL renderer). */
+  trailHistoryNode: ReturnType<typeof compute> | null;
+  /** Dedicated sub-emitter BIRTH event pass node (null without BIRTH FIFOs). */
+  subBirthEventsNode: ReturnType<typeof compute> | null;
+  /** Dedicated sub-emitter DEATH event pass node (null without DEATH FIFOs). */
+  subDeathEventsNode: ReturnType<typeof compute> | null;
+  /** Convenience: every node of this pipeline in dispatch order. */
   computeNodes: ReturnType<typeof compute>[];
+  /** Real per-pass storage/uniform budgets (no synthetic totals). */
+  passLayouts: PassLayout[];
   /** Uniforms the CPU writes before each pair of compute dispatches. */
   uniforms: ModifierUniforms;
   /** Shape / curve parameters (scalar float uniforms) baked at creation. */
@@ -810,6 +825,11 @@ export function createModifierComputeUpdate(
       Math.max(1, (f.payload.array as Float32Array).length)
     ),
   }));
+  // Per-trigger channel views: each event pass only binds its own channels,
+  // which keeps both passes at <= 8 storage bindings (see pass builders below).
+  const birthFifos = fifoNodes.filter((f) => f.trigger === 0);
+  const deathFifos = fifoNodes.filter((f) => f.trigger === 1);
+  const hasDeathFifo = deathFifos.length > 0;
 
   const writeFifoEvent = (
     f: {
@@ -1066,12 +1086,8 @@ export function createModifierComputeUpdate(
       // Orbital pivot = rotated shape offset (oracle positionOffset), w=1.
       sOIA.element(slotIdx).assign(vec4(rotPX, rotPY, rotPZ, float(1.0)));
 
-      // BIRTH events for the configured sub-emitter channels.
-      for (const f of fifoNodes) {
-        if (f.trigger === 0) {
-          writeFifoEvent(f, ox, oy, oz, rotVX, rotVY, rotVZ);
-        }
-      }
+      // BIRTH events: written by the dedicated `sub-birth-events` pass below
+      // (base emit keeps exactly its 8 storage bindings — no FIFO nodes here).
     });
   });
 
@@ -1086,10 +1102,11 @@ export function createModifierComputeUpdate(
   // `max = 1 + 0.5 + ... + 0.5^octaves = 2 - 2^-octaves` (the sum includes
   // the trailing 0.5^n exactly like the oracle's `fbmMax` constant).
   const noiseFbmMax = 2 - Math.pow(2, -noiseOctavesCount);
-  const noiseOctDiv = Array.from(
-    { length: noiseOctavesCount },
-    () => float(noiseFbmMax)
-  );
+  if (!Number.isFinite(noiseFbmMax) || noiseFbmMax <= 0) {
+    throw new Error(
+      `three-particles: invalid FBM normalization ${noiseFbmMax}`
+    );
+  }
   const simKernel = Fn(() => {
     const i = instanceIndex;
     If(float(i).lessThan(float(maxParticles)), () => {
@@ -1215,7 +1232,7 @@ export function createModifierComputeUpdate(
           let lac = 1.0;
           for (let o = 0; o < noiseOctavesCount; o++) {
             const t = np.mul(float(lac));
-            const sc = float(amp / noiseOctDiv[0]);
+            const sc = float(amp / noiseFbmMax);
             noiseX.assign(noiseX.add(snoise3D({ v: vec3(t, float(0), float(0)) }).mul(sc)));
             noiseY.assign(noiseY.add(snoise3D({ v: vec3(t, t, float(0)) }).mul(sc)));
             noiseZ.assign(noiseZ.add(snoise3D({ v: vec3(t, t, t) }).mul(sc)));
@@ -1237,9 +1254,52 @@ export function createModifierComputeUpdate(
 
         ps.x.assign(ps.x.add(uDeltaMs));
 
-        // Trail history: adaptive ring sample (oracle minVertexDistance).
-        // Metadata = integer atomics (cursor,count); samples = plain f32.
-        if (sTrail && sTrailMeta && trailDesc) {
+        // Trail history is sampled by the dedicated `trail-history` pass
+        // (see `trailHistoryNode` below), keeping this kernel at 8 bindings.
+
+        // Position/velocity vec4 padding stays plain 0 (axes are seed-derived).
+        sPos.element(i).assign(vec4(pos, float(0.0)));
+        sVel.element(i).assign(vec4(vel, float(0.0)));
+        sPS.element(i).assign(ps);
+        sOIA.element(i).assign(oiaVec);
+
+        // Death: ring allocator needs no push (the monotonically increasing
+        // birth counter owns recycling); mark the slot inactive + zero color.
+        // With DEATH-trigger sub-emitters the transient marker is -1; the
+        // dedicated `sub-death-events` pass writes the FIFO then clears to 0.
+        If(ps.x.greaterThan(startLife), () => {
+          const inactive = sOIA.element(i).toVar();
+          sOIA.element(i).assign(
+            vec4(
+              inactive.x,
+              inactive.y,
+              inactive.z,
+              hasDeathFifo ? float(-1.0) : float(0.0)
+            )
+          );
+          sCol.element(i).assign(vec4(float(0.0), float(0.0), float(0.0), float(0.0)));
+        });
+      });
+    });
+  });
+
+  const simNode = compute(simKernel(), maxParticles);
+
+  // ?? Dedicated trail-history pass (runs AFTER `simulate`) ??
+  // Bindings: position, orbitalIsActive, trailHistory, trailMeta (= 4 <= 8).
+  // Same adaptive ring sampling the inlined sim block used; reads the
+  // post-simulation position straight back from the position pool.
+  let trailHistoryNode: ReturnType<typeof compute> | null = null;
+  if (sTrail && sTrailMeta && trailDesc) {
+    const trailHistoryKernel = Fn(() => {
+      const i = instanceIndex;
+      If(float(i).lessThan(float(maxParticles)), () => {
+        const oiaVec = sOIA.element(i).toVar();
+        // active (1) or death-pending (-1, event pass not yet run) => sample.
+        const activeNow = oiaVec.w.greaterThanEqual(float(0.5));
+        const pendingDeath = oiaVec.w.lessThan(float(-0.5));
+        If(activeNow.or(pendingDeath), () => {
+          const pos = sPos.element(i).toVar();
           const L = float(trailDesc.length);
           const tr = float(trailRows);
           const curIdx = i.mul(tuint(2));
@@ -1276,46 +1336,178 @@ export function createModifierComputeUpdate(
               tslMin(count.add(float(1)), float(trailDesc.length)).toUint()
             );
           });
-        }
-
-        // Position/velocity vec4 padding stays plain 0 (axes are seed-derived).
-        sPos.element(i).assign(vec4(pos, float(0.0)));
-        sVel.element(i).assign(vec4(vel, float(0.0)));
-        sPS.element(i).assign(ps);
-        sOIA.element(i).assign(oiaVec);
-
-        // Death: ring allocator needs no push (the monotonically increasing
-        // birth counter owns recycling); mark the slot inactive + zero color.
-        If(ps.x.greaterThan(startLife), () => {
-          const inactive = sOIA.element(i).toVar();
-          sOIA.element(i).assign(vec4(inactive.x, inactive.y, inactive.z, float(0.0)));
-          sCol.element(i).assign(vec4(float(0.0), float(0.0), float(0.0), float(0.0)));
-
-          // DEATH events for the configured sub-emitter channels.
-          for (const f of fifoNodes) {
-            if (f.trigger === 1) {
-              writeFifoEvent(
-                f,
-                pos.x,
-                pos.y,
-                pos.z,
-                vel.x,
-                vel.y,
-                vel.z
-              );
-            }
-          }
         });
       });
     });
-  });
+    trailHistoryNode = compute(trailHistoryKernel(), maxParticles);
+  }
 
-  const simNode = compute(simKernel(), maxParticles);
+  // ?? Dedicated sub-emitter event passes (never bound into base emit/sim) ??
+  // BIRTH: born slots are recovered from the monotonic allocator counter
+  // (counterAfter - emitCount + i, mod maxParticles); position/velocity are
+  // read back from the parent pools the emit kernel just wrote.
+  let subBirthEventsNode: ReturnType<typeof compute> | null = null;
+  if (birthFifos.length > 0) {
+    const subBirthKernel = Fn(() => {
+      const i = instanceIndex;
+      If(i.lessThan(uEmitCount), () => {
+        const counterAfter = float(atomicLoad(sAllocator.element(0))).toVar();
+        const birthNo = counterAfter
+          .sub(float(uEmitCount))
+          .add(float(i))
+          .toVar();
+        const slot = birthNo
+          .sub(floor(birthNo.div(ringMod)).mul(ringMod))
+          .toVar();
+        const p = sPos.element(slot).toVar();
+        const v = sVel.element(slot).toVar();
+        for (const f of birthFifos) {
+          writeFifoEvent(f, p.x, p.y, p.z, v.x, v.y, v.z);
+        }
+      });
+    });
+    subBirthEventsNode = compute(subBirthKernel(), maxParticles);
+  }
+
+  // DEATH: the sim kernel marks `orbitalIsActive.w = -1` for slots that died
+  // this step; this pass appends the events, then clears the marker to 0.
+  let subDeathEventsNode: ReturnType<typeof compute> | null = null;
+  if (deathFifos.length > 0) {
+    const subDeathKernel = Fn(() => {
+      const i = instanceIndex;
+      If(float(i).lessThan(float(maxParticles)), () => {
+        const oiaVec = sOIA.element(i).toVar();
+        If(oiaVec.w.equal(float(-1.0)), () => {
+          const p = sPos.element(i).toVar();
+          const v = sVel.element(i).toVar();
+          for (const f of deathFifos) {
+            writeFifoEvent(f, p.x, p.y, p.z, v.x, v.y, v.z);
+          }
+          sOIA.element(i).assign(
+            vec4(oiaVec.x, oiaVec.y, oiaVec.z, float(0.0))
+          );
+        });
+      });
+    });
+    subDeathEventsNode = compute(subDeathKernel(), maxParticles);
+  }
+
+  // ?? Real per-pass layouts (derived from each pass's actual resources) ??
+  const layout = (
+    name: string,
+    storageNodes: Array<ShaderNodeObject<Node> | null>,
+    uniformNodes: Array<ShaderNodeObject<Node> | null>
+  ): PassLayout => ({
+    name,
+    storageBindings: new Set(storageNodes.filter((n) => n != null)).size,
+    uniformBindings: new Set(uniformNodes.filter((n) => n != null)).size,
+  });
+  const basePool = [sPos, sVel, sCol, sPS, sSV, sEx, sOIA, sAllocator];
+  const emitUniforms: Array<ShaderNodeObject<Node>> = [
+    uEmitCount,
+    uSeed,
+    uShape,
+    uRadius,
+    uRadiusThickness,
+    uArcDeg,
+    uConeAngleDeg,
+    uRectRX,
+    uRectRY,
+    uRectSX,
+    uRectSY,
+    uBoxSX,
+    uBoxSY,
+    uBoxSZ,
+    uBoxEmitFrom,
+    uSpeedMin,
+    uSpeedMax,
+    uSizeMin,
+    uSizeMax,
+    uRotMin,
+    uRotMax,
+    uOpMin,
+    uOpMax,
+    uLifeMin,
+    uLifeMax,
+    uCRR,
+    uCRX,
+    uCGR,
+    uCGX,
+    uCBR,
+    uCBX,
+    uFrMin,
+    uFrMax,
+    uRotOLMin,
+    uRotOLMax,
+    uWrapperQuat,
+    uEmitterPos,
+    uWorldScale,
+  ];
+  const simUniforms: Array<ShaderNodeObject<Node>> = [
+    uDelta,
+    uDeltaMs,
+    uGravityVelocity,
+    uNoiseStrength,
+    uNoisePower,
+    uNoiseFrequency,
+    uNoisePosAmount,
+    uNoiseRotAmount,
+    uNoiseSizeAmount,
+    sCD as ShaderNodeObject<Node>,
+    ...Array.from(axisUniforms.values()).flat(),
+  ];
+  const passLayouts: PassLayout[] = [
+    layout('emit', basePool, emitUniforms),
+    layout('simulate', basePool, simUniforms),
+  ];
+  if (trailHistoryNode) {
+    passLayouts.push(
+      layout('trail-history', [sPos, sOIA, sTrail, sTrailMeta], [uNowMs])
+    );
+  }
+  if (subBirthEventsNode) {
+    passLayouts.push(
+      layout(
+        'sub-birth-events',
+        [
+          sAllocator,
+          sPos,
+          sVel,
+          ...birthFifos.flatMap((f) => [f.count, f.payload]),
+        ],
+        [uEmitCount, uFifoBase]
+      )
+    );
+  }
+  if (subDeathEventsNode) {
+    passLayouts.push(
+      layout(
+        'sub-death-events',
+        [
+          sPos,
+          sVel,
+          sOIA,
+          ...deathFifos.flatMap((f) => [f.count, f.payload]),
+        ],
+        [uFifoBase]
+      )
+    );
+  }
 
   return {
     emitNode,
     simNode,
-    computeNodes: [emitNode, simNode],
+    trailHistoryNode,
+    subBirthEventsNode,
+    subDeathEventsNode,
+    computeNodes: [
+      emitNode,
+      ...(subBirthEventsNode ? [subBirthEventsNode] : []),
+      simNode,
+      ...(subDeathEventsNode ? [subDeathEventsNode] : []),
+      ...(trailHistoryNode ? [trailHistoryNode] : []),
+    ],
+    passLayouts,
     uniforms: {
       delta: uDelta,
       deltaMs: uDeltaMs,
@@ -1338,9 +1530,10 @@ export function createModifierComputeUpdate(
     packedDataNode: sCD as ShaderNodeObject<Node>,
     passNames: [
       'emit',
+      ...(subBirthEventsNode ? ['sub-birth-events'] : []),
       'simulate',
-      ...(sTrail ? ['trail-history(sample)'] : []),
-      ...fifoNodes.map((f) => (f.trigger === 0 ? 'sub-birth(events)' : 'sub-death(events)')),
+      ...(subDeathEventsNode ? ['sub-death-events'] : []),
+      ...(trailHistoryNode ? ['trail-history'] : []),
     ],
     trailMeta: buffers.trailMeta,
     // Emitter-pose uniforms, refreshed once per frame by the CPU (scalar only).
@@ -1362,10 +1555,16 @@ export function createModifierComputeUpdate(
 
 /** Compute pipeline for one sub-emitter child pool. */
 export type SubEmitterInitPipeline = {
-  /** Consumer node; dispatch it directly after the parent kernels. */
-  initNode: unknown;
+  /** Pass A: FIFO -> spawn commands (+ ring slot allocation). */
+  commandBuildNode: unknown;
+  /** Pass B: spawn commands -> child state (8 bindings, no allocator). */
+  childInitNode: unknown;
   /** 1-invocation pass that zeroes the *other* ping-pong counter. */
   counterClearNode: unknown;
+  /** CPU-owned vec4 command buffer (uploaded once, kernels own it after). */
+  commandBuffer: StorageBufferAttribute;
+  /** Real budgets for every pass this pipeline owns. */
+  passLayouts: PassLayout[];
   passName: string;
   counterClearPassName: string;
   /** Per-frame scalar uniforms. */
@@ -1460,10 +1659,16 @@ export function createSubEmitterInitUpdate(
     Math.max(1, childMax + 1)
   ).toAtomic();
   const cRingMod = float(childMax);
-  // Read-mostly parent pool + the event FIFO (u32 counters + plain f32
-  // payload — no atomic floats).
-  const pPos = storage(parent.position, 'vec4', parentMax);
-  const pVel = storage(parent.velocity, 'vec4', parentMax);
+  void parent; void parentMax; // read through the FIFO payload only
+  // Compact spawn-command buffer (vec4 stream). Command `m` = the child
+  // particle with flat index `m` (event i, slot jj -> m = i*perEvent + jj):
+  //   vec4 1+2m : (ringSlot, eventX, eventY, eventZ)
+  //   vec4 2+2m : (velX, velY, velZ, 0)
+  // vec4 slot 0 is the header (x = live event count written by Pass A).
+  const commandBuffer = new StorageBufferAttribute(
+    new Float32Array(4 * (1 + capacity * perEvent)),
+    4
+  );
   const fifoCounter = storage(
     fifo.counter,
     'uint',
@@ -1474,6 +1679,7 @@ export function createSubEmitterInitUpdate(
     'float',
     Math.max(1, (fifo.payload.array as Float32Array).length)
   );
+  const sCmd = storage(commandBuffer, 'vec4', 1 + capacity * perEvent);
 
   // Child velocity-over-lifetime axes (parity with the main emit kernel).
   const cParseAxis = (
@@ -1507,11 +1713,17 @@ export function createSubEmitterInitUpdate(
   });
   const counterClearNode = compute(counterClearKernel(), 1);
 
-  const kernel = Fn(() => {
+  // ?? Pass A: events -> compact spawn commands (4 storage bindings) ??
+  // fifoCounter + fifoPayload + child allocator + command buffer. Allocates
+  // the ring slots here so Pass B needs no allocator (8-binding budget).
+  const commandBuildKernel = Fn(() => {
     const i = instanceIndex;
     const winBase = uFifoBase.mul(float(windowSize)).toVar();
     const count = float(atomicLoad(fifoCounter.element(uFifoBase))).toVar();
-
+    If(float(i).equal(float(0)), () => {
+      // Header (vec4 slot 0): x = this frame's live event count.
+      sCmd.element(float(0)).assign(vec4(count, float(0), float(0), float(0)));
+    });
     If(float(i).lessThan(count), () => {
       const eb = winBase.add(float(i).mul(float(SUB_EMITTER_EVENT_STRIDE)));
       const eX = fifoPayload.element(eb).toVar();
@@ -1520,13 +1732,6 @@ export function createSubEmitterInitUpdate(
       const vX = fifoPayload.element(eb.add(float(3))).toVar();
       const vY = fifoPayload.element(eb.add(float(4))).toVar();
       const vZ = fifoPayload.element(eb.add(float(5))).toVar();
-
-      // Oracle: startSpeed += |parentVelocity| * inheritVelocity
-      const parentSpeed = sqrt(
-        vX.mul(vX).add(vY.mul(vY)).add(vZ.mul(vZ))
-      ).toVar();
-      const spAdd = parentSpeed.mul(uInherit);
-
       // Unrolled per-event particle loop (particlesPerEvent is a host constant).
       for (let jj = 0; jj < perEvent; jj++) {
         // Ring slot (race-safe, never underflows).
@@ -1534,113 +1739,173 @@ export function createSubEmitterInitUpdate(
         const slot = birthNo
           .sub(floor(birthNo.div(cRingMod)).mul(cRingMod))
           .toVar();
-        {
-          const rBase = float(i).mul(float(16 * perEvent)).add(float(jj * 16));
-          const rnd = (k: number) => rand(uSeed.add(rBase.add(float(k + 0.13))));
-          const rNoise = rnd(0);
-          const rA = rnd(1);
-          const rB = rnd(2);
-          const rC = rnd(3);
-          const rSheet = rnd(5);
-          const rSpeed = rnd(6);
-          const rSize = rnd(7);
-          const rRot = rnd(8);
-          const rOp = rnd(9);
-          const rLife = rnd(10);
-          const rColor = rnd(11);
-          const rRotSpeed = rnd(12);
+        const m = float(i.mul(float(perEvent)).add(float(jj)));
+        sCmd
+          .element(float(1).add(m.mul(float(2))))
+          .assign(vec4(slot, eX, eY, eZ));
+        sCmd
+          .element(float(2).add(m.mul(float(2))))
+          .assign(vec4(vX, vY, vZ, float(0)));
+      }
+    });
+  });
+  const commandBuildNode = compute(commandBuildKernel(), capacity);
 
-          const shE = shapeEmitNodes(
-            {
-              kind: cKind,
-              radius: cRadius,
-              thickness: cThickness,
-              arcDeg: cArc,
-              coneAngleDeg: cAngle,
-              rectRX: cRRX,
-              rectRY: cRRY,
-              rectSX: cRSX,
-              rectSY: cRSY,
-              boxSX: cBSX,
-              boxSY: cBSY,
-              boxSZ: cBSZ,
-              boxFrom: cBF,
-              speedMin: cSpeedMin.add(spAdd),
-              speedMax: cSpeedMax.add(spAdd),
-            },
-            rA,
-            rB,
-            rC,
-            rSpeed
-          );
+  // ?? Pass B: spawn commands -> child state (exactly 8 storage bindings) ??
+  // command buffer + the 7 child pools; no allocator, no FIFO nodes.
+  const childInitKernel = Fn(() => {
+    const i = instanceIndex;
+    const header = sCmd.element(float(0)).toVar();
+    If(float(i).lessThan(header.x.mul(float(perEvent))), () => {
+      const m = float(i);
+      const c0 = sCmd.element(float(1).add(m.mul(float(2)))).toVar();
+      const c1 = sCmd.element(float(2).add(m.mul(float(2)))).toVar();
+      const slot = c0.x;
+      const eX = c0.y;
+      const eY = c0.z;
+      const eZ = c0.w;
+      const vX = c1.x;
+      const vY = c1.y;
+      const vZ = c1.z;
 
-          // Child shape offset in the child's own frame, then the same
-          // emitter-pose rules as the main kernel.
-          const [rx, ry, rz] = quatRotateNodes(
-            shE.px,
-            shE.py,
-            shE.pz,
-            uWrapperQuat
-          );
-          const [rvx, rvy, rvz] = quatRotateNodes(
-            shE.vx,
-            shE.vy,
-            shE.vz,
-            uWrapperQuat
-          );
-          const isWorld = uEmitterPos.w.greaterThan(0.5);
-          const sxf = isWorld.select(uWorldScale.x, float(1.0));
-          const syf = isWorld.select(uWorldScale.y, float(1.0));
-          const szf = isWorld.select(uWorldScale.z, float(1.0));
-          const px = rx.mul(sxf).add(eX);
-          const py = ry.mul(syf).add(eY);
-          const pz = rz.mul(szf).add(eZ);
+      // Oracle: startSpeed += |parentVelocity| * inheritVelocity
+      const parentSpeed = sqrt(
+        vX.mul(vX).add(vY.mul(vY)).add(vZ.mul(vZ))
+      ).toVar();
+      const spAdd = parentSpeed.mul(uInherit);
 
-          const opac = mix(cOpMin, cOpMax, rOp);
-          const clR = mix(cCRR, cCRX, rColor);
-          const clG = mix(cCGR, cCGX, rColor);
-          const clB = mix(cCBR, cCBX, rColor);
-          const slife = mix(cLifeMin, cLifeMax, rLife).mul(float(1000.0));
-          const ssize = mix(cSizeMin, cSizeMax, rSize);
-          const srot = mix(cRotMin, cRotMax, rRot);
-          const startFrame = floor(mix(cFrMin, cFrMax, rSheet)).toVar();
-          // Separate rotationOverLifetime speed (own min/max, oracle parity).
-          const rotSpeed = mix(
-            float(childParams.rotOverLifeMin),
-            float(childParams.rotOverLifeMax),
-            rRotSpeed
-          );
+      {
+        // Identical random stream to the old single-pass kernel:
+        // rBase = (i*perEvent + jj) * 16 = m * 16.
+        const rBase = m.mul(float(16));
+        const rnd = (k: number) => rand(uSeed.add(rBase.add(float(k + 0.13))));
+        const rA = rnd(1);
+        const rB = rnd(2);
+        const rC = rnd(3);
+        const rSheet = rnd(5);
+        const rSpeed = rnd(6);
+        const rSize = rnd(7);
+        const rRot = rnd(8);
+        const rOp = rnd(9);
+        const rLife = rnd(10);
+        const rColor = rnd(11);
+        const rRotSpeed = rnd(12);
 
-          // Stable per-child-particle seed (same contract as the main
-          // emission kernel: startColorsExt.w).
-          const particleSeed = rand(
-            uSeed.add(rBase.add(float(15.73)))
-          );
+        const shE = shapeEmitNodes(
+          {
+            kind: cKind,
+            radius: cRadius,
+            thickness: cThickness,
+            arcDeg: cArc,
+            coneAngleDeg: cAngle,
+            rectRX: cRRX,
+            rectRY: cRRY,
+            rectSX: cRSX,
+            rectSY: cRSY,
+            boxSX: cBSX,
+            boxSY: cBSY,
+            boxSZ: cBSZ,
+            boxFrom: cBF,
+            speedMin: cSpeedMin.add(spAdd),
+            speedMax: cSpeedMax.add(spAdd),
+          },
+          rA,
+          rB,
+          rC,
+          rSpeed
+        );
 
-          cPos.element(slot).assign(vec4(px, py, pz, float(0.0)));
-          cVel.element(slot).assign(vec4(rvx, rvy, rvz, float(0.0)));
-          cCol.element(slot).assign(vec4(clR, clG, clB, opac));
-          cPS.element(slot).assign(
-            vec4(float(0.0), ssize, srot, startFrame)
-          );
-          cSV.element(slot).assign(vec4(slife, ssize, opac, clR));
-          // ext = (colorG, colorB, rotSpeed, particleSeed)
-          cEx.element(slot).assign(
-            vec4(clG, clB, rotSpeed, particleSeed)
-          );
-          // Orbital pivot = rotated child shape offset (oracle parity).
-          cOIA.element(slot).assign(vec4(rx, ry, rz, float(1.0)));
-        }
+        // Child shape offset in the child's own frame, then the same
+        // emitter-pose rules as the main kernel.
+        const [rx, ry, rz] = quatRotateNodes(
+          shE.px,
+          shE.py,
+          shE.pz,
+          uWrapperQuat
+        );
+        const [rvx, rvy, rvz] = quatRotateNodes(
+          shE.vx,
+          shE.vy,
+          shE.vz,
+          uWrapperQuat
+        );
+        const isWorld = uEmitterPos.w.greaterThan(0.5);
+        const sxf = isWorld.select(uWorldScale.x, float(1.0));
+        const syf = isWorld.select(uWorldScale.y, float(1.0));
+        const szf = isWorld.select(uWorldScale.z, float(1.0));
+        const px = rx.mul(sxf).add(eX);
+        const py = ry.mul(syf).add(eY);
+        const pz = rz.mul(szf).add(eZ);
+
+        const opac = mix(cOpMin, cOpMax, rOp);
+        const clR = mix(cCRR, cCRX, rColor);
+        const clG = mix(cCGR, cCGX, rColor);
+        const clB = mix(cCBR, cCBX, rColor);
+        const slife = mix(cLifeMin, cLifeMax, rLife).mul(float(1000.0));
+        const ssize = mix(cSizeMin, cSizeMax, rSize);
+        const srot = mix(cRotMin, cRotMax, rRot);
+        const startFrame = floor(mix(cFrMin, cFrMax, rSheet)).toVar();
+        // Separate rotationOverLifetime speed (own min/max, oracle parity).
+        const rotSpeed = mix(
+          float(childParams.rotOverLifeMin),
+          float(childParams.rotOverLifeMax),
+          rRotSpeed
+        );
+
+        // Stable per-child-particle seed (same contract as the main
+        // emission kernel: startColorsExt.w).
+        const particleSeed = rand(
+          uSeed.add(rBase.add(float(15.73)))
+        );
+
+        cPos.element(slot).assign(vec4(px, py, pz, float(0.0)));
+        cVel.element(slot).assign(vec4(rvx, rvy, rvz, float(0.0)));
+        cCol.element(slot).assign(vec4(clR, clG, clB, opac));
+        cPS.element(slot).assign(
+          vec4(float(0.0), ssize, srot, startFrame)
+        );
+        cSV.element(slot).assign(vec4(slife, ssize, opac, clR));
+        // ext = (colorG, colorB, rotSpeed, particleSeed)
+        cEx.element(slot).assign(
+          vec4(clG, clB, rotSpeed, particleSeed)
+        );
+        // Orbital pivot = rotated child shape offset (oracle parity).
+        cOIA.element(slot).assign(vec4(rx, ry, rz, float(1.0)));
       }
     });
   });
 
-  const initNode = compute(kernel(), capacity);
+  const childInitNode = compute(
+    childInitKernel(),
+    Math.max(1, capacity * perEvent)
+  );
+
+  const initPassLayouts: PassLayout[] = [
+    {
+      name: 'sub-command-build',
+      storageBindings: 4, // fifoCounter, fifoPayload, allocator, commands
+      uniformBindings: 1, // uFifoBase
+    },
+    {
+      // command buffer + the 7 child pools; NO allocator here.
+      name: 'sub-child-init',
+      storageBindings: 8,
+      uniformBindings: 35, // seed/inherit/pose + 30 child shape scalars
+    },
+    {
+      name: 'sub-counter-clear',
+      storageBindings: 1,
+      uniformBindings: 1,
+    },
+  ];
 
   return {
-    initNode,
+    commandBuildNode,
+    childInitNode,
     counterClearNode,
-    passName: fifo.trigger === 0 ? 'sub-birth-init' : 'sub-death-init',
+    commandBuffer,
+    passLayouts: initPassLayouts,
+    passName: fifo.trigger === 0 ? 'sub-birth' : 'sub-death',
     counterClearPassName: 'fifo-counter-clear',
     uniforms: {
       seed: uSeed,
@@ -1658,6 +1923,8 @@ export function createSubEmitterInitUpdate(
 /** Compute pipeline that expands the trail history into ribbon vertices. */
 export type TrailRibbonPipeline = {
   ribbonNode: unknown;
+  /** Real budget for the single ribbon expansion pass. */
+  passLayouts: PassLayout[];
   uniforms: { nowMs: ShaderNodeObject<Node> };
   buffers: Record<string, StorageBufferAttribute>;
 };
@@ -1763,7 +2030,7 @@ export function createTrailRibbonUpdate(
         // Age expiry (trail.maxTime) and unused-slot masking.
         const inRange = s.lessThan(count);
         const ageOk = desc.maxTime > 0
-          ? uNowMs.sub(sample.w).lessOrEqual(float(desc.maxTime))
+          ? uNowMs.sub(sample.w).lessThanEqual(float(desc.maxTime))
           : inRange;
         const alive = inRange.and(ageOk);
         const hw = alive.select(halfWidthBase.mul(wScale), float(0));
@@ -1797,6 +2064,10 @@ export function createTrailRibbonUpdate(
 
   return {
     ribbonNode,
+    // 4 ribbon streams + history + meta + particle color = 7 storage bindings.
+    passLayouts: [
+      { name: 'trail-ribbon', storageBindings: 7, uniformBindings: 2 },
+    ],
     uniforms: { nowMs: uNowMs },
     buffers: {
       position: desc.position,
