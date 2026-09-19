@@ -332,8 +332,8 @@ Key: `useEffect` for create/dispose, `useFrame` for per-frame updates, `system.u
 
 ## Links
 
-- Repository: https://github.com/NewKrok/three-particles
-- API Docs: https://newkrok.github.io/three-particles/api/
-- Visual Editor: https://github.com/NewKrok/three-particles-editor
-- Editor Demo: https://newkrok.com/three-particles-editor/index.html
-- Full LLM Reference: https://github.com/NewKrok/three-particles/blob/master/llms-full.txt
+- Repository: https://github.com/cyberluke/three-particles
+- API docs: shipped TypeScript definitions (`dist/index.d.ts`, `webgpu.d.ts`)
+- Visual Editor: https://github.com/cyberluke/three-particles-editor
+- Editor: `@cyberluke/three-particles-editor`
+- Full LLM reference: `llms-full.txt` included in the npm package.
