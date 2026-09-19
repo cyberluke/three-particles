@@ -1944,6 +1944,10 @@ export type ParticleSystemInstance = {
   geometry?: THREE.BufferGeometry | THREE.InstancedBufferGeometry;
   /** Chosen renderer type; used to derive `instanceCount` behaviour after `updateConfig`. */
   rrType?: "POINTS" | "INSTANCED" | "MESH" | "TRAIL";
+  /** Original `renderer.rendererType` from the config (§2). */
+  requestedRendererType?: "POINTS" | "INSTANCED" | "MESH" | "TRAIL";
+  /** Canonical effective GPU renderer class after POINTS resolution (§2). */
+  effectiveRendererType?: "POINTS" | "INSTANCED" | "MESH" | "TRAIL";
   /** Cached TSL shared uniform table. */
   sharedUniforms?: { [k: string]: { value: unknown } };
   /**
@@ -1956,6 +1960,8 @@ export type ParticleSystemInstance = {
   /** Per-system sub-emitter child kernels + their own scalar state. */
   subEntries?: {
     fifo: { capacity: number; windowSize: number };
+    requestedRendererType?: "POINTS" | "INSTANCED" | "MESH" | "TRAIL";
+    effectiveRendererType?: "POINTS" | "INSTANCED" | "MESH" | "TRAIL";
     pipeline: Record<string, any> | undefined;
     init: {
       commandBuildNode: unknown;

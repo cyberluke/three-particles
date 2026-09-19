@@ -222,6 +222,92 @@ export const SUB_EMITTER_EVENT_STRIDE = 6;
 export const subEmitterWindowSize = (capacity: number): number =>
   SUB_EMITTER_EVENT_STRIDE * Math.max(1, capacity);
 
+// ─── u32 PCG birth hashing (§1: integer-first, uint-first) ────────────────
+// Same arithmetic as Three.js r186 `nodes/math/Hash.js` (`hash()`), but
+// implemented locally so every intermediate stays in u32; the final stage is
+// the ONLY `uintBitsToFloat`-free f32 conversion. three's float `rand()` is
+// intentionally not used for the primary birth entropy.
+
+/** Raw uint PCG word (u32 chain: mul/add/shift/xor, no f32 intermediates). */
+// r186 detail: `uint()` / `.toUint()` emit an empty snippet for atomic-result
+// nodes (their nodeType is already 'uint'), so pass those through untouched.
+const asU32 = (n: ShaderNodeObject<Node>): ShaderNodeObject<Node> =>
+  n.nodeType === 'uint' ? n : n.toUint();
+
+export const pcgRawU32 = (
+  seedU: ShaderNodeObject<Node>
+): ShaderNodeObject<Node> => {
+  const stateU = asU32(seedU).mul(tuint(747796405)).add(tuint(2891336453));
+  const wordU = stateU
+    .shiftRight(stateU.shiftRight(tuint(28)).add(tuint(4)))
+    .bitXor(stateU)
+    .mul(tuint(277803737));
+  return wordU.shiftRight(tuint(22)).bitXor(wordU);
+};
+
+/** PCG hash in [0,1): integer mixing first, single f32 conversion at the end. */
+export const pcg01 = (seedU: ShaderNodeObject<Node>): ShaderNodeObject<Node> =>
+  pcgRawU32(seedU).toFloat().mul(float(1 / 4294967296));
+
+/** Integer channel mix (all u32): birthNo*Knuth_odd ^ systemSeed ^ channel. */
+export const mixBirthSeed = (
+  birthNoU: ShaderNodeObject<Node>,
+  systemSeedU: ShaderNodeObject<Node>,
+  channelU: ShaderNodeObject<Node>
+): ShaderNodeObject<Node> =>
+  asU32(birthNoU)
+    .mul(tuint(2654435761))
+    .bitXor(asU32(systemSeedU))
+    .bitXor(asU32(channelU));
+
+/** Independent random channel from (birth number, system seed, channel id). */
+export const randomChannel = (
+  birthNoU: ShaderNodeObject<Node>,
+  systemSeedU: ShaderNodeObject<Node>,
+  channelU: ShaderNodeObject<Node>
+): ShaderNodeObject<Node> => pcg01(mixBirthSeed(birthNoU, systemSeedU, channelU));
+
+/** 24-bit exact-in-f32 stable seed stored in `startColorsExt.w`. */
+export const stableSeedU32 = (
+  birthNoU: ShaderNodeObject<Node>,
+  systemSeedU: ShaderNodeObject<Node>
+): ShaderNodeObject<Node> =>
+  pcgRawU32(mixBirthSeed(birthNoU, systemSeedU, CH.STABLE_SEED)).bitAnd(
+    tuint(0x00ffffff)
+  );
+
+/** Stable seed recovered from `startColorsExt.w` (exact integer round-trip). */
+export const stableSeedFromExt = (
+  extW: ShaderNodeObject<Node>
+): ShaderNodeObject<Node> => extW.toUint();
+
+/** One-time host seed for a pipeline (§5): u32 value written ONCE at creation. */
+export const nextSystemSeed = (): number =>
+  Math.floor(Math.random() * 0x100000000) >>> 0;
+
+/** Dedicated uint channel constants (never reuse one id inside a pass). */
+export const CH = {
+  SHAPE_A: tuint(1),
+  SHAPE_B: tuint(2),
+  SHAPE_C: tuint(3),
+  START_FRAME: tuint(4),
+  SPEED: tuint(5),
+  SIZE: tuint(6),
+  ROTATION: tuint(7),
+  OPACITY: tuint(8),
+  LIFETIME: tuint(9),
+  COLOR: tuint(10),
+  ROTOL: tuint(11),
+  STABLE_SEED: tuint(12),
+  LIN_X: tuint(13),
+  LIN_Y: tuint(14),
+  LIN_Z: tuint(15),
+  ORB_X: tuint(16),
+  ORB_Y: tuint(17),
+  ORB_Z: tuint(18),
+  NOISE_PHASE: tuint(19),
+} as const;
+
 /**
  * Allocates the FIFO buffers for one sub-emitter channel: an integer
  * `atomic<u32>` counter pair (ping-pong) plus two ordinary f32 payload
@@ -715,7 +801,10 @@ export function createModifierComputeUpdate(
   const uDeltaMs = uniform(float(0));
   const uNowMs = uniform(float(0));
   const uGravityVelocity = uniform(new Vector3(0, 0, 0));
-  const uSeed = uniform(float(0));
+  // One-time system seed (§5): u32, written ONCE at pipeline creation, never
+  // per frame. All birth entropy is derived from it by integer channel mixes.
+  const uSystemSeed = uniform(nextSystemSeed(), 'uint');
+  const uSeed = uSystemSeed;
   // Declared u32 so it matches instanceIndex exactly in the WGSL guard and in
   // If(i.lessThan(uEmitCount), ...); the CPU writes the integer count per frame.
   const uEmitCount = uniform(0, 'uint');
@@ -794,6 +883,8 @@ export function createModifierComputeUpdate(
   // exactly 8 storage buffers for the base pipeline (no optional binding 9).
   const allocatorCount = maxParticles + 1;
   const ringMod = float(maxParticles);
+  // u32 ring modulus (§4): birthNo and slot modulo stay native integers.
+  const ringModU = tuint(maxParticles);
   const sAllocator     = storage(buffers.allocator, 'uint', Math.max(1, allocatorCount)).toAtomic();
 
   // ?? Read-mostly f32 tables: uniform buffer binding, non-atomic ??
@@ -950,7 +1041,7 @@ export function createModifierComputeUpdate(
     a: AxisSpec,
     lifePct: ShaderNodeObject<Node>,
     particleSeed: ShaderNodeObject<Node>,
-    salt: number
+    salt: ShaderNodeObject<Node>
   ): ShaderNodeObject<Node> => {
     if (a.ci >= 0) {
       return lookupCurve({
@@ -964,7 +1055,7 @@ export function createModifierComputeUpdate(
       return mix(
         mn,
         mx,
-        rand(particleSeed.add(float(salt)))
+        pcg01(particleSeed.toUint().mul(tuint(2654435761)).bitXor(salt))
       );
     }
 
@@ -985,26 +1076,24 @@ export function createModifierComputeUpdate(
     // Explicit count guard: the host dispatches max(1, emitCount) invocations, so the
     // kernel itself must skip the extra one when emitCount === 0.
     If(i.lessThan(uEmitCount), () => {
-      // Race-safe ring allocation (never underflows): slot = birthNo mod N.
-      const birthNo = float(atomicAdd(sAllocator.element(0), tuint(1))).toVar();
-      const slotIdx = birthNo
-        .sub(floor(birthNo.div(ringMod)).mul(ringMod))
-        .toVar();
-      // 13 independent randoms per particle (stride 16 keeps them unique;
-      // `rand` hashes each vec4 component separately).
-      const base2 = float(i).mul(float(16.0));
-      const rnd = (k: number) => rand(uSeed.add(base2.add(float(k + 0.13))));
-      const rA = rnd(1);
-      const rB = rnd(2);
-      const rC = rnd(3);
-      const rSheet = rnd(5);
-      const rSpeed = rnd(6);
-      const rSize = rnd(7);
-      const rRot = rnd(8);
-      const rOp = rnd(9);
-      const rLife = rnd(10);
-      const rColor = rnd(11);
-      const rRotSpeed = rnd(12);
+      // Race-safe ring allocation (never underflows), all in u32 (§4):
+      // birthNo and the slot modulo use the native integer `%`.
+      const birthNo = atomicAdd(sAllocator.element(0), tuint(1)).toVar();
+      const slotIdx = birthNo.mod(ringModU).toVar();
+      // Independent random channels: mix(birthNo, systemSeed, channelId) in
+      // u32, PCG once per channel, single f32 conversion at the end.
+      const rcA = randomChannel(birthNo, uSystemSeed, CH.SHAPE_A);
+      const rcB = randomChannel(birthNo, uSystemSeed, CH.SHAPE_B);
+      const rcC = randomChannel(birthNo, uSystemSeed, CH.SHAPE_C);
+      const rcSpeed = randomChannel(birthNo, uSystemSeed, CH.SPEED);
+      const rcSize = randomChannel(birthNo, uSystemSeed, CH.SIZE);
+      const rcRot = randomChannel(birthNo, uSystemSeed, CH.ROTATION);
+      const rcOpacity = randomChannel(birthNo, uSystemSeed, CH.OPACITY);
+      // (shape kind A/B/C + speed, then sheet/size/rot/opacity/life/color/rotol)
+      const rcSheet = randomChannel(birthNo, uSystemSeed, CH.START_FRAME);
+      const rcLife = randomChannel(birthNo, uSystemSeed, CH.LIFETIME);
+      const rcColor = randomChannel(birthNo, uSystemSeed, CH.COLOR);
+      const rcRotOl = randomChannel(birthNo, uSystemSeed, CH.ROTOL);
 
       // ?? Shape emission (all 5 kinds, oracle math) in the emitter's local frame.
       const shE = shapeEmitNodes(
@@ -1025,10 +1114,10 @@ export function createModifierComputeUpdate(
           speedMin: uSpeedMin,
           speedMax: uSpeedMax,
         },
-        rA,
-        rB,
-        rC,
-        rSpeed
+        rcA,
+        rcB,
+        rcC,
+        rcSpeed
       );
       const pxL = shE.px;
       const pyL = shE.py;
@@ -1053,26 +1142,22 @@ export function createModifierComputeUpdate(
       const oy = rotPY.mul(syf).add(uEmitterPos.y);
       const oz = rotPZ.mul(szf).add(uEmitterPos.z);
 
-      // Start values (fresh randoms so no field aliases another).
-      const opac = mix(uOpMin, uOpMax, rOp);
-      const clR = mix(uCRR, uCRX, rColor);
-      const clG = mix(uCGR, uCGX, rColor);
-      const clB = mix(uCBR, uCBX, rColor);
-      const slife = mix(uLifeMin, uLifeMax, rLife).mul(float(1000.0));
-      const ssize = mix(uSizeMin, uSizeMax, rSize);
-      const srot = mix(uRotMin, uRotMax, rRot);
-      const startFrame = floor(mix(uFrMin, uFrMax, rSheet)).toVar();
+      // Start values (dedicated channels so no field aliases another).
+      const opac = mix(uOpMin, uOpMax, rcOpacity);
+      const clR = mix(uCRR, uCRX, rcColor);
+      const clG = mix(uCGR, uCGX, rcColor);
+      const clB = mix(uCBR, uCBX, rcColor);
+      const slife = mix(uLifeMin, uLifeMax, rcLife).mul(float(1000.0));
+      const ssize = mix(uSizeMin, uSizeMax, rcSize);
+      const srot = mix(uRotMin, uRotMax, rcRot);
+      const startFrame = floor(mix(uFrMin, uFrMax, rcSheet)).toVar();
       // Separate per-particle rotationOverLifetime speed (oracle keeps its own
       // min/max, distinct from startRotation's rotMin/rotMax).
-      const rotSpeed = mix(uRotOLMin, uRotOLMax, rRotSpeed);
-      // Stable per-particle seed, created ONCE at birth and immutable for
-      // the particle lifetime. All six non-curve velocity axes and the noise
-      // phase are derived from it by the simulation pass (fixed salts).
-      const particleSeed = rand(
-        uSeed.add(
-          float(i).mul(float(16.0)).add(float(15.73))
-        )
-      );
+      const rotSpeed = mix(uRotOLMin, uRotOLMax, rcRotOl);
+      // 24-bit stable per-particle seed (§8): created ONCE at birth via the
+      // RAW PCG mix (& 0xFFFFFF is exact in f32) and immutable for the whole
+      // lifetime. sim derives every non-curve axis + noise phase from it.
+      const stableSeedU = stableSeedU32(birthNo, uSystemSeed);
 
       sPos.element(slotIdx).assign(vec4(ox, oy, oz, float(0.0)));
       sVel.element(slotIdx).assign(vec4(rotVX, rotVY, rotVZ, float(0.0)));
@@ -1081,8 +1166,10 @@ export function createModifierComputeUpdate(
       sPS.element(slotIdx).assign(vec4(float(0.0), ssize, srot, startFrame));
       // startValues = (startLife, size, opacity, colorR)
       sSV.element(slotIdx).assign(vec4(slife, ssize, opac, clR));
-      // ext = (colorG, colorB, rotSpeed, particleSeed)
-      sEx.element(slotIdx).assign(vec4(clG, clB, rotSpeed, particleSeed));
+      // ext = (colorG, colorB, rotSpeed, stableSeed 0..0xFFFFFF)
+      sEx.element(slotIdx).assign(
+        vec4(clG, clB, rotSpeed, stableSeedU.toFloat())
+      );
       // Orbital pivot = rotated shape offset (oracle positionOffset), w=1.
       sOIA.element(slotIdx).assign(vec4(rotPX, rotPY, rotPZ, float(1.0)));
 
@@ -1143,9 +1230,9 @@ export function createModifierComputeUpdate(
         // birth seed in `startColorsExt.w` (constant direct, range via a
         // fixed salt). position.w / velocity.w are plain padding 0.
         if (flags.linearVelocity) {
-          const lvx = simAxis(linAxes[0], lifePct, ex.w, 11.17);
-          const lvy = simAxis(linAxes[1], lifePct, ex.w, 23.41);
-          const lvz = simAxis(linAxes[2], lifePct, ex.w, 37.73);
+          const lvx = simAxis(linAxes[0], lifePct, stableSeedFromExt(ex.w), CH.LIN_X);
+          const lvy = simAxis(linAxes[1], lifePct, stableSeedFromExt(ex.w), CH.LIN_Y);
+          const lvz = simAxis(linAxes[2], lifePct, stableSeedFromExt(ex.w), CH.LIN_Z);
           pos.assign(pos.add(vec3(lvx, lvy, lvz).mul(uDelta)));
         }
         if (flags.orbitalVelocity) {
@@ -1154,9 +1241,9 @@ export function createModifierComputeUpdate(
           // stored in oia.xyz). Axis speeds derive from the birth seed.
           const offset = vec3(oiaVec.x, oiaVec.y, oiaVec.z).toVar();
           pos.assign(pos.sub(offset));
-          const oX = simAxis(orbAxes[0], lifePct, ex.w, 51.19);
-          const oY = simAxis(orbAxes[1], lifePct, ex.w, 67.31);
-          const oZ = simAxis(orbAxes[2], lifePct, ex.w, 83.47);
+          const oX = simAxis(orbAxes[0], lifePct, stableSeedFromExt(ex.w), CH.ORB_X);
+          const oY = simAxis(orbAxes[1], lifePct, stableSeedFromExt(ex.w), CH.ORB_Y);
+          const oZ = simAxis(orbAxes[2], lifePct, stableSeedFromExt(ex.w), CH.ORB_Z);
           // Oracle: Euler(speedX*dt, speedZ*dt, speedY*dt) with order 'XYZ' —
           // intrinsic XYZ. Its matrix is Rx·Ry·Rz, so the vector product
           // applies Z FIRST, then Y, then X (extrinsic Z→Y→X). Keep the
@@ -1218,7 +1305,12 @@ export function createModifierComputeUpdate(
         // comes from the STABLE birth seed (never the frame seed).
         if (flags.noise) {
           const noiseOffset = shapeParams.noiseUseRandomOffset
-            ? rand(ex.w.add(float(97.13))).mul(float(100.0))
+            ? pcg01(
+                stableSeedFromExt(ex.w)
+                  .toUint()
+                  .mul(tuint(2654435761))
+                  .bitXor(CH.NOISE_PHASE)
+              ).mul(float(100.0))
             : float(0.0);
           const np = lifePct
             .add(noiseOffset)
@@ -1351,14 +1443,9 @@ export function createModifierComputeUpdate(
     const subBirthKernel = Fn(() => {
       const i = instanceIndex;
       If(i.lessThan(uEmitCount), () => {
-        const counterAfter = float(atomicLoad(sAllocator.element(0))).toVar();
-        const birthNo = counterAfter
-          .sub(float(uEmitCount))
-          .add(float(i))
-          .toVar();
-        const slot = birthNo
-          .sub(floor(birthNo.div(ringMod)).mul(ringMod))
-          .toVar();
+        const counterAfter = atomicLoad(sAllocator.element(0)).toVar();
+        const birthNo = counterAfter.sub(uEmitCount).add(i).toVar();
+        const slot = birthNo.mod(ringModU).toVar();
         const p = sPos.element(slot).toVar();
         const v = sVel.element(slot).toVar();
         for (const f of birthFifos) {
@@ -1604,9 +1691,11 @@ export function createSubEmitterInitUpdate(
   const perEvent = Math.max(1, particlesPerEvent);
   const windowSize = subEmitterWindowSize(capacity);
 
-  const uSeed = uniform(float(0));
+  // One-time system seed for this child init pipeline (§5): u32, written ONCE.
+  const uSystemSeed = uniform(nextSystemSeed(), 'uint');
+  const uSeed = uSystemSeed;
   const uInherit = uniform(float(Math.max(0, inheritVelocity)));
-  const uFifoBase = uniform(float(0));
+  const uFifoBase = uniform(float(0), 'uint');
   const uWrapperQuat = uniform(new Vector4(0, 0, 0, 1));
   const uEmitterPos = uniform(new Vector4(0, 0, 0, 0));
   const uWorldScale = uniform(new Vector3(1, 1, 1));
@@ -1659,6 +1748,8 @@ export function createSubEmitterInitUpdate(
     Math.max(1, childMax + 1)
   ).toAtomic();
   const cRingMod = float(childMax);
+  // Uint ring modulus for the integer slot modulo in Pass A (§4).
+  const cRingModU = tuint(childMax);
   void parent; void parentMax; // read through the FIFO payload only
   // Compact spawn-command buffer (vec4 stream). Command `m` = the child
   // particle with flat index `m` (event i, slot jj -> m = i*perEvent + jj):
@@ -1734,15 +1825,13 @@ export function createSubEmitterInitUpdate(
       const vZ = fifoPayload.element(eb.add(float(5))).toVar();
       // Unrolled per-event particle loop (particlesPerEvent is a host constant).
       for (let jj = 0; jj < perEvent; jj++) {
-        // Ring slot (race-safe, never underflows).
-        const birthNo = float(atomicAdd(cAlloc.element(0), tuint(1))).toVar();
-        const slot = birthNo
-          .sub(floor(birthNo.div(cRingMod)).mul(cRingMod))
-          .toVar();
+        // Ring slot: uint modulo with the native integer `%` (§4).
+        const birthNo = atomicAdd(cAlloc.element(0), tuint(1)).toVar();
+        const slot = birthNo.mod(cRingModU).toVar();
         const m = float(i.mul(float(perEvent)).add(float(jj)));
         sCmd
           .element(float(1).add(m.mul(float(2))))
-          .assign(vec4(slot, eX, eY, eZ));
+          .assign(vec4(slot.toFloat(), eX, eY, eZ));
         sCmd
           .element(float(2).add(m.mul(float(2))))
           .assign(vec4(vX, vY, vZ, float(0)));
@@ -1758,6 +1847,9 @@ export function createSubEmitterInitUpdate(
     const header = sCmd.element(float(0)).toVar();
     If(float(i).lessThan(header.x.mul(float(perEvent))), () => {
       const m = float(i);
+      // uint index for the integer channel mixes (§8).
+      // `i` (instanceIndex) is already 'uint' in r186 — no extra conversion.
+      const mU = i;
       const c0 = sCmd.element(float(1).add(m.mul(float(2)))).toVar();
       const c1 = sCmd.element(float(2).add(m.mul(float(2)))).toVar();
       const slot = c0.x;
@@ -1775,21 +1867,19 @@ export function createSubEmitterInitUpdate(
       const spAdd = parentSpeed.mul(uInherit);
 
       {
-        // Identical random stream to the old single-pass kernel:
-        // rBase = (i*perEvent + jj) * 16 = m * 16.
-        const rBase = m.mul(float(16));
-        const rnd = (k: number) => rand(uSeed.add(rBase.add(float(k + 0.13))));
-        const rA = rnd(1);
-        const rB = rnd(2);
-        const rC = rnd(3);
-        const rSheet = rnd(5);
-        const rSpeed = rnd(6);
-        const rSize = rnd(7);
-        const rRot = rnd(8);
-        const rOp = rnd(9);
-        const rLife = rnd(10);
-        const rColor = rnd(11);
-        const rRotSpeed = rnd(12);
+        // Integer channel mixes per child particle `m` (flat command index):
+        // one dedicated channel id + one PCG draw each (u32, uint-first).
+        const rcA = pcg01(mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.SHAPE_A));
+        const rcB = pcg01(mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.SHAPE_B));
+        const rcC = pcg01(mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.SHAPE_C));
+        const rcSpeed = pcg01(mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.SPEED));
+        const rcSize = pcg01(mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.SIZE));
+        const rcRot = pcg01(mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.ROTATION));
+        const rcOpacity = pcg01(mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.OPACITY));
+        const rcSheet = pcg01(mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.START_FRAME));
+        const rcLife = pcg01(mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.LIFETIME));
+        const rcColor = pcg01(mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.COLOR));
+        const rcRotOl = pcg01(mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.ROTOL));
 
         const shE = shapeEmitNodes(
           {
@@ -1809,10 +1899,10 @@ export function createSubEmitterInitUpdate(
             speedMin: cSpeedMin.add(spAdd),
             speedMax: cSpeedMax.add(spAdd),
           },
-          rA,
-          rB,
-          rC,
-          rSpeed
+          rcA,
+          rcB,
+          rcC,
+          rcSpeed
         );
 
         // Child shape offset in the child's own frame, then the same
@@ -1837,26 +1927,28 @@ export function createSubEmitterInitUpdate(
         const py = ry.mul(syf).add(eY);
         const pz = rz.mul(szf).add(eZ);
 
-        const opac = mix(cOpMin, cOpMax, rOp);
-        const clR = mix(cCRR, cCRX, rColor);
-        const clG = mix(cCGR, cCGX, rColor);
-        const clB = mix(cCBR, cCBX, rColor);
-        const slife = mix(cLifeMin, cLifeMax, rLife).mul(float(1000.0));
-        const ssize = mix(cSizeMin, cSizeMax, rSize);
-        const srot = mix(cRotMin, cRotMax, rRot);
-        const startFrame = floor(mix(cFrMin, cFrMax, rSheet)).toVar();
+        const opac = mix(cOpMin, cOpMax, rcOpacity);
+        const clR = mix(cCRR, cCRX, rcColor);
+        const clG = mix(cCGR, cCGX, rcColor);
+        const clB = mix(cCBR, cCBX, rcColor);
+        const slife = mix(cLifeMin, cLifeMax, rcLife).mul(float(1000.0));
+        const ssize = mix(cSizeMin, cSizeMax, rcSize);
+        const srot = mix(cRotMin, cRotMax, rcRot);
+        const startFrame = floor(mix(cFrMin, cFrMax, rcSheet)).toVar();
         // Separate rotationOverLifetime speed (own min/max, oracle parity).
         const rotSpeed = mix(
           float(childParams.rotOverLifeMin),
           float(childParams.rotOverLifeMax),
-          rRotSpeed
+          rcRotOl
         );
 
-        // Stable per-child-particle seed (same contract as the main
-        // emission kernel: startColorsExt.w).
-        const particleSeed = rand(
-          uSeed.add(rBase.add(float(15.73)))
-        );
+        // 24-bit stable per-child-particle seed (§8), exact in f32, stored
+        // in startColorsExt.w; the child sim recovers it with `toUint()`.
+        const stableSeedU = pcgRawU32(
+          mixBirthSeed(mU, uSystemSeed, CH.STABLE_SEED)
+        )
+          .bitAnd(tuint(0x00ffffff))
+          .toVar();
 
         cPos.element(slot).assign(vec4(px, py, pz, float(0.0)));
         cVel.element(slot).assign(vec4(rvx, rvy, rvz, float(0.0)));
@@ -1865,9 +1957,9 @@ export function createSubEmitterInitUpdate(
           vec4(float(0.0), ssize, srot, startFrame)
         );
         cSV.element(slot).assign(vec4(slife, ssize, opac, clR));
-        // ext = (colorG, colorB, rotSpeed, particleSeed)
+        // ext = (colorG, colorB, rotSpeed, stableSeed 0..0xFFFFFF)
         cEx.element(slot).assign(
-          vec4(clG, clB, rotSpeed, particleSeed)
+          vec4(clG, clB, rotSpeed, stableSeedU.toFloat())
         );
         // Orbital pivot = rotated child shape offset (oracle parity).
         cOIA.element(slot).assign(vec4(rx, ry, rz, float(1.0)));

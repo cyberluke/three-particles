@@ -1,6 +1,22 @@
 import { registerTSLMaterialFactory } from '@cyberluke/three-particles';
+import {
+  assertNamed,
+  normalizeVector2Value,
+  normalizeTextureValue,
+  normalizeDepthTextureValue,
+  normalizeBackgroundToVector3,
+  resolveWebGPUEffectiveRendererType,
+} from '@cyberluke/three-particles';
 import { encodeCollisionPlanesForGPU } from './js/effects/three-particles/webgpu/compute-collision-planes.js';
 import { encodeForceFieldsForGPU } from './js/effects/three-particles/webgpu/compute-force-fields.js';
+import {
+  pcgRawU32,
+  pcg01,
+  mixBirthSeed,
+  randomChannel,
+  nextSystemSeed,
+  CH,
+} from './js/effects/three-particles/webgpu/compute-modifiers.js';
 import {
   createTSLParticleMaterial,
   createTSLTrailMaterial,
@@ -26,6 +42,18 @@ export {
   subEmitterWindowSize,
   encodeForceFieldsForGPU,
   encodeCollisionPlanesForGPU,
+  pcgRawU32,
+  pcg01,
+  mixBirthSeed,
+  randomChannel,
+  nextSystemSeed,
+  CH,
+  assertNamed,
+  normalizeVector2Value,
+  normalizeTextureValue,
+  normalizeDepthTextureValue,
+  normalizeBackgroundToVector3,
+  resolveWebGPUEffectiveRendererType,
 };
 
 /**

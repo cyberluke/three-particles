@@ -55,6 +55,40 @@ import {
   createDefaultParticleTexture,
 } from './three-particles-utils.js';
 
+/**
+ * `resolveWebGPUEffectiveRendererType` — canonical mapping between the four
+ * requested `rendererType` values and the four effective GPU render paths
+ * (native runtime classes in parentheses).
+ *
+ *   requested POINTS    -> effective POINTS   (billboard quad + `THREE.Points`).
+ *     POINTS IS a supported runtime class in this build: the billboard quad
+ *     is drawn as a non-instanced `THREE.Points`; the TSL point material uses
+ *     `pointUV` (r186 provides it for `PointsNodeMaterial`).
+ *   requested INSTANCED -> effective INSTANCED (quad/box + `THREE.Mesh` with
+ *     `InstancedBufferGeometry`).
+ *   requested TRAIL     -> effective TRAIL    (ribbon strip + `THREE.Mesh`).
+ *   requested MESH      -> effective MESH     (mesh/reused geometry +
+ *     `THREE.Mesh`).
+ *
+ * A missing / unknown request resolves to POINTS because `POINTS` is the
+ * default value of `renderer.rendererType` in the merged default config.
+ */
+export function resolveWebGPUEffectiveRendererType(
+  requested: RendererType | string | undefined
+): RendererType {
+  switch (requested) {
+    case RendererType.INSTANCED:
+      return RendererType.INSTANCED;
+    case RendererType.TRAIL:
+      return RendererType.TRAIL;
+    case RendererType.MESH:
+      return RendererType.MESH;
+    case RendererType.POINTS:
+    default:
+      return RendererType.POINTS;
+  }
+}
+
 import {
   CollisionPlaneConfig,
   Constant,
@@ -268,6 +302,111 @@ const _lastWorldPositionSnapshot = new THREE.Vector3();
 const _localForceFieldPos = new THREE.Vector3();
 const _localForceFieldDir = new THREE.Vector3();
 const _inverseQuat = new THREE.Quaternion();
+
+// ─── §10 TSL-uniform boundary normalization (single source of truth) ──────
+// The TSL material factory is the only real material path in the v4 GPU-only
+// build, so every value crossing into it must already be exact. These module
+// helpers implement the canonical shapes; the first mismatch throws one named
+// error and construction stops immediately (no empty / vague messages).
+
+/** Throw the first fatal, named (never empty) normalization error. */
+export const assertNamed = (cond: unknown, message: string): void => {
+  if (!cond) {
+    throw new Error(`three-particles: ${message}`);
+  }
+};
+
+/**
+ * Canonical `Vector2` input: `THREE.Vector2 | [x,y] | [u,v] | {x,y} | {u,v}`
+ * (or undefined/null => fallback). Anything else throws a labeled error.
+ */
+export const normalizeVector2Value = (
+  raw: unknown,
+  fallback: [number, number],
+  label: string
+): THREE.Vector2 => {
+  if (raw === undefined || raw === null) {
+    return new THREE.Vector2(fallback[0], fallback[1]);
+  }
+  if (raw instanceof THREE.Vector2) return raw;
+  let n1: number | undefined;
+  let n2: number | undefined;
+  if (Array.isArray(raw)) {
+    n1 = Number((raw as number[])[0]);
+    n2 = Number((raw as number[])[1]);
+  } else if (typeof raw === "object") {
+    const o = raw as { x?: number; y?: number; u?: number; v?: number };
+    n1 = o.x !== undefined ? Number(o.x) : o.u !== undefined ? Number(o.u) : undefined;
+    n2 = o.y !== undefined ? Number(o.y) : o.v !== undefined ? Number(o.v) : undefined;
+  }
+  assertNamed(
+    n1 !== undefined && n2 !== undefined && Number.isFinite(n1) && Number.isFinite(n2),
+    `${label} must be one of: Vector2, [x,y], [u,v], {x,y} or {u,v}`
+  );
+  return new THREE.Vector2(n1 as number, n2 as number);
+};
+
+/** Canonical map slot: `null` (no map -> white dummy in the material) or a
+ *  texture object with `.image`. Anything else throws a labeled error. */
+export const normalizeTextureValue = (
+  raw: unknown,
+  label: string
+): THREE.Texture | null => {
+  if (raw === undefined || raw === null) return null;
+  assertNamed(
+    typeof raw === "object" && "image" in (raw as object),
+    `${label} must be null or a texture object with .image (got ${String(raw)})`
+  );
+  return raw as THREE.Texture;
+};
+
+/** `null` (absent) or a texture object with `.image` — nothing else. */
+export const normalizeDepthTextureValue = (raw: unknown, label: string): THREE.Texture | null => {
+  if (raw === undefined || raw === null) return null;
+  assertNamed(
+    typeof raw === "object" && "image" in (raw as object),
+    `${label} must be a texture object with .image when set (got ${String(raw)})`
+  );
+  return raw as THREE.Texture;
+};
+
+/**
+ * Background color from serialized data: `{r,g,b,a?}` object, `0x` number,
+ * `#rgb`/`#rrggbb` string, or `[r,g,b]` array -> `Vector3`.
+ */
+export const normalizeBackgroundToVector3 = (
+  raw: unknown,
+  label: string
+): THREE.Vector3 => {
+  if (raw === undefined || raw === null) return new THREE.Vector3(1, 1, 1);
+  if (typeof raw === "number") {
+    const c = new THREE.Color(raw);
+    return new THREE.Vector3(c.r, c.g, c.b);
+  }
+  if (typeof raw === "string") {
+    const s = raw.trim();
+    const c = new THREE.Color(s.startsWith("#") ? s : `#${s}`);
+    assertNamed(
+      Number.isFinite(c.r) && Number.isFinite(c.g) && Number.isFinite(c.b),
+      `${label} is not a valid hex color string`
+    );
+    return new THREE.Vector3(c.r, c.g, c.b);
+  }
+  if (Array.isArray(raw)) {
+    const [r, g, b] = raw as number[];
+    assertNamed(
+      Number.isFinite(r) && Number.isFinite(g) && Number.isFinite(b),
+      `${label} array must contain three finite numbers`
+    );
+    return new THREE.Vector3(r, g, b);
+  }
+  const o = raw as { r?: number; g?: number; b?: number };
+  assertNamed(
+    Number.isFinite(Number(o.r)) && Number.isFinite(Number(o.g)) && Number.isFinite(Number(o.b)),
+    `${label} object must provide finite r/g/b`
+  );
+  return new THREE.Vector3(Number(o.r), Number(o.g), Number(o.b));
+};
 
 /**
  * Compares two typed-array slices for value equality.
@@ -869,8 +1008,20 @@ export const createParticleSystem = (
     normalizedConfig.simulationBackend = SimulationBackend.GPU as typeof normalizedConfig.simulationBackend;
   }
 
-  const rrType = normalizedConfig.renderer.rendererType || RendererType.POINTS;
-  const useInstancing = rrType === RendererType.INSTANCED || rrType === RendererType.MESH;
+  const requestedRendererType =
+    normalizedConfig.renderer.rendererType || RendererType.POINTS;
+  // `resolveWebGPUEffectiveRendererType`: the GPU-only v4 renderer builds 4
+  // material/geometry classes. POINTS is NOT a runtime point-sprite path
+  // (PointsNodeMaterial + THREE.Points would sample pointUV where WGSL has
+  // no `gl_PointCoord`); it is the BILLBOARD quad implementation, while
+  // INSTANCED selects `InstancedBufferGeometry` + instanced TSL material.
+  const effectiveRendererType = resolveWebGPUEffectiveRendererType(
+    requestedRendererType
+  );
+  const rrType = effectiveRendererType;
+  const useInstancing =
+    effectiveRendererType === RendererType.INSTANCED ||
+    effectiveRendererType === RendererType.MESH;
 
   // ?? 1b. Trail history ring (GPU-native, filled by the simulation kernel) ??
   const trailConfig = normalizedConfig.renderer.trail;
@@ -1005,6 +1156,8 @@ export const createParticleSystem = (
       uniforms: Record<string, { value: unknown }>;
     };
     instanced: boolean;
+    requestedRendererType: RendererType | undefined;
+    effectiveRendererType: RendererType;
     cfg: NormalizedParticleSystemConfig;
     object: THREE.Points | THREE.Mesh | null;
     perEvent: number;
@@ -1041,9 +1194,17 @@ export const createParticleSystem = (
       : 1;
     const perEvent = Math.min(burstCount, fifo.capacity);
     const childMax = Math.max(2, Math.min(perEvent * fifo.capacity, 65536));
+    // Child renderer classes are resolved from the CHILD config itself
+    // (recursive `resolveWebGPUEffectiveRendererType`, §2): material, object
+    // type, InstancedBufferGeometry choice and the compute instancing flag
+    // all use the child's effective type.
+    const childRequestedRendererType = childCfg.renderer?.rendererType;
+    const childEffectiveRendererType = resolveWebGPUEffectiveRendererType(
+      childRequestedRendererType
+    );
     const childInstanced =
-      childCfg.renderer?.rendererType === RendererType.INSTANCED ||
-      childCfg.renderer?.rendererType === RendererType.MESH;
+      childEffectiveRendererType === RendererType.INSTANCED ||
+      childEffectiveRendererType === RendererType.MESH;
     const childPipeline = factory.createComputePipeline(
       childMax,
       childInstanced,
@@ -1093,6 +1254,8 @@ export const createParticleSystem = (
       pipeline: childPipeline,
       init,
       instanced: childInstanced,
+      requestedRendererType: childRequestedRendererType,
+      effectiveRendererType: childEffectiveRendererType,
       cfg: childCfg,
       object: null,
       perEvent,
@@ -1121,21 +1284,42 @@ export const createParticleSystem = (
   }
 
   // ?? 3. shared uniform table (TSL) ??
+  // §10 normalization happens through the module-level helpers
+  // (`normalizeVector2Value` etc.) defined above `createParticleSystem`.
+  const cameraNearFarSource = (normalizedConfig.renderer as unknown as Record<string, unknown>)
+    .cameraNearFar;
+  const tilesSource = normalizedConfig.textureSheetAnimation?.tiles;
   const elapsedUniform: { value: number } = { value: 0 };
   const sharedUniforms: { [k: string]: { value: unknown } } = {
     elapsed: elapsedUniform,
     viewportHeight: { value: 720 },
-    cameraNearFar: { value: new THREE.Vector2(0.1, 1000) },
+    cameraNearFar: {
+      value: normalizeVector2Value(
+        cameraNearFarSource,
+        [0.1, 1000],
+        "renderer.cameraNearFar"
+      ),
+    },
     useInstancing: { value: useInstancing },
     softParticlesEnabled: { value: !!normalizedConfig.renderer.softParticles?.enabled },
     softParticlesIntensity: {
       value: Math.max(normalizedConfig.renderer.softParticles?.intensity ?? 1, 0.001),
     },
-    sceneDepthTexture: { value: normalizedConfig.renderer.softParticles?.depthTexture ?? null },
+    sceneDepthTexture: {
+      value: normalizeDepthTextureValue(
+        normalizedConfig.renderer.softParticles?.depthTexture,
+        "renderer.softParticles.depthTexture"
+      ),
+    },
     discardBackgroundColor: { value: !!normalizedConfig.renderer.discardBackgroundColor },
     backgroundColor: { value: new THREE.Color(0xffffff) },
     backgroundColorTolerance: { value: normalizedConfig.renderer.backgroundColorTolerance ?? 0 },
-    map: { value: normalizedConfig.map ?? getDefaultTexture() },
+    map: {
+      value: normalizeTextureValue(
+        normalizedConfig.map ?? getDefaultTexture(),
+        "map"
+      ),
+    },
     startLifetime: { value: 0 },
     startSize: { value: 1 },
     startRotation: { value: 0 },
@@ -1149,11 +1333,21 @@ export const createParticleSystem = (
       value: normalizedConfig.textureSheetAnimation?.timeMode === TimeMode.FPS,
     },
     tiles: {
-      value: normalizedConfig.textureSheetAnimation?.tiles ?? new THREE.Vector2(1.0, 1.0),
+      // The ONLY normalizer: `tiles` reaches the TSL factory as a Vector2
+      // (also {u,v} pairs are accepted per §10). The engine's own default is
+      // already (1,1) via the merged default config.
+      value: normalizeVector2Value(
+        tilesSource,
+        [1, 1],
+        "textureSheetAnimation.tiles"
+      ),
     },
   };
-  const bgCol = normalizedConfig.renderer.backgroundColor as unknown as { r?: number; g?: number; b?: number };
-  (sharedUniforms.backgroundColor.value as THREE.Color).setRGB(bgCol.r ?? 1, bgCol.g ?? 1, bgCol.b ?? 1);
+  const bgVec = normalizeBackgroundToVector3(
+    normalizedConfig.renderer.backgroundColor,
+    "renderer.backgroundColor"
+  );
+  (sharedUniforms.backgroundColor.value as THREE.Color).setRGB(bgVec.x, bgVec.y, bgVec.z);
 
   const rendererConfig: {
     transparent: boolean;
@@ -1303,7 +1497,7 @@ export const createParticleSystem = (
       useInstancing: { value: e.instanced },
     };
     const childMaterial = factory.createTSLParticleMaterial(
-      e.cfg.renderer?.rendererType || RendererType.POINTS,
+      e.effectiveRendererType,
       childUniforms,
       rendererConfig,
       true
@@ -1552,6 +1746,8 @@ export const createParticleSystem = (
     material,
     geometry,
     rrType,
+    requestedRendererType,
+    effectiveRendererType: rrType,
     sharedUniforms,
     allComputeNodes: [
       ...((pipeline.computeNodes ?? []) as unknown[]),
@@ -1586,6 +1782,8 @@ export const createParticleSystem = (
     frameParity: 0,
     subEntries: subEntries.map((e) => ({
       fifo: { capacity: e.fifo.capacity, windowSize: e.fifo.windowSize },
+      requestedRendererType: e.requestedRendererType,
+      effectiveRendererType: e.effectiveRendererType,
       pipeline: e.pipeline as unknown as Record<string, any>,
       init: e.init,
       gravity: e.gravity,
@@ -1693,6 +1891,8 @@ export const createParticleSystem = (
     >;
     console.log(`[PS:create] system #${generalData.particleSystemId}`, {
       rendererType: rrType,
+      requestedRendererType,
+      effectiveRendererType: rrType,
       simulationSpace: normalizedConfig.simulationSpace,
       maxParticles,
       useInstancing,
@@ -1817,6 +2017,15 @@ export const createParticleSystem = (
     gpuDebug: {
       maxParticles,
       allocatorCount: pipeline.allocatorCount as number,
+      /** Canonical requested vs effective GPU renderer classes (§2). */
+      requestedRendererType,
+      effectiveRendererType: rrType,
+      /** u32 birth system seed for this pipeline (written ONCE at create). */
+      systemSeed: (
+        (pipeline.uniforms as Record<string, { value: unknown }>).seed as {
+          value: unknown;
+        }
+      ).value as number,
       buffers: pipeline.buffers as unknown as Record<string, THREE.BufferAttribute>,
       emitNode: pipeline.emitNode,
       simNode: pipeline.simNode,
@@ -1826,6 +2035,15 @@ export const createParticleSystem = (
       passBindingCounts: _dbgPassCounts,
       lastEmitCount: () =>
         (pipeline.uniforms.emitCount as { value: number }).value as number,
+      /**
+       * Per-sub-emitter-child canonical pairs (§2/§21): each child pool's own
+       * requested vs effective renderer class + its events-per-frame.
+       */
+      subEmitters: (subEntries ?? []).map((e) => ({
+        requestedRendererType: e.requestedRendererType ?? null,
+        effectiveRendererType: e.effectiveRendererType,
+        perEvent: e.perEvent,
+      })),
       /** Decode summary for the `[PS:config]` / `[PS:pipeline]` logs. */
       snapshot: () => {
         const shp = normalizedConfig.shape as ShapeConfig & {
@@ -1846,6 +2064,9 @@ export const createParticleSystem = (
           | undefined;
         return {
           systemId: generalData.particleSystemId,
+          // Canonical effective + original requested renderer classes (§2).
+          effectiveRendererType: rrType,
+          requestedRendererType,
           rendererType: rrType,
           simulationSpace: normalizedConfig.simulationSpace,
           maxParticles,
@@ -2033,7 +2254,7 @@ const updateParticleSystemInstance = (
     (pipeline.subBirthEventsNode as unknown as { count: number }).count =
       Math.max(1, emitCount);
   }
-  (u.seed as { value: number }).value = now * 0.001;
+  // uSystemSeed is written ONCE at pipeline creation (§5): no per-frame seed.
   const n = generalData.noise;
   if (u.noiseStrength) (u.noiseStrength as { value: number }).value = n.strength;
   if (u.noisePower) (u.noisePower as { value: number }).value = n.noisePower;
@@ -2099,7 +2320,7 @@ const updateParticleSystemInstance = (
     if (cu.delta) (cu.delta as { value: number }).value = delta;
     if (cu.deltaMs) (cu.deltaMs as { value: number }).value = delta * 1000;
     if (cu.nowMs) (cu.nowMs as { value: number }).value = now;
-    if (cu.seed) (cu.seed as { value: number }).value = now * 0.001;
+    // child uSystemSeed: written ONCE at pipeline creation (no per-frame seed).
     if (cu.gravityVelocity) {
       ((cu.gravityVelocity as { value: THREE.Vector3 }).value).set(
         0,
@@ -2116,7 +2337,7 @@ const updateParticleSystemInstance = (
       if (cu.noiseSizeAmount) (cu.noiseSizeAmount as { value: number }).value = e.noise.sizeAmount;
     }
     if (cu.fifoBase) (cu.fifoBase as { value: number }).value = fifoBase;
-    if (e.init.uniforms.seed) e.init.uniforms.seed.value = now * 0.001;
+    // child-init pipeline system seed: written ONCE at creation.
     if (e.init.uniforms.fifoBase) e.init.uniforms.fifoBase.value = fifoBase;
     // Continuous rate-over-time of the child (bursts come from the events).
     let childEmit = 0;
