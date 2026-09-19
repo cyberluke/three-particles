@@ -1893,6 +1893,18 @@ export type ParticleSystemInstance = {
     emitNode?: unknown;
     /** Per-frame simulation dispatch (count = `maxParticles`). */
     simNode?: unknown;
+    /** Dedicated trail-history pass node (after simulate; 4 storage bindings). */
+    trailHistoryNode?: unknown;
+    /** Dedicated sub-emitter BIRTH event pass node (5..7 storage bindings). */
+    subBirthEventsNode?: unknown;
+    /** Dedicated sub-emitter DEATH event pass node (5..7 storage bindings). */
+    subDeathEventsNode?: unknown;
+    /** Real per-pass storage/uniform budgets (every pass <= 8 storages). */
+    passLayouts?: Array<{
+      name: string;
+      storageBindings: number;
+      uniformBindings: number;
+    }>;
     uniforms: Record<string, unknown>;
     /** GPU storage buffers that are ALSO attached as geometry attributes. */
     buffers: Record<string, unknown>;
@@ -1946,8 +1958,15 @@ export type ParticleSystemInstance = {
     fifo: { capacity: number; windowSize: number };
     pipeline: Record<string, any> | undefined;
     init: {
-      initNode: unknown;
+      commandBuildNode: unknown;
+      childInitNode: unknown;
       counterClearNode?: unknown;
+      commandBuffer?: unknown;
+      passLayouts?: Array<{
+        name: string;
+        storageBindings: number;
+        uniformBindings: number;
+      }>;
       passName?: string;
       counterClearPassName?: string;
       uniforms: Record<string, { value: unknown }>;

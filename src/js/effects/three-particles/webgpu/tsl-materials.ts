@@ -61,6 +61,7 @@ import type {
 } from '../types.js';
 
 import type * as THREE from 'three';
+import { StorageBufferAttribute } from 'three/webgpu';
 
 export type { TrailUniforms };
 

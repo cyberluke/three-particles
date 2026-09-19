@@ -934,6 +934,11 @@ export const createParticleSystem = (
   // ?? 2b. Trail ribbon expansion kernel (history ring -> ribbon vertices) ??
   const ribbonPipeline: {
     ribbonNode: unknown;
+    passLayouts: Array<{
+      name: string;
+      storageBindings: number;
+      uniformBindings: number;
+    }>;
     uniforms: Record<string, { value: unknown }>;
     buffers: Record<string, THREE.BufferAttribute>;
   } | null = trailDesc
@@ -986,8 +991,15 @@ export const createParticleSystem = (
     fifo: FifoEntry;
     pipeline: NonNullable<ParticleSystemInstance['computePipeline']>;
     init: {
-      initNode: unknown;
+      commandBuildNode: unknown;
+      childInitNode: unknown;
       counterClearNode: unknown;
+      commandBuffer: StorageBufferAttribute;
+      passLayouts: Array<{
+        name: string;
+        storageBindings: number;
+        uniformBindings: number;
+      }>;
       passName: string;
       counterClearPassName: string;
       uniforms: Record<string, { value: unknown }>;
@@ -1061,8 +1073,15 @@ export const createParticleSystem = (
         orbital: [childVel?.orbital?.x as never, childVel?.orbital?.y as never, childVel?.orbital?.z as never],
       }
     ) as {
-      initNode: unknown;
+      commandBuildNode: unknown;
+      childInitNode: unknown;
       counterClearNode: unknown;
+      commandBuffer: StorageBufferAttribute;
+      passLayouts: Array<{
+        name: string;
+        storageBindings: number;
+        uniformBindings: number;
+      }>;
       passName: string;
       counterClearPassName: string;
       uniforms: Record<string, { value: unknown }>;
@@ -1353,17 +1372,31 @@ export const createParticleSystem = (
         'three-particles: allocator capacity must equal maxParticles + 1.'
       );
     }
-    // Hard storage-budget assertion: the WebGPU guaranteed per-stage limit
-    // is 8 storage buffers. The base pool is exactly bindings 1..8
+    // Hard per-pass storage-budget assertion. The WebGPU guaranteed per-stage
+    // limit is `maxStorageBuffersPerShaderStage = 8` (portable guarantee; we
+    // never request 16). After the pass decomposition, every compute pass
+    // reports its REAL budget from its own bound resources — no synthetic
+    // totals. The base emit/sim pool stays at exactly bindings 1..8
     // (position, velocity, color, particleState, startValues,
-    // startColorsExt, orbitalIsActive, allocator); trail adds 2 and every
-    // sub-emitter FIFO channel adds 2 more.
-    const storageBindingCount =
-      8 + (trailDesc ? 2 : 0) + fifos.length * 2;
-    if (storageBindingCount > 8) {
-      throw new Error(
-        `three-particles: compute pass requires ${storageBindingCount} storage buffers; guaranteed WebGPU limit is 8`
-      );
+    // startColorsExt, orbitalIsActive, allocator); trail and the sub-emitter
+    // FIFO resources live in their own dedicated passes.
+    type PassLayoutT = { name: string; storageBindings: number; uniformBindings: number };
+    const passLayouts = [
+      ...(((pipeline.passLayouts ?? []) as unknown) as PassLayoutT[]),
+      ...(((ribbonPipeline?.passLayouts ?? []) as unknown) as PassLayoutT[]),
+      ...subEntries.flatMap((e) => [
+        ...(((e.init.passLayouts ?? []) as unknown) as PassLayoutT[]),
+        ...(((e.pipeline.passLayouts ?? []) as unknown) as PassLayoutT[]).map(
+          (p) => ({ ...p, name: `child:${p.name}` })
+        ),
+      ]),
+    ];
+    for (const pass of passLayouts) {
+      if (pass.storageBindings > 8) {
+        throw new Error(
+          `${pass.name}: ${pass.storageBindings} storage buffers > guaranteed limit 8`
+        );
+      }
     }
     if (trailDesc && trailDesc.meta !== pipeline.trailMeta) {
       throw new Error('three-particles: trail ring meta buffer mismatch.');
@@ -1450,8 +1483,8 @@ export const createParticleSystem = (
     noise: {
       isActive: normalizedConfig.noise.isActive,
       strength: normalizedConfig.noise.strength,
-      // Oracle `0.15 * strength`; the single fbmMax division happens when the
-      // uniform is written below (the FBM octave sum also divides by it).
+      // Oracle `0.15 * strength`; the single fbmMax division lives inside the
+      // FBM sum (CPU: FBM.get3; GPU: the octave loop amp / fbmMax).
       noisePower: 0.15 * normalizedConfig.noise.strength,
       frequency: normalizedConfig.noise.frequency,
       positionAmount: normalizedConfig.noise.positionAmount,
@@ -1524,7 +1557,8 @@ export const createParticleSystem = (
       ...((pipeline.computeNodes ?? []) as unknown[]),
       ...(ribbonPipeline ? [ribbonPipeline.ribbonNode] : []),
       ...subEntries.flatMap((e) => [
-        e.init.initNode,
+        e.init.commandBuildNode,
+        e.init.childInitNode,
         ...(e.init.counterClearNode != null
           ? [e.init.counterClearNode]
           : []),
@@ -1532,12 +1566,12 @@ export const createParticleSystem = (
       ]),
     ],
     passNames: [
-      'emit',
-      'simulate',
+      ...(((pipeline.passNames ?? ['emit', 'simulate']) as string[])),
       ...(ribbonPipeline ? ['trail-ribbon'] : []),
       ...subEntries.flatMap((e, ei) => [
-        `sub${ei}:${e.init.passName ?? 'init'}`,
-        `sub${ei}:${e.init.counterClearPassName ?? 'counter-clear'}`,
+        `sub${ei}:command-build`,
+        `sub${ei}:child-init`,
+        `sub${ei}:counter-clear`,
         `sub${ei}:child-emit`,
         `sub${ei}:child-sim`,
       ]),
@@ -1618,26 +1652,30 @@ export const createParticleSystem = (
   }
   createdParticleSystems.push(props);
 
-  // Binding budget per compute pass. The base pool is exactly the 8
-  // guaranteed WebGPU per-stage storage slots (position, velocity, color,
-  // particleState, startValues, startColorsExt, orbitalIsActive,
-  // allocator). Trail adds 2, each sub-emitter channel adds 2. No 9th
-  // `axes` buffer anymore: velocity-axis values are derived from the stable
-  // birth seed in `startColorsExt.w`.
-  const _dbgMainCount = 8 + (trailDesc ? 2 : 0) + fifos.length * 2;
+  // Binding budgets per compute pass, derived from each pass's actual
+  // resources (`passLayouts` of the owning pipelines; guaranteed WebGPU
+  // per-stage storage limit = 8, never 16). The base emit/sim pool is
+  // exactly the 8 per-particle buffers; trail + sub-emitter FIFOs live in
+  // dedicated passes (trail-history, sub-birth/death-events, sub-command-
+  // build, sub-child-init, sub-counter-clear); velocity-axis values are
+  // seed-derived (no extra buffer).
   const _dbgPassCounts: Array<[string, number]> = [
-    ['emit', _dbgMainCount],
-    ['simulate', _dbgMainCount],
-    ...(ribbonPipeline ? ([['trail-ribbon', 7]] as Array<[string, number]>) : []),
-    ...subEntries.flatMap(
-      (_, ei): Array<[string, number]> => [
-        [`sub${ei}:init`, 11],
-        [`sub${ei}:counter-clear`, 1],
-        [`sub${ei}:child-emit`, _dbgMainCount],
-        [`sub${ei}:child-sim`, _dbgMainCount],
-      ]
+    ...((pipeline.passLayouts ?? []) as Array<{ name: string; storageBindings: number }>).map(
+      (p) => [p.name, p.storageBindings] as [string, number]
     ),
+    ...((ribbonPipeline?.passLayouts ?? []) as Array<{ name: string; storageBindings: number }>).map(
+      (p) => [p.name, p.storageBindings] as [string, number]
+    ),
+    ...subEntries.flatMap((e, ei): Array<[string, number]> => [
+      ...(e.init.passLayouts ?? []).map(
+        (p) => [`sub${ei}:${p.name}`, p.storageBindings] as [string, number]
+      ),
+      ...(e.pipeline.passLayouts ?? []).map(
+        (p) => [`sub${ei}:${p.name}`, p.storageBindings] as [string, number]
+      ),
+    ]),
   ];
+  const _dbgMaxPass = _dbgPassCounts.reduce((m, p) => Math.max(m, p[1]), 0);
 
   // ?? One-shot construction diagnostics (visible without DevTools commands) ??
   // `[PS:create]`, `[PS:config]` and `[PS:pipeline]` are logged exactly once
@@ -1780,11 +1818,11 @@ export const createParticleSystem = (
       maxParticles,
       allocatorCount: pipeline.allocatorCount as number,
       buffers: pipeline.buffers as unknown as Record<string, THREE.BufferAttribute>,
-      emitNode: pipeline.computeNodes![0],
-      simNode: pipeline.computeNodes![1],
+      emitNode: pipeline.emitNode,
+      simNode: pipeline.simNode,
       passNames: (pipeline.passNames ?? ['emit', 'simulate']) as string[],
       allPassNames: (props.passNames ?? []) as string[],
-      storageBindingCount: _dbgMainCount,
+      storageBindingCount: _dbgMaxPass,
       passBindingCounts: _dbgPassCounts,
       lastEmitCount: () =>
         (pipeline.uniforms.emitCount as { value: number }).value as number,
@@ -1848,6 +1886,8 @@ export const createParticleSystem = (
 // ?? GPU-only per-frame path: writes ~12 scalar uniforms + 2 dispatches ??
 // No per-particle JS loop anywhere in this function.
 const _lastUploadStampMap = new WeakMap<Record<string, THREE.BufferAttribute>, number>();
+/** One-shot first-frame upload marker for the sub-emitter command buffers. */
+const _cmdUploadSeen = new WeakSet<object>();
 const updateParticleSystemInstance = (
   props: ParticleSystemInstance,
   { now, delta, elapsed }: CycleData
@@ -1988,10 +2028,15 @@ const updateParticleSystemInstance = (
   // least one invocation and uEmitCount (u32) bounds the useful work inside
   // the kernel. See If(i.lessThan(uEmitCount), ...) in the emit kernel.
   (pipeline.emitNode as unknown as { count: number }).count = Math.max(1, emitCount);
+  // The dedicated BIRTH event pass consumes exactly this frame's born slots.
+  if (pipeline.subBirthEventsNode) {
+    (pipeline.subBirthEventsNode as unknown as { count: number }).count =
+      Math.max(1, emitCount);
+  }
   (u.seed as { value: number }).value = now * 0.001;
   const n = generalData.noise;
   if (u.noiseStrength) (u.noiseStrength as { value: number }).value = n.strength;
-  if (u.noisePower) (u.noisePower as { value: number }).value = n.noisePower / Math.max(n.fbmMax, 1e-6);
+  if (u.noisePower) (u.noisePower as { value: number }).value = n.noisePower;
   if (u.noiseFrequency) (u.noiseFrequency as { value: number }).value = n.frequency;
   if (u.noisePositionAmount) (u.noisePositionAmount as { value: number }).value = n.positionAmount;
   if (u.noiseRotationAmount) (u.noiseRotationAmount as { value: number }).value = n.rotationAmount;
@@ -2064,7 +2109,7 @@ const updateParticleSystemInstance = (
     }
     if (e.noise) {
       if (cu.noiseStrength) (cu.noiseStrength as { value: number }).value = e.noise.strength;
-      if (cu.noisePower) (cu.noisePower as { value: number }).value = e.noise.noisePower / Math.max(e.noise.fbmMax, 1e-6);
+      if (cu.noisePower) (cu.noisePower as { value: number }).value = e.noise.noisePower;
       if (cu.noiseFrequency) (cu.noiseFrequency as { value: number }).value = e.noise.frequency;
       if (cu.noisePositionAmount) (cu.noisePositionAmount as { value: number }).value = e.noise.positionAmount;
       if (cu.noiseRotationAmount) (cu.noiseRotationAmount as { value: number }).value = e.noise.rotationAmount;
@@ -2154,7 +2199,8 @@ const updateParticleSystemInstance = (
     _lastUploadStampMap.set(bufs, stamp + 1);
   }
 
-  // First-frame upload for the child pools + trail ribbon streams as well.
+  // First-frame upload for the child pools, sub-emitter command buffers and
+  // trail ribbon streams as well.
   for (const e of subEntries ?? []) {
     const cb = (e.pipeline as unknown as { buffers?: Record<string, THREE.BufferAttribute> })
       ?.buffers;
@@ -2164,6 +2210,11 @@ const updateParticleSystemInstance = (
         if (a && 'needsUpdate' in a) a.needsUpdate = true;
       }
       _lastUploadStampMap.set(cb as unknown as Record<string, THREE.BufferAttribute>, 1);
+    }
+    const cmd = e.init.commandBuffer as THREE.BufferAttribute | undefined;
+    if (cmd && 'needsUpdate' in cmd && !_cmdUploadSeen.has(cmd)) {
+      cmd.needsUpdate = true;
+      _cmdUploadSeen.add(cmd);
     }
   }
   const rb = (props as unknown as { ribbonBuffers?: Record<string, THREE.BufferAttribute> })
