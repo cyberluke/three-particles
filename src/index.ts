@@ -1,4 +1,5 @@
 export { REVISION } from './js/effects/three-particles/version.js';
+export * from './js/effects/electric-arc/index.js';
 export * from './js/effects/three-particles/color-utils.js';
 export * from './js/effects/three-particles/three-particles-bezier.js';
 export * from './js/effects/three-particles/three-particles-curves.js';

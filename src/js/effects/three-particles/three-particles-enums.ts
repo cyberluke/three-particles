@@ -214,6 +214,29 @@ export const enum RendererType {
    * Configure mesh-specific properties via {@link MeshConfig} on the renderer.
    */
   MESH = 'MESH',
+
+  /**
+   * Render particles as screen-space fluid metaballs using GPU instancing
+   * (`InstancedBufferGeometry`), after the WaterBall MLS-MPM renderer:
+   * each particle is a velocity-stretched billboard quad whose fragment
+   * reconstructs a spherical (hemisphere) normal, samples the scene depth
+   * for soft-particle blending, and applies thickness-based Beer-Lambert
+   * absorption with a Fresnel-mixed reflection.
+   *
+   * Key differences from the billboard renderers:
+   * - **Velocity stretch**: the quad is elongated along the projected
+   *   per-particle velocity so fast particles smear along their motion.
+   * - **Metaball sphere normal**: the inscribed-circle fragment discards and
+   *   derives a hemisphere normal (`z = sqrt(1 - |2·uv-1|²)`) for a rounded
+   *   liquid look, rather than a flat point sprite.
+   * - **Depth-aware lighting**: a single directional light is combined with
+   *   Beer-Lambert transmittance and a Fresnel reflection term for a
+   *   water-like response.
+   *
+   * All existing modifiers (sizeOverLifetime, colorOverLifetime, noise, force
+   * fields, sub-emitters) work with fluid particles.
+   */
+  FLUID = 'FLUID',
 }
 
 /**

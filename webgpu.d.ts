@@ -74,15 +74,21 @@ export declare function encodeCollisionPlanesForGPU(
 ): Float32Array;
 
 /**
- * Convenience function that registers all WebGPU TSL material factories
- * and GPU compute helpers in a single call.
+ * Convenience function that registers all WebGPU TSL material factories,
+ * GPU compute helpers, and the Electric Arc GPU factory in a single call.
  *
- * Call this **once** before creating any particle systems that use WebGPU rendering.
+ * Call this **once** after `await renderer.init()` of each
+ * `THREE.WebGPURenderer` before creating effects.
  *
  * Pass your renderer to get automatic capability detection: when the
  * renderer cannot dispatch compute shaders (e.g. `THREE.WebGLRenderer`),
  * registration is skipped with a console warning and all particle systems
- * keep using the CPU/GLSL path.
+ * / electric arcs keep their CPU execution path (which is fully supported).
+ *
+ * Backend semantics for `simulationBackend`:
+ *   AUTO -> GPU compute where supported, CPU otherwise.
+ *   CPU  -> always CPU simulation.
+ *   GPU  -> requests GPU compute, falls back to CPU when compute is unavailable.
  *
  * @param renderer - Optional Three.js renderer used for capability detection.
  * @returns `true` when the WebGPU path was registered, `false` when the
@@ -92,7 +98,93 @@ export declare function encodeCollisionPlanesForGPU(
  * ```typescript
  * import { enableWebGPU } from '@cyberluke/three-particles/webgpu';
  * const renderer = new THREE.WebGPURenderer();
+ * await renderer.init();
  * const gpuEnabled = enableWebGPU(renderer);
  * ```
  */
 export declare function enableWebGPU(renderer?: unknown): boolean;
+
+/** Solver discriminator accepted by `createFluidSimPipeline`. */
+export type FluidSolverId = 'MLS-MPM' | 'SPH';
+
+/** GPU storage + kernels of one fluid solver. */
+export interface FluidSimPipeline {
+  computeNodes: unknown[];
+  passNames: string[];
+  passLayouts: Array<{
+    name: string;
+    storageBindings: number;
+    uniformBindings: number;
+  }>;
+  buffers: Record<string, unknown>;
+  /** Host-written scalars (`boxWidthRatio` = animated `z` squeeze). */
+  uniforms: Record<string, { value: unknown }>;
+  gridCount: number;
+  numParticles: number;
+}
+
+/**
+ * Builds one ocean-style fluid solver pipeline (MLS-MPM or SPH) on top of the
+ * base modifier pool's `position` / `velocity` storage, seeds the shared
+ * arrays with the reference dambreak lattice and returns the kernels in strict
+ * dispatch order together with the real per-pass binding budgets.
+ */
+export declare function createFluidSimPipeline(
+  solver: FluidSolverId,
+  shared: {
+    position: { array: Float32Array };
+    velocity: { array: Float32Array };
+  },
+  maxParticles: number,
+  normalizedConfig: unknown
+): FluidSimPipeline;
+
+/** Single-pass metaball fluid material (`RendererType.FLUID` fallback). */
+export declare function createFluidTSLMaterial(
+  sharedUniforms: Record<string, { value: unknown }>,
+  rendererConfig: RendererConfig,
+  gpuCompute?: boolean,
+  stretch?: number,
+  absorption?: number,
+  ior?: number
+): Material;
+
+/** Screen-space depth map pass material (`depthMap.wgsl`). */
+export declare function createFluidDepthTSLMaterial(config?: unknown): Material;
+
+/** Additive thickness-map pass material (`thicknessMap.wgsl`). */
+export declare function createFluidThicknessTSLMaterial(config?: unknown): Material;
+
+/** One bilateral up-sample iteration (levels 1..4 of the depth map). */
+export declare function createFluidBilateralTSLMaterial(
+  level: number,
+  sourceRadius: number,
+  sourceTexture: unknown,
+  iterationCount: number
+): Material;
+
+/** One separable Gaussian blur axis (`1` = x, `0` = y). */
+export declare function createFluidGaussianTSLMaterial(
+  textureIn: unknown,
+  axisWeight: 1 | 0
+): Material;
+
+/** Final Beer-Lambert / Fresnel shading pass (`fluid.wgsl`). */
+export declare function createFluidShadingTSLMaterial(
+  sources: Record<string, unknown>,
+  config?: unknown
+): Material;
+
+/** Direct per-particle sphere debug shading (`sphere.wgsl`). */
+export declare function createFluidSphereTSLMaterial(config?: unknown): Material;
+
+/**
+ * Assembles the whole screen-space fluid pass chain. The returned `material`
+ * is attached to the visible mesh, and `passNodes` are late-bound with the
+ * scene camera by the host (`updateWorld`).
+ */
+export declare function buildFluidScreenSpacePasses(
+  config?: unknown,
+  envMap?: unknown,
+  camera?: unknown
+): { material: Material; passNodes: Array<{ camera: unknown }> };

@@ -1,11 +1,13 @@
 import * as THREE from "three";
+import { pass } from "three/tsl";
+import { bloom } from "three/addons/tsl/display/BloomNode.js";
 import { examples } from "./examples-data.js";
-import { initVersionSwitcher, cdnUrl, getAvailableVersions } from "./version-switcher.js";
+import { initVersionSwitcher, cdnUrl, webgpuUrl, getAvailableVersions } from "./version-switcher.js";
 import { BenchmarkRunner } from "./benchmark.js";
 import { METRICS } from "./benchmark-chart.js";
 
 // ─── Bootstrap: load the particle library from CDN ──────────────────
-const version = await initVersionSwitcher() || "2.4.0";
+const version = await initVersionSwitcher() || "local";
 
 const particleModule = await import(cdnUrl(version));
 const { createParticleSystem, updateParticleSystems } = particleModule;
@@ -13,37 +15,20 @@ const { createParticleSystem, updateParticleSystems } = particleModule;
 // ─── WebGPU support ────────────────────────────────────────────────
 // The importmap maps "three" to three.webgpu.js for a unified Three.js
 // instance. All examples use WebGPURenderer (auto WebGL fallback).
-// GPU-tagged examples get TSL NodeMaterials; others use GLSL ShaderMaterial
-// via simulationBackend: "CPU".
+// The public init is `gpuModule.enableWebGPU(renderer)`, called after
+// each renderer initializes: it registers the particle TSL/compute
+// factories AND the ElectricArc GPU factory in one shot.
 let webgpuAvailable = false;
+let gpuModule = null;
 
 try {
   if (navigator.gpu) {
     const adapter = await navigator.gpu.requestAdapter();
     if (adapter) {
-      if (version === "local" && particleModule.registerTSLMaterialFactory) {
-        const {
-          createTSLParticleMaterial,
-          createTSLTrailMaterial,
-          createComputePipeline,
-          writeParticleToModifierBuffers,
-          deactivateParticleInModifierBuffers,
-          flushEmitQueue,
-          registerCurveDataLength,
-          encodeForceFieldsForGPU,
-          encodeCollisionPlanesForGPU,
-        } = await import("./three-particles-webgpu.esm.js");
-        particleModule.registerTSLMaterialFactory({
-          createTSLParticleMaterial,
-          createTSLTrailMaterial,
-          createComputePipeline,
-          writeParticleToModifierBuffers,
-          deactivateParticleInModifierBuffers,
-          flushEmitQueue,
-          registerCurveDataLength,
-          encodeForceFieldsForGPU,
-          encodeCollisionPlanesForGPU,
-        });
+      try {
+        gpuModule = await import(webgpuUrl(version));
+      } catch {
+        gpuModule = null;
       }
       webgpuAvailable = true;
     }
@@ -185,6 +170,122 @@ function isSoftParticlesExample(example) {
   return !!example.softParticles;
 }
 
+function isElectricArcExample(example) {
+  return example.kind === "electric-arc";
+}
+
+/**
+ * Prepare an ElectricArc section config (§40): pass-through + backend choice.
+ * The engine maps AUTO/GPU/CPU with GPU-compute-when-available semantics.
+ */
+function prepareElectricArcConfig(config, backend) {
+  const prepared = JSON.parse(JSON.stringify(config));
+  delete prepared._editorData;
+  prepared.simulationBackend = backend === "CPU" ? "CPU" : "GPU";
+  return prepared;
+}
+
+/**
+ * Optional Three r186 RenderPipeline per card metadata (§37, §38).
+ * Only cards with `postprocessing.bloom` get a pipeline; every other
+ * example keeps its existing plain `renderer.render(...)` behavior.
+ */
+function createRenderPipelineFor(renderer, scene, camera, meta) {
+  if (!meta || !meta.bloom) return null;
+  const pipeline = new THREE.RenderPipeline(renderer);
+  const scenePass = pass(scene, camera);
+  const sceneColor = scenePass.getTextureNode("output");
+  const bloomPass = bloom(
+    sceneColor,
+    meta.bloom.strength,
+    meta.bloom.radius,
+    meta.bloom.threshold
+  );
+  pipeline.outputNode = sceneColor.add(bloomPass);
+  return pipeline;
+}
+
+/**
+ * Cinematic lab scene for the Electric Arc demo (§35, §36).
+ * Warm ivory background, two curved ivory conductors with dark olive
+ * terminal caps and invisible Object3D anchors at the terminal faces.
+ * Returns { leftAnchor, rightAnchor, animate }.
+ */
+function buildElectricArcScene(scene, camera) {
+  scene.background = new THREE.Color(0xe8e4d8);
+  scene.fog = new THREE.FogExp2(0xe8e4d8, 0.09);
+
+  const conductorMat = new THREE.MeshPhysicalMaterial({
+    color: "#e8e2d5",
+    roughness: 0.24,
+    metalness: 0.08,
+    clearcoat: 0.55,
+    clearcoatRoughness: 0.18,
+  });
+  const terminalMat = new THREE.MeshPhysicalMaterial({
+    color: "#4a5240",
+    roughness: 0.35,
+    metalness: 0.6,
+  });
+
+  const leftCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-2.2, -0.2, 0),
+    new THREE.Vector3(-1.8, 0, 0),
+    new THREE.Vector3(-1.45, 0.15, 0),
+    new THREE.Vector3(-1.12, 0, 0),
+  ]);
+  const left = new THREE.Mesh(new THREE.TubeGeometry(leftCurve, 48, 0.06, 12, false), conductorMat);
+  const leftCap = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.05, 16), terminalMat);
+  leftCap.rotation.z = Math.PI / 2;
+  leftCap.position.set(-1.12, 0, 0);
+  const leftAnchor = new THREE.Object3D();
+  leftAnchor.position.set(-1.1, 0, 0);
+
+  const rightCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(2.2, -0.2, 0),
+    new THREE.Vector3(1.8, 0, 0),
+    new THREE.Vector3(1.45, 0.15, 0),
+    new THREE.Vector3(1.12, 0, 0),
+  ]);
+  const right = new THREE.Mesh(new THREE.TubeGeometry(rightCurve, 48, 0.06, 12, false), conductorMat);
+  const rightCap = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.05, 16), terminalMat);
+  rightCap.rotation.z = Math.PI / 2;
+  rightCap.position.set(1.12, 0, 0);
+  const rightAnchor = new THREE.Object3D();
+  rightAnchor.position.set(1.1, 0, 0);
+
+  scene.add(left, leftCap, leftAnchor, right, rightCap, rightAnchor);
+
+  const ambient = new THREE.AmbientLight(0xfff6e0, 1.1);
+  const key = new THREE.DirectionalLight(0xffffff, 2.2);
+  key.position.set(2.5, 4, 3);
+  scene.add(ambient, key);
+
+  // slow, small conductor breathing so the arc visibly tracks moving
+  // bound endpoints — dynamic binding, GPU recompute, CPU parity (§36)
+  const baseX = left.position.x;
+  const animate = (t) => {
+    const s = Math.sin(t * 0.8);
+    left.position.x = baseX + 0.04 * s;
+    right.position.x = -(-baseX) - 0.04 * s; // mirrored 2.2 baseline
+    leftCap.position.x = -1.12 + 0.04 * s;
+    rightCap.position.x = 1.12 - 0.04 * s;
+    left.rotation.y = 0.05 * Math.sin(t * 0.5);
+    right.rotation.y = -0.05 * Math.sin(t * 0.5);
+  };
+
+  camera.position.set(0, 0.35, 4.3);
+  camera.lookAt(0, 0, 0);
+
+  return { leftAnchor, rightAnchor, animate };
+}
+
+/* Render helper: pipeline when metadata defines one, plain render otherwise. */
+function renderDemoView(demo) {
+  if (demo.renderPipeline) demo.renderPipeline.render();
+  else demo.renderer.render(demo.scene, demo.camera);
+}
+
 /**
  * Set up soft particles scene: ground plane + depth render target.
  * Returns { groundScene, renderTarget, groundMesh } or null if not a soft particles example.
@@ -251,9 +352,20 @@ class LiveDemo {
     });
     await this.renderer.init();
     if (this.disposed) { this.renderer.dispose(); return; }
-    // Particle shaders output raw sRGB values (textures are not linearised).
-    // Disable the output pass sRGB conversion to avoid double-gamma encoding.
-    this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+    // Public WebGPU init registers particle TSL/compute + ElectricArc GPU
+    // factories against this renderer; `false` on non-compute fallbacks.
+    this.computeEnabled = gpuModule?.enableWebGPU?.(this.renderer) ?? false;
+    if (isElectricArcExample(this.data)) {
+      // Cinematic demo: modern color management, RenderPipeline does the
+      // final tone-map + sRGB output (§37–§39).
+      this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+      this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      this.renderer.toneMappingExposure = 1.05;
+    } else {
+      // Particle shaders output raw sRGB values (textures are not linearised).
+      // Disable the output pass sRGB conversion to avoid double-gamma encoding.
+      this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+    }
     this.renderer.setSize(width, height);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
@@ -272,66 +384,90 @@ class LiveDemo {
       this.scene.add(setup.groundMesh);
     }
 
-    const useGPU = webgpuAvailable && this.backend === "GPU";
-    const config = prepareConfig(this.data.config, this.data.textureId, this.data.meshType, useGPU);
-    config.renderer = config.renderer || {};
-    // Only override renderer type when NOT on WebGPU (prepareConfig already
-    // forces POINTS → INSTANCED for WebGPU since point primitives are unsupported).
-    if (!webgpuAvailable && !isTrailExample(this.data) && !isMeshExample(this.data)) {
-      config.renderer.rendererType = this.rendererType;
-    }
-    if (this.softParticlesSetup) {
-      config.renderer.softParticles = {
-        enabled: true,
-        intensity: this.data.softParticlesIntensity || 1.5,
-        depthTexture: this.softParticlesSetup.renderTarget.depthTexture,
-      };
+    // ─── generic effect runtime (particle systems + electric arc) ───
+    this.effect = null;
+    this.arcAnimate = null;
+    if (isElectricArcExample(this.data)) {
+      const { leftAnchor, rightAnchor, animate } = buildElectricArcScene(this.scene, this.camera);
+      const config = particleModule.prepareElectricArcConfig
+        ? prepareElectricArcConfig(this.data.config, this.backend)
+        : prepareElectricArcConfig(this.data.config, this.backend);
+      this.effect = particleModule.createElectricArc(config);
+      this.scene.add(this.effect.instance);
+      this.effect.bindEndpoints({ start: leftAnchor, end: rightAnchor });
+      this.arcAnimate = animate;
+    } else {
+      const useGPU = webgpuAvailable && this.backend === "GPU";
+      const config = prepareConfig(this.data.config, this.data.textureId, this.data.meshType, useGPU);
+      config.renderer = config.renderer || {};
+      // Only override renderer type when NOT on WebGPU (prepareConfig already
+      // forces POINTS → INSTANCED for WebGPU since point primitives are unsupported).
+      if (!webgpuAvailable && !isTrailExample(this.data) && !isMeshExample(this.data)) {
+        config.renderer.rendererType = this.rendererType;
+      }
+      if (this.softParticlesSetup) {
+        config.renderer.softParticles = {
+          enabled: true,
+          intensity: this.data.softParticlesIntensity || 1.5,
+          depthTexture: this.softParticlesSetup.renderTarget.depthTexture,
+        };
+      }
+      this.effect = createParticleSystem(config);
+      this.scene.add(this.effect.instance);
     }
 
-    const system = createParticleSystem(config);
-    this.scene.add(system.instance);
-    this.particleSystem = system;
+    // RenderPipeline only for cards that declare postprocessing metadata
+    this.renderPipeline = createRenderPipelineFor(
+      this.renderer,
+      this.scene,
+      this.camera,
+      this.data.postprocessing
+    );
 
-    // Update card stats backend label
+    // Update card stats backend label — resolved backend, not just the toggle
     const backendLabel = this.container.querySelector(".card-backend-label");
     if (backendLabel) {
-      backendLabel.textContent = useGPU ? "GPU" : "CPU";
-      backendLabel.style.color = useGPU ? "#66bb6a" : "#4fc3f7";
+      const actual = this.effect?.backend ?? (this.computeEnabled && this.backend === "GPU" ? "GPU" : "CPU");
+      backendLabel.textContent = actual;
+      backendLabel.style.color = actual === "GPU" ? "#66bb6a" : "#4fc3f7";
     }
 
     this.animate();
   }
 
   animate() {
-    if (!this.particleSystem) return;
+    if (!this.effect) return;
     const delta = this.clock.getDelta();
     const elapsed = this.clock.getElapsedTime();
     const now = performance.now();
 
     const cycleData = { now: Date.now() - this.pausedDuration, delta, elapsed };
-    if (this.particleSystem.update) {
-      this.particleSystem.update(cycleData);
+    if (this.effect.update) {
+      this.effect.update(cycleData);
     } else {
       updateParticleSystems(cycleData);
     }
 
     // GPU compute dispatch (must run before render, not inside onBeforeRender)
-    if (this.particleSystem.computeNode) {
-      this.renderer.compute(this.particleSystem.computeNode);
+    if (this.effect.computeNode) {
+      this.renderer.compute(this.effect.computeNode);
     }
+
+    // Moving conductor anchors — proves dynamic endpoint binding (§36)
+    if (this.arcAnimate) this.arcAnimate(elapsed);
 
     // Soft particles: render depth pass first
     if (this.softParticlesSetup) {
       const { renderTarget } = this.softParticlesSetup;
       // Hide particles during depth pass
-      this.particleSystem.instance.visible = false;
+      this.effect.instance.visible = false;
       this.renderer.setRenderTarget(renderTarget);
       this.renderer.render(this.scene, this.camera);
       this.renderer.setRenderTarget(null);
-      this.particleSystem.instance.visible = true;
+      this.effect.instance.visible = true;
     }
 
-    this.renderer.render(this.scene, this.camera);
+    renderDemoView(this);
 
     // FPS tracking
     this.frames++;
@@ -368,7 +504,10 @@ class LiveDemo {
   dispose() {
     this.disposed = true;
     if (this.animationId) cancelAnimationFrame(this.animationId);
-    if (this.particleSystem) this.particleSystem.dispose();
+    if (this.effect) this.effect.dispose();
+    this.effect = null;
+    if (this.renderPipeline) this.renderPipeline.dispose?.();
+    this.renderPipeline = null;
     if (this.softParticlesSetup) {
       this.softParticlesSetup.renderTarget.dispose();
     }
@@ -473,7 +612,15 @@ class ExpandedDemo {
     });
     await this.renderer.init();
     if (this.disposed) { this.renderer.dispose(); return; }
-    this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+    // Public WebGPU init (particle + ElectricArc factories), per renderer.
+    this.computeEnabled = gpuModule?.enableWebGPU?.(this.renderer) ?? false;
+    if (isElectricArcExample(this.data)) {
+      this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+      this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      this.renderer.toneMappingExposure = 1.05;
+    } else {
+      this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+    }
     this.renderer.setSize(width, height);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
@@ -492,40 +639,61 @@ class ExpandedDemo {
       this.scene.add(setup.groundMesh);
     }
 
-    const useGPU = webgpuAvailable && this.backend === "GPU";
-    const config = prepareConfig(this.data.config, this.data.textureId, this.data.meshType, useGPU);
-    config.renderer = config.renderer || {};
-    if (!webgpuAvailable && !isTrailExample(this.data) && !isMeshExample(this.data)) {
-      config.renderer.rendererType = this.rendererType;
-    }
-    if (this.softParticlesSetup) {
-      config.renderer.softParticles = {
-        enabled: true,
-        intensity: this.data.softParticlesIntensity || 1.5,
-        depthTexture: this.softParticlesSetup.renderTarget.depthTexture,
-      };
+    // ─── generic effect runtime (particle systems + electric arc) ───
+    this.effect = null;
+    this.arcAnimate = null;
+    if (isElectricArcExample(this.data)) {
+      const { leftAnchor, rightAnchor, animate } = buildElectricArcScene(this.scene, this.camera);
+      const config = prepareElectricArcConfig(this.data.config, this.backend);
+      this.effect = particleModule.createElectricArc(config);
+      this.scene.add(this.effect.instance);
+      this.effect.bindEndpoints({ start: leftAnchor, end: rightAnchor });
+      this.arcAnimate = animate;
+    } else {
+      const useGPU = webgpuAvailable && this.backend === "GPU";
+      const config = prepareConfig(this.data.config, this.data.textureId, this.data.meshType, useGPU);
+      config.renderer = config.renderer || {};
+      if (!webgpuAvailable && !isTrailExample(this.data) && !isMeshExample(this.data)) {
+        config.renderer.rendererType = this.rendererType;
+      }
+      if (this.softParticlesSetup) {
+        config.renderer.softParticles = {
+          enabled: true,
+          intensity: this.data.softParticlesIntensity || 1.5,
+          depthTexture: this.softParticlesSetup.renderTarget.depthTexture,
+        };
+      }
+      this.effect = createParticleSystem(config);
+      this.scene.add(this.effect.instance);
     }
 
-    const system = createParticleSystem(config);
-    this.scene.add(system.instance);
-    this.particleSystem = system;
+    // RenderPipeline only for cards that declare postprocessing metadata
+    this.renderPipeline = createRenderPipelineFor(
+      this.renderer,
+      this.scene,
+      this.camera,
+      this.data.postprocessing
+    );
 
-    // Update backend label in stats bar
+    // Update backend label in stats bar (resolved backend, §40)
     const backendLabel = document.getElementById("expand-backend-label");
     if (backendLabel) {
-      backendLabel.textContent = useGPU ? "GPU" : "CPU";
-      backendLabel.style.color = useGPU ? "#66bb6a" : "#4fc3f7";
+      const actual = this.effect?.backend ?? (this.computeEnabled && this.backend === "GPU" ? "GPU" : "CPU");
+      backendLabel.textContent = actual;
+      backendLabel.style.color = actual === "GPU" ? "#66bb6a" : "#4fc3f7";
     }
 
     const label = document.getElementById("expand-renderer-label");
     if (label) {
-      const actual = isTrailExample(this.data)
-        ? "TRAIL"
-        : isMeshExample(this.data)
-          ? "MESH"
-          : system.instance instanceof THREE.Mesh
-            ? "INSTANCED"
-            : "POINTS";
+      const actual = isElectricArcExample(this.data)
+        ? "ARC"
+        : isTrailExample(this.data)
+          ? "TRAIL"
+          : isMeshExample(this.data)
+            ? "MESH"
+            : this.effect.instance instanceof THREE.Mesh
+              ? "INSTANCED"
+              : "POINTS";
       label.textContent = actual;
     }
 
@@ -534,7 +702,7 @@ class ExpandedDemo {
   }
 
   animate() {
-    if (!this.particleSystem) return;
+    if (!this.effect) return;
     const delta = this.clock.getDelta();
     const elapsed = this.clock.getElapsedTime();
     const now = performance.now();
@@ -542,28 +710,31 @@ class ExpandedDemo {
     const tickStart = performance.now();
 
     const cycleData = { now: Date.now() - this.pausedDuration, delta, elapsed };
-    if (this.particleSystem.update) {
-      this.particleSystem.update(cycleData);
+    if (this.effect.update) {
+      this.effect.update(cycleData);
     } else {
       updateParticleSystems(cycleData);
     }
 
     // GPU compute dispatch (must run before render, not inside onBeforeRender)
-    if (this.particleSystem.computeNode) {
-      this.renderer.compute(this.particleSystem.computeNode);
+    if (this.effect.computeNode) {
+      this.renderer.compute(this.effect.computeNode);
     }
+
+    // Moving conductor anchors — proves dynamic endpoint binding (§36)
+    if (this.arcAnimate) this.arcAnimate(elapsed);
 
     // Soft particles: render depth pass first
     if (this.softParticlesSetup) {
       const { renderTarget } = this.softParticlesSetup;
-      this.particleSystem.instance.visible = false;
+      this.effect.instance.visible = false;
       this.renderer.setRenderTarget(renderTarget);
       this.renderer.render(this.scene, this.camera);
       this.renderer.setRenderTarget(null);
-      this.particleSystem.instance.visible = true;
+      this.effect.instance.visible = true;
     }
 
-    this.renderer.render(this.scene, this.camera);
+    renderDemoView(this);
 
     const tickTime = performance.now() - tickStart;
 
@@ -623,7 +794,10 @@ class ExpandedDemo {
   dispose() {
     this.disposed = true;
     if (this.animationId) cancelAnimationFrame(this.animationId);
-    if (this.particleSystem) this.particleSystem.dispose();
+    if (this.effect) this.effect.dispose();
+    this.effect = null;
+    if (this.renderPipeline) this.renderPipeline.dispose?.();
+    this.renderPipeline = null;
     if (this.softParticlesSetup) {
       this.softParticlesSetup.renderTarget.dispose();
     }
@@ -759,7 +933,15 @@ document.getElementById("expand-download-btn").addEventListener("click", () => {
 // ─── Build the page ──────────────────────────────────────────────────
 const grid = document.getElementById("examples-grid");
 
-examples.forEach((example) => {
+// Feature-gated cards: older package versions in the switcher simply don't
+// show cards whose required export is missing (§33).
+const availableExamples = examples.filter(
+  (example) =>
+    !example.requiresFeature ||
+    typeof particleModule[example.requiresFeature] === "function"
+);
+
+availableExamples.forEach((example) => {
   const card = document.createElement("div");
   card.className = "card";
   card.innerHTML = `

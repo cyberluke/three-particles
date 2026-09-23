@@ -38,9 +38,13 @@
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { fileURLToPath } from 'url';
+
+// ESM mode has no ambient `__dirname`; derive it from `import.meta.url`.
+const SELF_DIR = fileURLToPath(new URL('.', import.meta.url));
 
 const COMPUTE_MODIFIERS_PATH = join(
-  __dirname,
+  SELF_DIR,
   '../js/effects/three-particles/webgpu/compute-modifiers.ts'
 );
 const INIT_STRIDE = 28;
@@ -66,25 +70,26 @@ describe('compute kernel bounds check vs collision plane layout', () => {
 
   it('compute kernel source contains a top-level bounds check on instanceIndex', () => {
     const source = readFileSync(COMPUTE_MODIFIERS_PATH, 'utf8');
-    // The fix wraps the whole kernel body inside `If(i.lessThan(float(maxParticles)), ...)`.
-    // Without it, threads with i >= maxParticles would corrupt the collision
-    // plane region (see test above).
+    // The fix wraps the whole kernel body inside `If(<i>.lessThan(float(maxParticles)), ...)`.
+    // `<i>` is either the raw `instanceIndex` node (`i.lessThan(...)`) or its
+    // f32 form (`float(i).lessThan(...)`); the source uses the latter so the
+    // guard compares on float 32 (matching WebGPU `atomic<u32>` counter rules).
+    // Without the guard, threads with `i >= maxParticles` would corrupt the
+    // collision plane region (see test above).
     expect(source).toMatch(
-      /If\s*\(\s*i\.lessThan\s*\(\s*float\s*\(\s*maxParticles\s*\)\s*\)/
+      /If\s*\(\s*(?:float\(\s*i\s*\)|i)\.lessThan\s*\(\s*float\s*\(\s*maxParticles\s*\)\s*\)/
     );
   });
 
   it('kernel bounds check is placed BEFORE the init-flag read', () => {
     const source = readFileSync(COMPUTE_MODIFIERS_PATH, 'utf8');
     const boundsIdx = source.search(
-      /If\s*\(\s*i\.lessThan\s*\(\s*float\s*\(\s*maxParticles\s*\)\s*\)/
+      /If\s*\(\s*(?:float\(\s*i\s*\)|i)\.lessThan\s*\(\s*float\s*\(\s*maxParticles\s*\)\s*\)/
     );
-    // The first `initFlag = sCurveData.element(initBase.add(3))` read must
-    // appear AFTER the bounds If-guard, otherwise an out-of-bounds thread
-    // could still corrupt the collision plane region.
-    const initFlagReadIdx = source.indexOf(
-      'sCurveData.element(initBase.add(3))'
-    );
+    // The init-flag read (ORBITAL_IS_ACTIVE.w) is `sOIA.element(i).toVar()`.
+    // It must appear AFTER the bounds `If` guard, otherwise an out-of-bounds
+    // thread could still corrupt the collision-plane region (see header).
+    const initFlagReadIdx = source.indexOf('sOIA.element(i).toVar()');
     expect(boundsIdx).toBeGreaterThan(-1);
     expect(initFlagReadIdx).toBeGreaterThan(-1);
     expect(boundsIdx).toBeLessThan(initFlagReadIdx);

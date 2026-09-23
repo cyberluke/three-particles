@@ -1,9 +1,14 @@
 import * as THREE from 'three';
+import {
+  PointsNodeMaterial,
+  StorageBufferAttribute,
+} from 'three/webgpu';
 import { SimulationBackend } from '../js/effects/three-particles/three-particles-enums.js';
 import {
   createParticleSystem,
   registerTSLMaterialFactory,
 } from '../js/effects/three-particles/three-particles.js';
+import { enableWebGPU } from '../webgpu.js';
 import type { ParticleSystem } from '../js/effects/three-particles/types.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -22,6 +27,69 @@ const createTestSystem = (
     startTime
   );
 
+function createMockFactory() {
+  const pipeline = {
+    emitNode: { isNode: true, count: 1 },
+    simNode: { isNode: true },
+    computeNodes: [],
+    passLayouts: [
+      { name: 'emit', storageBindings: 8, uniformBindings: 1 },
+      { name: 'simulate', storageBindings: 8, uniformBindings: 1 },
+    ],
+    passNames: ['emit', 'simulate'],
+    allocatorCount: 11,
+    shapeUniforms: { shapeKind: { value: 0 } },
+    uniforms: {
+      delta: { value: 0 },
+      deltaMs: { value: 0 },
+      gravityVelocity: { value: new THREE.Vector3() },
+      emitCount: { value: 0 },
+      seed: { value: 1 },
+    },
+    buffers: {} as Record<string, unknown>,
+    packedDataNode: {
+      addUpdateRange: (_s: number, _c: number) => {},
+      needsUpdate: false,
+    },
+    trailMeta: null,
+    forceFieldInfo: null,
+    collisionPlaneInfo: null,
+  };
+  // The geometry contract reads the SAME storage attributes the pipeline owns.
+  const mk = () => new StorageBufferAttribute(new Float32Array(40), 4);
+  pipeline.buffers.position = mk();
+  pipeline.buffers.velocity = mk();
+  pipeline.buffers.color = mk();
+  pipeline.buffers.particleState = mk();
+  pipeline.buffers.startValues = mk();
+  pipeline.buffers.startColorsExt = mk();
+  pipeline.buffers.orbitalIsActive = mk();
+  pipeline.buffers.allocator = new StorageBufferAttribute(
+    new Uint32Array(11),
+    1
+  );
+  pipeline.buffers.packedData = new Float32Array(1);
+
+  return {
+    mockFactory: {
+      createTSLParticleMaterial: jest.fn(
+        () => new THREE.ShaderMaterial() as unknown as THREE.Material
+      ),
+      createTSLTrailMaterial: jest.fn(
+        () => new THREE.ShaderMaterial() as unknown as THREE.Material
+      ),
+      createComputePipeline: jest.fn(() => pipeline),
+      createSubEmitterFifoAttribute: jest.fn(),
+      createSubEmitterInitUpdate: jest.fn(),
+      createTrailRibbonUpdate: jest.fn(),
+      encodeShapeEmitParams: jest.fn(),
+      encodeForceFieldsForGPU: jest.fn(),
+      encodeCollisionPlanesForGPU: jest.fn(),
+    },
+    pipeline,
+  };
+}
+
 // ─── registerTSLMaterialFactory ──────────────────────────────────────────────
 
 describe('registerTSLMaterialFactory', () => {
@@ -30,12 +98,9 @@ describe('registerTSLMaterialFactory', () => {
   });
 
   it('does not throw when registering a factory', () => {
-    const mockFactory = {
-      createTSLParticleMaterial: jest.fn(() => new THREE.ShaderMaterial()),
-      createTSLTrailMaterial: jest.fn(() => new THREE.ShaderMaterial()),
-    };
+    const { mockFactory } = createMockFactory();
     expect(() => registerTSLMaterialFactory(mockFactory)).not.toThrow();
-    // Clean up: unregister by setting null internally — we test via behavior below
+    enableWebGPU();
   });
 });
 
@@ -43,86 +108,31 @@ describe('registerTSLMaterialFactory', () => {
 
 describe('TSL material branching', () => {
   afterEach(() => {
-    // Reset TSL factory by registering a null-like value through the public API
-    // Since there's no unregister, we test that the factory is called when registered
+    // Restore the real factory so later suites keep the GPU-only pipeline.
+    enableWebGPU();
   });
 
-  it('uses GLSL ShaderMaterial by default (no TSL factory registered)', () => {
-    // Ensure we start without a TSL factory by creating a system with CPU backend
-    const ps = createTestSystem({
-      simulationBackend: SimulationBackend.CPU,
-    });
+  it('uses the TSL node material from the real factory registered at setup', () => {
+    const ps = createTestSystem();
     const points = ps.instance as THREE.Points;
-    expect(points.material).toBeInstanceOf(THREE.ShaderMaterial);
+    expect(points.material).toBeInstanceOf(PointsNodeMaterial);
     ps.dispose();
   });
 
-  it('uses TSL material when simulationBackend is CPU with factory (for WebGPU renderer compat)', () => {
-    const mockFactory = {
-      createTSLParticleMaterial: jest.fn(() => new THREE.ShaderMaterial()),
-      createTSLTrailMaterial: jest.fn(() => new THREE.ShaderMaterial()),
-    };
-    registerTSLMaterialFactory(mockFactory);
-
-    const ps = createTestSystem({
-      simulationBackend: SimulationBackend.CPU,
-    });
-    // TSL is always used when factory is registered (for WebGPURenderer compat),
-    // but GPU compute is NOT used when backend is CPU.
-    expect(mockFactory.createTSLParticleMaterial).toHaveBeenCalled();
-    ps.dispose();
-
-    // Clean up: re-register with null-ish to reset (use a trick)
-    registerTSLMaterialFactory(
-      null as unknown as Parameters<typeof registerTSLMaterialFactory>[0]
-    );
-  });
-
-  it('calls TSL factory when backend is AUTO and factory is registered', () => {
-    const mockMaterial = new THREE.ShaderMaterial();
-    const mockFactory = {
-      createTSLParticleMaterial: jest.fn(() => mockMaterial),
-      createTSLTrailMaterial: jest.fn(() => new THREE.ShaderMaterial()),
-    };
-    registerTSLMaterialFactory(mockFactory);
-
-    const ps = createTestSystem({
-      simulationBackend: SimulationBackend.AUTO,
-    });
-    expect(mockFactory.createTSLParticleMaterial).toHaveBeenCalledTimes(1);
-    ps.dispose();
-
-    // Clean up
-    registerTSLMaterialFactory(
-      null as unknown as Parameters<typeof registerTSLMaterialFactory>[0]
-    );
-  });
-
-  it('calls TSL factory when backend is GPU and factory is registered', () => {
-    const mockMaterial = new THREE.ShaderMaterial();
-    const mockFactory = {
-      createTSLParticleMaterial: jest.fn(() => mockMaterial),
-      createTSLTrailMaterial: jest.fn(() => new THREE.ShaderMaterial()),
-    };
+  it('calls the mock TSL factory when registered (GPU backend)', () => {
+    const { mockFactory } = createMockFactory();
     registerTSLMaterialFactory(mockFactory);
 
     const ps = createTestSystem({
       simulationBackend: SimulationBackend.GPU,
     });
-    expect(mockFactory.createTSLParticleMaterial).toHaveBeenCalledTimes(1);
+    expect(mockFactory.createTSLParticleMaterial).toHaveBeenCalled();
+    expect(mockFactory.createComputePipeline).toHaveBeenCalled();
     ps.dispose();
-
-    // Clean up
-    registerTSLMaterialFactory(
-      null as unknown as Parameters<typeof registerTSLMaterialFactory>[0]
-    );
   });
 
   it('passes renderer type and uniforms to TSL factory', () => {
-    const mockFactory = {
-      createTSLParticleMaterial: jest.fn(() => new THREE.ShaderMaterial()),
-      createTSLTrailMaterial: jest.fn(() => new THREE.ShaderMaterial()),
-    };
+    const { mockFactory } = createMockFactory();
     registerTSLMaterialFactory(mockFactory);
 
     const ps = createTestSystem({
@@ -149,11 +159,6 @@ describe('TSL material branching', () => {
     expect(config).toHaveProperty('depthWrite');
 
     ps.dispose();
-
-    // Clean up
-    registerTSLMaterialFactory(
-      null as unknown as Parameters<typeof registerTSLMaterialFactory>[0]
-    );
   });
 });
 
@@ -167,7 +172,7 @@ describe('simulationBackend config field', () => {
     ps.dispose();
   });
 
-  it('accepts CPU backend without error', () => {
+  it('accepts CPU backend without error (maps to the GPU kernel)', () => {
     const ps = createTestSystem({
       simulationBackend: SimulationBackend.CPU,
     });
@@ -175,7 +180,7 @@ describe('simulationBackend config field', () => {
     ps.dispose();
   });
 
-  it('accepts GPU backend without error (falls back gracefully)', () => {
+  it('accepts GPU backend without error', () => {
     const ps = createTestSystem({
       simulationBackend: SimulationBackend.GPU,
     });

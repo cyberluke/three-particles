@@ -1,21 +1,17 @@
 /**
- * Trail geometry edge case tests.
+ * Trail edge-case tests for the GPU-only (4.x) engine.
  *
- * Covers previously uncovered lines in three-particles.ts:
- *   - 3295-3297: Vertical velocity tangent alignment switch
- *   - 3319-3328: Twist prevention (ribbon normal flip)
- *   - 3598-3600: Ribbon leader tangent alignment
- *   - 3618-3626: Ribbon leader twist prevention
- *   - 2853: Early return when trail data is missing
- *
- * These tests create real particle systems with trails and move particles
- * through specific trajectories to trigger the edge-case branches.
+ * The trail history ring + ribbon are built by the compute kernels; the CPU
+ * only writes scalars. These tests pin creation + per-frame dispatch for the
+ * previously uncovered branches (vertical tangents, twist prevention, ribbon
+ * chaining, early-return guard).
  */
 
 import {
   createParticleSystem,
   registerTSLMaterialFactory,
 } from '../js/effects/three-particles/three-particles.js';
+import { enableWebGPU } from '../webgpu.js';
 import type { ParticleSystem } from '../js/effects/three-particles/types.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -32,60 +28,58 @@ function createTrailSystem(
       startLifetime: 5,
       emission: { rateOverTime: 100 },
       startSpeed: 0,
-      renderer: { type: 'TRAIL' },
-      trail: {
-        length: 8,
-        dieWithParticle: true,
-        minVertexDistance: 0.01,
-        twistPrevention: true,
-        ...(overrides.trail as Record<string, unknown>),
+      renderer: {
+        rendererType: 'TRAIL',
+        trail: {
+          length: 8,
+          dieWithParticle: true,
+          minVertexDistance: 0.01,
+          twistPrevention: true,
+          ...(overrides.trail as Record<string, unknown>),
+        },
       },
       ...overrides,
-    },
+    } as never,
     startTime
   );
 }
 
+const stepFrames = (ps: ParticleSystem, frames: number, startTime = 1000) => {
+  for (let t = 1; t <= frames; t++) {
+    ps.update({
+      now: startTime + t * 16,
+      delta: 0.016,
+      elapsed: (t * 16) / 1000,
+    });
+  }
+};
+
 afterEach(() => {
-  registerTSLMaterialFactory(
-    null as unknown as Parameters<typeof registerTSLMaterialFactory>[0]
-  );
+  enableWebGPU();
 });
 
-// ─── Vertical velocity tangent alignment (lines 3295-3297) ──────────────────
+// ─── Vertical velocity tangent alignment ────────────────────────────────────
 
 describe('trail — vertical tangent alignment', () => {
   it('handles nearly vertical particle velocity without error', () => {
-    // Emit particles moving straight up — tangent ≈ (0,1,0) which is
-    // nearly parallel to the default up vector, triggering the switch
-    // to (1,0,0) as the reference up vector.
     const ps = createTrailSystem({
       startSpeed: 50,
-      // Cone with 0 angle = straight up from default shape
-      shape: { type: 'CONE', angle: 0, radius: 0 },
+      shape: { shape: 'CONE', cone: { angle: 0, radius: 0 } },
     });
 
-    // Run several frames so trail samples are collected
-    for (let t = 1; t <= 10; t++) {
-      ps.update(1000 + t * 16);
-    }
-
-    // System should not throw or produce NaN in the trail geometry
-    const mesh = ps.instance.children?.[0] || ps.instance;
-    expect(mesh).toBeDefined();
+    expect(() => stepFrames(ps, 10)).not.toThrow();
+    expect(ps.instance).toBeDefined();
     ps.dispose();
   });
 });
 
-// ─── Twist prevention (lines 3319-3328) ─────────────────────────────────────
+// ─── Twist prevention ────────────────────────────────────────────────────────
 
 describe('trail — twist prevention', () => {
   it('does not throw when twist prevention flips ribbon normals', () => {
-    // Create particles that curve in 3D, which can cause the cross-product
-    // normal to flip relative to the previous frame.
     const ps = createTrailSystem({
       startSpeed: 10,
-      gravity: 20, // Strong downward pull creates curved trajectory
+      gravity: 20,
       trail: {
         length: 12,
         dieWithParticle: true,
@@ -94,13 +88,7 @@ describe('trail — twist prevention', () => {
       },
     });
 
-    // Run many frames so particles curve and normals potentially flip
-    for (let t = 1; t <= 30; t++) {
-      ps.update(1000 + t * 16);
-    }
-
-    // Should complete without error
-    expect(true).toBe(true);
+    expect(() => stepFrames(ps, 30)).not.toThrow();
     ps.dispose();
   });
 
@@ -116,18 +104,15 @@ describe('trail — twist prevention', () => {
       },
     });
 
-    for (let t = 1; t <= 20; t++) {
-      ps.update(1000 + t * 16);
-    }
-
+    expect(() => stepFrames(ps, 20)).not.toThrow();
     ps.dispose();
   });
 });
 
-// ─── Ribbon mode edge cases (lines 3383-3384, 3502-3504, 3519-3521) ────────
+// ─── Ribbon mode ─────────────────────────────────────────────────────────────
 
 describe('trail — ribbon mode', () => {
-  it('allocates rawPoints buffer for connected ribbon', () => {
+  it('builds the trail-history + ribbon passes for a connected ribbon', () => {
     const ps = createTrailSystem({
       startSpeed: 5,
       trail: {
@@ -139,17 +124,16 @@ describe('trail — ribbon mode', () => {
       },
     });
 
-    // Run enough frames for multiple particles to form a ribbon
-    for (let t = 1; t <= 40; t++) {
-      ps.update(1000 + t * 16);
-    }
-
-    // Should handle ribbon geometry without error
+    expect(() => stepFrames(ps, 40)).not.toThrow();
+    const names = (
+      ps as unknown as { gpuDebug: { passNames: string[] } }
+    ).gpuDebug.passNames;
+    expect(names).toContain('trail-history');
     ps.dispose();
   });
 });
 
-// ─── Non-trail system should not crash trail update (line 2853) ────────────
+// ─── Non-trail system early return ──────────────────────────────────────────
 
 describe('trail — early return guard', () => {
   it('non-trail system does not crash during update', () => {
@@ -159,16 +143,16 @@ describe('trail — early return guard', () => {
         duration: 5,
         looping: true,
         emission: { rateOverTime: 10 },
-        renderer: { type: 'POINTS' },
+        renderer: { rendererType: 'POINTS' },
       },
       1000
     );
 
-    // Multiple updates without trail should be fine
-    for (let t = 1; t <= 5; t++) {
-      ps.update(1000 + t * 16);
-    }
-
+    expect(() => stepFrames(ps, 5)).not.toThrow();
+    const names = (
+      ps as unknown as { gpuDebug: { passNames: string[] } }
+    ).gpuDebug.passNames;
+    expect(names).not.toContain('trail-history');
     ps.dispose();
   });
 });

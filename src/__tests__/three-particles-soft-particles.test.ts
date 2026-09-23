@@ -1,395 +1,213 @@
-import * as THREE from 'three';
-import { RendererType } from '../js/effects/three-particles/three-particles-enums.js';
-import { createParticleSystem } from '../js/effects/three-particles/three-particles.js';
-import type { ParticleSystem } from '../js/effects/three-particles/types.js';
-
 /**
- * Helper: create a particle system with soft particles config.
+ * Soft-particles uniform tests for the GPU-only (4.x) engine.
+ *
+ * The TSL factory receives the normalized soft-particle uniforms through the
+ * shared-uniforms object, so the mock factory records them directly.
  */
-const createSystemWithSoftParticles = (
-  rendererType: RendererType = RendererType.POINTS,
-  softParticles: Record<string, unknown> = {},
-  extraConfig: Record<string, unknown> = {},
+
+import * as THREE from 'three';
+import { StorageBufferAttribute } from 'three/webgpu';
+import {
+  createParticleSystem,
+  registerTSLMaterialFactory,
+} from '../js/effects/three-particles/three-particles.js';
+import { enableWebGPU } from '../webgpu.js';
+
+// ─── Mock factory that records the shared uniforms ──────────────────────────
+
+function mockFactoryWithCapture() {
+  const captured: {
+    uniforms?: Record<string, { value: unknown }>;
+  } = {};
+  const mk = (n: number, itemSize: number) =>
+    new StorageBufferAttribute(new Float32Array(n * itemSize), itemSize);
+  const pipeline = {
+    emitNode: { isNode: true, count: 1 },
+    simNode: { isNode: true },
+    computeNodes: [],
+    passLayouts: [
+      { name: 'emit', storageBindings: 8, uniformBindings: 1 },
+      { name: 'simulate', storageBindings: 8, uniformBindings: 1 },
+    ],
+    passNames: ['emit', 'simulate'],
+    allocatorCount: 11,
+    shapeUniforms: { shapeKind: { value: 0 } },
+    uniforms: {
+      delta: { value: 0 },
+      deltaMs: { value: 0 },
+      gravityVelocity: { value: new THREE.Vector3() },
+      emitCount: { value: 0 },
+      seed: { value: 1 },
+    },
+    buffers: {
+      position: mk(10, 4),
+      velocity: mk(10, 4),
+      color: mk(10, 4),
+      particleState: mk(10, 4),
+      startValues: mk(10, 4),
+      startColorsExt: mk(10, 4),
+      orbitalIsActive: mk(10, 4),
+      allocator: new StorageBufferAttribute(new Uint32Array(11), 1),
+      packedData: new Float32Array(1),
+    },
+    packedDataNode: {
+      addUpdateRange: (_s: number, _c: number) => {},
+      needsUpdate: false,
+    },
+    trailMeta: null,
+    forceFieldInfo: null,
+    collisionPlaneInfo: null,
+  };
+  const factory = {
+    createTSLParticleMaterial: jest.fn(
+      (_type: unknown, uniforms: Record<string, { value: unknown }>) => {
+        captured.uniforms = uniforms;
+        return new THREE.ShaderMaterial() as unknown as THREE.Material;
+      }
+    ),
+    createTSLTrailMaterial: jest.fn(
+      () => new THREE.ShaderMaterial() as unknown as THREE.Material
+    ),
+    createComputePipeline: jest.fn(() => pipeline),
+    createSubEmitterFifoAttribute: jest.fn(),
+    createSubEmitterInitUpdate: jest.fn(),
+    createTrailRibbonUpdate: jest.fn(),
+    encodeShapeEmitParams: jest.fn(),
+    encodeForceFieldsForGPU: jest.fn(),
+    encodeCollisionPlanesForGPU: jest.fn(),
+  };
+  return { factory, captured };
+}
+
+const createWithFactory = (
+  config: Record<string, unknown>,
   startTime = 1000
 ) => {
+  const { factory, captured } = mockFactoryWithCapture();
+  registerTSLMaterialFactory(factory);
   const ps = createParticleSystem(
-    {
-      maxParticles: 10,
-      duration: 5,
-      looping: true,
-      startLifetime: 2,
-      startSpeed: 1,
-      startSize: 1,
-      startOpacity: 1,
-      startRotation: 0,
-      emission: { rateOverTime: 10 },
-      renderer: {
-        rendererType,
-        softParticles,
-        ...(rendererType === RendererType.TRAIL
-          ? { trail: { length: 4 } }
-          : {}),
-        ...(rendererType === RendererType.MESH
-          ? { mesh: { geometry: new THREE.BoxGeometry(1, 1, 1) } }
-          : {}),
-      },
-      ...extraConfig,
-    } as any,
+    { maxParticles: 10, duration: 5, looping: true, ...config },
     startTime
   );
-  return ps;
+  return { ps, captured };
 };
 
-/**
- * Helper: get the ShaderMaterial from a particle system.
- */
-const getMaterial = (ps: ParticleSystem): THREE.ShaderMaterial => {
-  const obj = ps.instance as THREE.Mesh | THREE.Points;
-  return obj.material as THREE.ShaderMaterial;
-};
+afterEach(() => {
+  enableWebGPU();
+});
 
-/**
- * Helper: get the trail mesh material from a trail particle system.
- */
-const getTrailMaterial = (ps: ParticleSystem): THREE.ShaderMaterial => {
-  const points = ps.instance as THREE.Points;
-  const trailMesh = points.children.find(
-    (c) => c instanceof THREE.Mesh
-  ) as THREE.Mesh;
-  return trailMesh.material as THREE.ShaderMaterial;
-};
+// ─── Defaults ───────────────────────────────────────────────────────────────
 
-describe('Soft Particles (depth-based fade)', () => {
-  describe('defaults', () => {
-    it('should default softParticlesEnabled to false', () => {
-      const ps = createSystemWithSoftParticles();
-      const mat = getMaterial(ps);
-      expect(mat.uniforms.softParticlesEnabled.value).toBe(false);
-      ps.dispose();
-    });
-
-    it('should default softParticlesIntensity to 1.0', () => {
-      const ps = createSystemWithSoftParticles();
-      const mat = getMaterial(ps);
-      expect(mat.uniforms.softParticlesIntensity.value).toBe(1.0);
-      ps.dispose();
-    });
-
-    it('should default sceneDepthTexture to null', () => {
-      const ps = createSystemWithSoftParticles();
-      const mat = getMaterial(ps);
-      expect(mat.uniforms.sceneDepthTexture.value).toBeNull();
-      ps.dispose();
-    });
-
-    it('should default cameraNearFar to (0.1, 1000)', () => {
-      const ps = createSystemWithSoftParticles();
-      const mat = getMaterial(ps);
-      const nf = mat.uniforms.cameraNearFar.value as THREE.Vector2;
-      expect(nf.x).toBeCloseTo(0.1);
-      expect(nf.y).toBeCloseTo(1000.0);
-      ps.dispose();
-    });
+describe('soft particle uniforms — defaults', () => {
+  it('should default softParticlesEnabled to false', () => {
+    const { ps, captured } = createWithFactory({});
+    expect(captured.uniforms!.softParticlesEnabled.value).toBe(false);
+    ps.dispose();
   });
 
-  describe('enabled with depthTexture', () => {
-    it('should set softParticlesEnabled to true when enabled and depthTexture provided', () => {
-      const depthTex = new THREE.DepthTexture(256, 256);
-      const ps = createSystemWithSoftParticles(RendererType.POINTS, {
-        enabled: true,
-        intensity: 2.5,
-        depthTexture: depthTex,
-      });
-      const mat = getMaterial(ps);
-      expect(mat.uniforms.softParticlesEnabled.value).toBe(true);
-      expect(mat.uniforms.softParticlesIntensity.value).toBe(2.5);
-      expect(mat.uniforms.sceneDepthTexture.value).toBe(depthTex);
-      ps.dispose();
-    });
-
-    it('should gracefully disable when enabled but no depthTexture provided', () => {
-      const ps = createSystemWithSoftParticles(RendererType.POINTS, {
-        enabled: true,
-        intensity: 2.0,
-      });
-      const mat = getMaterial(ps);
-      expect(mat.uniforms.softParticlesEnabled.value).toBe(false);
-      ps.dispose();
-    });
-
-    it('should disable when enabled is false even with depthTexture', () => {
-      const depthTex = new THREE.DepthTexture(256, 256);
-      const ps = createSystemWithSoftParticles(RendererType.POINTS, {
-        enabled: false,
-        depthTexture: depthTex,
-      });
-      const mat = getMaterial(ps);
-      expect(mat.uniforms.softParticlesEnabled.value).toBe(false);
-      ps.dispose();
-    });
-
-    it('should use default intensity when not specified', () => {
-      const depthTex = new THREE.DepthTexture(256, 256);
-      const ps = createSystemWithSoftParticles(RendererType.POINTS, {
-        enabled: true,
-        depthTexture: depthTex,
-      });
-      const mat = getMaterial(ps);
-      expect(mat.uniforms.softParticlesIntensity.value).toBe(1.0);
-      ps.dispose();
-    });
-
-    it('should clamp intensity to minimum 0.001 when set to zero', () => {
-      const depthTex = new THREE.DepthTexture(256, 256);
-      const ps = createSystemWithSoftParticles(RendererType.POINTS, {
-        enabled: true,
-        intensity: 0,
-        depthTexture: depthTex,
-      });
-      const mat = getMaterial(ps);
-      expect(mat.uniforms.softParticlesIntensity.value).toBeCloseTo(0.001);
-      ps.dispose();
-    });
-
-    it('should clamp negative intensity to minimum 0.001', () => {
-      const depthTex = new THREE.DepthTexture(256, 256);
-      const ps = createSystemWithSoftParticles(RendererType.POINTS, {
-        enabled: true,
-        intensity: -5,
-        depthTexture: depthTex,
-      });
-      const mat = getMaterial(ps);
-      expect(mat.uniforms.softParticlesIntensity.value).toBeCloseTo(0.001);
-      ps.dispose();
-    });
+  it('should default softParticlesIntensity to 1.0', () => {
+    const { ps, captured } = createWithFactory({});
+    expect(captured.uniforms!.softParticlesIntensity.value).toBe(1);
+    ps.dispose();
   });
 
-  describe('all renderer types include soft particle uniforms', () => {
-    const rendererTypes = [
-      RendererType.POINTS,
-      RendererType.INSTANCED,
-      RendererType.MESH,
-    ];
-
-    rendererTypes.forEach((type) => {
-      it(`should include soft particle uniforms for ${type}`, () => {
-        const depthTex = new THREE.DepthTexture(256, 256);
-        const ps = createSystemWithSoftParticles(type, {
-          enabled: true,
-          depthTexture: depthTex,
-        });
-        const mat = getMaterial(ps);
-        expect(mat.uniforms.softParticlesEnabled).toBeDefined();
-        expect(mat.uniforms.softParticlesEnabled.value).toBe(true);
-        expect(mat.uniforms.softParticlesIntensity).toBeDefined();
-        expect(mat.uniforms.sceneDepthTexture).toBeDefined();
-        expect(mat.uniforms.sceneDepthTexture.value).toBe(depthTex);
-        expect(mat.uniforms.cameraNearFar).toBeDefined();
-        ps.dispose();
-      });
-    });
-
-    it('should include soft particle uniforms for TRAIL renderer', () => {
-      const depthTex = new THREE.DepthTexture(256, 256);
-      const ps = createSystemWithSoftParticles(RendererType.TRAIL, {
-        enabled: true,
-        depthTexture: depthTex,
-      });
-      const mat = getTrailMaterial(ps);
-      expect(mat.uniforms.softParticlesEnabled.value).toBe(true);
-      expect(mat.uniforms.softParticlesIntensity.value).toBe(1.0);
-      expect(mat.uniforms.sceneDepthTexture.value).toBe(depthTex);
-      expect(mat.uniforms.cameraNearFar).toBeDefined();
-      ps.dispose();
-    });
+  it('should default sceneDepthTexture to null', () => {
+    const { ps, captured } = createWithFactory({});
+    expect(captured.uniforms!.sceneDepthTexture.value).toBeNull();
+    ps.dispose();
   });
 
-  describe('shader code contains soft particle logic', () => {
-    it('should include linearizeDepth function in POINTS fragment shader', () => {
-      const ps = createSystemWithSoftParticles(RendererType.POINTS);
-      const mat = getMaterial(ps);
-      expect(mat.fragmentShader).toContain('linearizeDepth');
-      expect(mat.fragmentShader).toContain('softParticlesEnabled');
-      expect(mat.fragmentShader).toContain('sceneDepthTexture');
-      ps.dispose();
-    });
+  it('should default cameraNearFar to (0.1, 1000)', () => {
+    const { ps, captured } = createWithFactory({});
+    const cnf = captured.uniforms!.cameraNearFar.value as THREE.Vector2;
+    expect(cnf.x).toBeCloseTo(0.1);
+    expect(cnf.y).toBeCloseTo(1000);
+    ps.dispose();
+  });
+});
 
-    it('should include linearizeDepth function in INSTANCED fragment shader', () => {
-      const ps = createSystemWithSoftParticles(RendererType.INSTANCED);
-      const mat = getMaterial(ps);
-      expect(mat.fragmentShader).toContain('linearizeDepth');
-      expect(mat.fragmentShader).toContain('softParticlesEnabled');
-      ps.dispose();
-    });
+// ─── Enabled flag resolution ────────────────────────────────────────────────
 
-    it('should include linearizeDepth function in MESH fragment shader', () => {
-      const ps = createSystemWithSoftParticles(RendererType.MESH);
-      const mat = getMaterial(ps);
-      expect(mat.fragmentShader).toContain('linearizeDepth');
-      expect(mat.fragmentShader).toContain('softParticlesEnabled');
-      ps.dispose();
+describe('soft particle uniforms — enabled flag', () => {
+  it('should set softParticlesEnabled to true when enabled', () => {
+    const depth = new THREE.DataTexture(new Float32Array(4), 2, 2);
+    const { ps, captured } = createWithFactory({
+      renderer: {
+        softParticles: { enabled: true, depthTexture: depth },
+      },
     });
-
-    it('should include linearizeDepth function in TRAIL fragment shader', () => {
-      const ps = createSystemWithSoftParticles(RendererType.TRAIL);
-      const mat = getTrailMaterial(ps);
-      expect(mat.fragmentShader).toContain('linearizeDepth');
-      expect(mat.fragmentShader).toContain('softParticlesEnabled');
-      ps.dispose();
-    });
-
-    it('should include vViewZ varying in POINTS vertex shader', () => {
-      const ps = createSystemWithSoftParticles(RendererType.POINTS);
-      const mat = getMaterial(ps);
-      expect(mat.vertexShader).toContain('vViewZ');
-      ps.dispose();
-    });
-
-    it('should include vViewZ varying in INSTANCED vertex shader', () => {
-      const ps = createSystemWithSoftParticles(RendererType.INSTANCED);
-      const mat = getMaterial(ps);
-      expect(mat.vertexShader).toContain('vViewZ');
-      ps.dispose();
-    });
-
-    it('should include vViewZ varying in MESH vertex shader', () => {
-      const ps = createSystemWithSoftParticles(RendererType.MESH);
-      const mat = getMaterial(ps);
-      expect(mat.vertexShader).toContain('vViewZ');
-      ps.dispose();
-    });
-
-    it('should include vViewZ varying in TRAIL vertex shader', () => {
-      const ps = createSystemWithSoftParticles(RendererType.TRAIL);
-      const mat = getTrailMaterial(ps);
-      expect(mat.vertexShader).toContain('vViewZ');
-      ps.dispose();
-    });
+    expect(captured.uniforms!.softParticlesEnabled.value).toBe(true);
+    expect(captured.uniforms!.sceneDepthTexture.value).toBe(depth);
+    ps.dispose();
   });
 
-  describe('onBeforeRender callback', () => {
-    it('should set onBeforeRender when soft particles enabled for POINTS', () => {
-      const depthTex = new THREE.DepthTexture(256, 256);
-      const ps = createSystemWithSoftParticles(RendererType.POINTS, {
-        enabled: true,
-        depthTexture: depthTex,
-      });
-      // Points renderer normally has no onBeforeRender; with soft particles it should
-      expect(typeof ps.instance.onBeforeRender).toBe('function');
-      ps.dispose();
+  it('keeps enabled true when no depthTexture is provided', () => {
+    const { ps, captured } = createWithFactory({
+      renderer: { softParticles: { enabled: true } },
     });
-
-    it('should NOT set custom onBeforeRender when soft particles disabled for POINTS', () => {
-      const ps = createSystemWithSoftParticles(RendererType.POINTS, {
-        enabled: false,
-      });
-      // Default THREE.Object3D.prototype.onBeforeRender is a noop function
-      // When no instancing and no soft particles, we should not have set a custom one
-      // Just ensure it doesn't throw
-      expect(() => {
-        ps.instance.onBeforeRender(
-          {} as THREE.WebGLRenderer,
-          {} as THREE.Scene,
-          {} as THREE.Camera,
-          {} as THREE.BufferGeometry,
-          {} as THREE.Material,
-          null as any
-        );
-      }).not.toThrow();
-      ps.dispose();
-    });
-
-    it('should update cameraNearFar from a PerspectiveCamera via onBeforeRender', () => {
-      const depthTex = new THREE.DepthTexture(256, 256);
-      const ps = createSystemWithSoftParticles(RendererType.INSTANCED, {
-        enabled: true,
-        depthTexture: depthTex,
-      });
-      const mat = getMaterial(ps);
-
-      const camera = new THREE.PerspectiveCamera(75, 1, 0.5, 500);
-      const mockRenderer = {
-        getSize: () => new THREE.Vector2(1920, 1080),
-        getPixelRatio: () => 1,
-      } as unknown as THREE.WebGLRenderer;
-
-      ps.instance.onBeforeRender(
-        mockRenderer,
-        {} as THREE.Scene,
-        camera,
-        ps.instance.geometry,
-        mat,
-        null as any
-      );
-
-      const nf = mat.uniforms.cameraNearFar.value as THREE.Vector2;
-      expect(nf.x).toBe(0.5);
-      expect(nf.y).toBe(500);
-      ps.dispose();
-    });
-
-    it('should not crash with OrthographicCamera (graceful skip)', () => {
-      const depthTex = new THREE.DepthTexture(256, 256);
-      const ps = createSystemWithSoftParticles(RendererType.INSTANCED, {
-        enabled: true,
-        depthTexture: depthTex,
-      });
-      const mat = getMaterial(ps);
-
-      const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
-      const mockRenderer = {
-        getSize: () => new THREE.Vector2(1920, 1080),
-        getPixelRatio: () => 1,
-      } as unknown as THREE.WebGLRenderer;
-
-      // Should not throw — the ortho camera guard should skip the update
-      expect(() => {
-        ps.instance.onBeforeRender(
-          mockRenderer,
-          {} as THREE.Scene,
-          camera,
-          ps.instance.geometry,
-          mat,
-          null as any
-        );
-      }).not.toThrow();
-
-      // cameraNearFar should remain at default since ortho camera is skipped
-      const nf = mat.uniforms.cameraNearFar.value as THREE.Vector2;
-      expect(nf.x).toBeCloseTo(0.1);
-      expect(nf.y).toBeCloseTo(1000.0);
-      ps.dispose();
-    });
-
-    it('should update cameraNearFar on trail mesh onBeforeRender', () => {
-      const depthTex = new THREE.DepthTexture(256, 256);
-      const ps = createSystemWithSoftParticles(RendererType.TRAIL, {
-        enabled: true,
-        depthTexture: depthTex,
-      });
-
-      const trailMesh = ps.instance.children.find(
-        (c) => c instanceof THREE.Mesh
-      ) as THREE.Mesh;
-      const trailMat = trailMesh.material as THREE.ShaderMaterial;
-
-      const camera = new THREE.PerspectiveCamera(75, 1, 0.3, 800);
-      // getWorldPosition needs a proper matrixWorld
-      camera.updateMatrixWorld(true);
-
-      trailMesh.onBeforeRender(
-        {} as THREE.WebGLRenderer,
-        {} as THREE.Scene,
-        camera,
-        trailMesh.geometry,
-        trailMat,
-        null as any
-      );
-
-      const nf = trailMat.uniforms.cameraNearFar.value as THREE.Vector2;
-      expect(nf.x).toBe(0.3);
-      expect(nf.y).toBe(800);
-      ps.dispose();
-    });
+    expect(captured.uniforms!.softParticlesEnabled.value).toBe(true);
+    expect(captured.uniforms!.sceneDepthTexture.value).toBeNull();
+    ps.dispose();
   });
+
+  it('should disable when enabled is false even with depthTexture', () => {
+    const depth = new THREE.DataTexture(new Float32Array(4), 2, 2);
+    const { ps, captured } = createWithFactory({
+      renderer: {
+        softParticles: { enabled: false, depthTexture: depth },
+      },
+    });
+    expect(captured.uniforms!.softParticlesEnabled.value).toBe(false);
+    ps.dispose();
+  });
+});
+
+// ─── Intensity clamping ─────────────────────────────────────────────────────
+
+describe('soft particle uniforms — intensity clamp', () => {
+  it('should use default intensity when not specified', () => {
+    const { ps, captured } = createWithFactory({
+      renderer: { softParticles: { enabled: true } },
+    });
+    expect(captured.uniforms!.softParticlesIntensity.value).toBe(1);
+    ps.dispose();
+  });
+
+  it('should clamp intensity to minimum 0.001 when set to zero', () => {
+    const { ps, captured } = createWithFactory({
+      renderer: { softParticles: { enabled: true, intensity: 0 } },
+    });
+    expect(captured.uniforms!.softParticlesIntensity.value).toBeCloseTo(0.001);
+    ps.dispose();
+  });
+
+  it('should clamp negative intensity to minimum 0.001', () => {
+    const { ps, captured } = createWithFactory({
+      renderer: { softParticles: { enabled: true, intensity: -5 } },
+    });
+    expect(captured.uniforms!.softParticlesIntensity.value).toBeCloseTo(0.001);
+    ps.dispose();
+  });
+});
+
+// ─── Per-renderer presence ──────────────────────────────────────────────────
+
+describe('soft particle uniforms — all renderer classes', () => {
+  it.each(['POINTS', 'INSTANCED', 'MESH', 'TRAIL'])(
+    'should include soft particle uniforms for %s renderer',
+    (type) => {
+      const { ps, captured } = createWithFactory({
+        renderer: {
+          rendererType: type,
+          mesh: { geometry: new THREE.BoxGeometry(1, 1, 1) },
+          softParticles: { enabled: true },
+        },
+      });
+      expect(captured.uniforms).toHaveProperty('softParticlesEnabled');
+      expect(captured.uniforms).toHaveProperty('softParticlesIntensity');
+      expect(captured.uniforms).toHaveProperty('sceneDepthTexture');
+      expect(captured.uniforms).toHaveProperty('cameraNearFar');
+      ps.dispose();
+    }
+  );
 });

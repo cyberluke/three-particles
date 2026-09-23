@@ -54,41 +54,6 @@ import {
   createDefaultMeshTexture,
   createDefaultParticleTexture,
 } from './three-particles-utils.js';
-
-/**
- * `resolveWebGPUEffectiveRendererType` — canonical mapping between the four
- * requested `rendererType` values and the four effective GPU render paths
- * (native runtime classes in parentheses).
- *
- *   requested POINTS    -> effective POINTS   (billboard quad + `THREE.Points`).
- *     POINTS IS a supported runtime class in this build: the billboard quad
- *     is drawn as a non-instanced `THREE.Points`; the TSL point material uses
- *     `pointUV` (r186 provides it for `PointsNodeMaterial`).
- *   requested INSTANCED -> effective INSTANCED (quad/box + `THREE.Mesh` with
- *     `InstancedBufferGeometry`).
- *   requested TRAIL     -> effective TRAIL    (ribbon strip + `THREE.Mesh`).
- *   requested MESH      -> effective MESH     (mesh/reused geometry +
- *     `THREE.Mesh`).
- *
- * A missing / unknown request resolves to POINTS because `POINTS` is the
- * default value of `renderer.rendererType` in the merged default config.
- */
-export function resolveWebGPUEffectiveRendererType(
-  requested: RendererType | string | undefined
-): RendererType {
-  switch (requested) {
-    case RendererType.INSTANCED:
-      return RendererType.INSTANCED;
-    case RendererType.TRAIL:
-      return RendererType.TRAIL;
-    case RendererType.MESH:
-      return RendererType.MESH;
-    case RendererType.POINTS:
-    default:
-      return RendererType.POINTS;
-  }
-}
-
 import {
   CollisionPlaneConfig,
   Constant,
@@ -111,6 +76,51 @@ import {
   MeshConfig,
   TrailConfig,
 } from './types.js';
+import {
+  createFluidSimPipeline,
+  type FluidSimPipeline,
+  type FluidSolverId,
+} from './webgpu/tsl-materials.js';
+
+/**
+ * `resolveWebGPUEffectiveRendererType` — canonical mapping between the five
+ * requested `rendererType` values and the five effective GPU render paths
+ * (native runtime classes in parentheses).
+ *
+ *   requested POINTS    -> effective POINTS   (billboard quad + `THREE.Points`).
+ *     POINTS IS a supported runtime class in this build: the billboard quad
+ *     is drawn as a non-instanced `THREE.Points`; the TSL point material uses
+ *     `pointUV` (r186 provides it for `PointsNodeMaterial`).
+ *   requested INSTANCED -> effective INSTANCED (quad/box + `THREE.Mesh` with
+ *     `InstancedBufferGeometry`).
+ *   requested TRAIL     -> effective TRAIL    (ribbon strip + `THREE.Mesh`).
+ *   requested MESH      -> effective MESH     (mesh/reused geometry +
+ *     `THREE.Mesh`).
+ *   requested FLUID     -> effective FLUID    (instanced quad + `THREE.Mesh`,
+ *     i.e. the same attribute contract as INSTANCED; both ocean solvers
+ *     (`renderer.fluid.solver` = `'MLS-MPM' | 'SPH'`) share this path and only
+ *     differ in the compute kernels appended after `emit` / `simulate`).
+ *
+ * A missing / unknown request resolves to POINTS because `POINTS` is the
+ * default value of `renderer.rendererType` in the merged default config.
+ */
+export function resolveWebGPUEffectiveRendererType(
+  requested: RendererType | string | undefined
+): RendererType {
+  switch (requested) {
+    case RendererType.INSTANCED:
+      return RendererType.INSTANCED;
+    case RendererType.TRAIL:
+      return RendererType.TRAIL;
+    case RendererType.MESH:
+      return RendererType.MESH;
+    case RendererType.FLUID:
+      return RendererType.FLUID;
+    case RendererType.POINTS:
+    default:
+      return RendererType.POINTS;
+  }
+}
 
 export * from './types.js';
 
@@ -173,7 +183,8 @@ type TSLMaterialFactory = {
       depthTest: boolean;
       depthWrite: boolean;
     },
-    gpuCompute?: boolean
+    gpuCompute?: boolean,
+    particleGeometry?: THREE.BufferGeometry
   ) => THREE.Material;
   createTSLTrailMaterial: (
     trailUniforms: Record<string, { value: unknown }>,
@@ -284,9 +295,10 @@ export const registerTSLMaterialFactory = (
     return false;
   }
   _tslMaterialFactory = factory;
-  if (options && "renderer" in options) {
-    _rendererBackendIsGPU = !!(options.renderer as { backend?: { isWebGPUBackend?: boolean } })
-      ?.backend?.isWebGPUBackend;
+  if (options && 'renderer' in options) {
+    _rendererBackendIsGPU = !!(
+      options.renderer as { backend?: { isWebGPUBackend?: boolean } }
+    )?.backend?.isWebGPUBackend;
   } else {
     _rendererBackendIsGPU = true;
   }
@@ -334,13 +346,26 @@ export const normalizeVector2Value = (
   if (Array.isArray(raw)) {
     n1 = Number((raw as number[])[0]);
     n2 = Number((raw as number[])[1]);
-  } else if (typeof raw === "object") {
+  } else if (typeof raw === 'object') {
     const o = raw as { x?: number; y?: number; u?: number; v?: number };
-    n1 = o.x !== undefined ? Number(o.x) : o.u !== undefined ? Number(o.u) : undefined;
-    n2 = o.y !== undefined ? Number(o.y) : o.v !== undefined ? Number(o.v) : undefined;
+    n1 =
+      o.x !== undefined
+        ? Number(o.x)
+        : o.u !== undefined
+          ? Number(o.u)
+          : undefined;
+    n2 =
+      o.y !== undefined
+        ? Number(o.y)
+        : o.v !== undefined
+          ? Number(o.v)
+          : undefined;
   }
   assertNamed(
-    n1 !== undefined && n2 !== undefined && Number.isFinite(n1) && Number.isFinite(n2),
+    n1 !== undefined &&
+      n2 !== undefined &&
+      Number.isFinite(n1) &&
+      Number.isFinite(n2),
     `${label} must be one of: Vector2, [x,y], [u,v], {x,y} or {u,v}`
   );
   return new THREE.Vector2(n1 as number, n2 as number);
@@ -354,17 +379,20 @@ export const normalizeTextureValue = (
 ): THREE.Texture | null => {
   if (raw === undefined || raw === null) return null;
   assertNamed(
-    typeof raw === "object" && "image" in (raw as object),
+    typeof raw === 'object' && 'image' in (raw as object),
     `${label} must be null or a texture object with .image (got ${String(raw)})`
   );
   return raw as THREE.Texture;
 };
 
 /** `null` (absent) or a texture object with `.image` — nothing else. */
-export const normalizeDepthTextureValue = (raw: unknown, label: string): THREE.Texture | null => {
+export const normalizeDepthTextureValue = (
+  raw: unknown,
+  label: string
+): THREE.Texture | null => {
   if (raw === undefined || raw === null) return null;
   assertNamed(
-    typeof raw === "object" && "image" in (raw as object),
+    typeof raw === 'object' && 'image' in (raw as object),
     `${label} must be a texture object with .image when set (got ${String(raw)})`
   );
   return raw as THREE.Texture;
@@ -379,13 +407,13 @@ export const normalizeBackgroundToVector3 = (
   label: string
 ): THREE.Vector3 => {
   if (raw === undefined || raw === null) return new THREE.Vector3(1, 1, 1);
-  if (typeof raw === "number") {
+  if (typeof raw === 'number') {
     const c = new THREE.Color(raw);
     return new THREE.Vector3(c.r, c.g, c.b);
   }
-  if (typeof raw === "string") {
+  if (typeof raw === 'string') {
     const s = raw.trim();
-    const c = new THREE.Color(s.startsWith("#") ? s : `#${s}`);
+    const c = new THREE.Color(s.startsWith('#') ? s : `#${s}`);
     assertNamed(
       Number.isFinite(c.r) && Number.isFinite(c.g) && Number.isFinite(c.b),
       `${label} is not a valid hex color string`
@@ -402,7 +430,9 @@ export const normalizeBackgroundToVector3 = (
   }
   const o = raw as { r?: number; g?: number; b?: number };
   assertNamed(
-    Number.isFinite(Number(o.r)) && Number.isFinite(Number(o.g)) && Number.isFinite(Number(o.b)),
+    Number.isFinite(Number(o.r)) &&
+      Number.isFinite(Number(o.g)) &&
+      Number.isFinite(Number(o.b)),
     `${label} object must provide finite r/g/b`
   );
   return new THREE.Vector3(Number(o.r), Number(o.g), Number(o.b));
@@ -551,7 +581,9 @@ const toBlendingConstant = (v: unknown): THREE.Blending => {
   if (typeof v === 'number') return v as THREE.Blending;
   if (typeof v === 'string') {
     const key = v.startsWith('THREE.') ? v : `THREE.${v}`;
-    const mapped = (blendingMap as unknown as Record<string, THREE.Blending>)[key];
+    const mapped = (blendingMap as unknown as Record<string, THREE.Blending>)[
+      key
+    ];
     if (mapped !== undefined) return mapped;
   }
   return THREE.NormalBlending;
@@ -918,20 +950,43 @@ const _uploadFFAndCollisionTails = (
     needsUpdate: boolean;
   };
   if (info && config.forceFields.length > 0) {
-    const encoded = _tslMaterialFactory!.encodeForceFieldsForGPU!(scratch.src, generalData.particleSystemId, generalData.normalizedLifetimePercentage);
+    const encoded = _tslMaterialFactory!.encodeForceFieldsForGPU!(
+      scratch.src,
+      generalData.particleSystemId,
+      generalData.normalizedLifetimePercentage
+    );
     const off = info.offset;
     let changed = false;
-    for (let i = 0; i < encoded.length; i++) if (arr[off + i] !== encoded[i]) { changed = true; break; }
-    if (changed) { arr.set(encoded, off); cd.addUpdateRange(off, encoded.length); cd.needsUpdate = true; }
+    for (let i = 0; i < encoded.length; i++)
+      if (arr[off + i] !== encoded[i]) {
+        changed = true;
+        break;
+      }
+    if (changed) {
+      arr.set(encoded, off);
+      cd.addUpdateRange(off, encoded.length);
+      cd.needsUpdate = true;
+    }
     (info.countUniform as { value: number }).value = config.forceFields.length;
   }
   if (cinfo && config.collisionPlanes.length > 0) {
-    const encoded2 = _tslMaterialFactory!.encodeCollisionPlanesForGPU!(config.collisionPlanes as never);
+    const encoded2 = _tslMaterialFactory!.encodeCollisionPlanesForGPU!(
+      config.collisionPlanes as never
+    );
     const off2 = cinfo.offset;
     let changed2 = false;
-    for (let i = 0; i < encoded2.length; i++) if (arr[off2 + i] !== encoded2[i]) { changed2 = true; break; }
-    if (changed2) { arr.set(encoded2, off2); cd.addUpdateRange(off2, encoded2.length); cd.needsUpdate = true; }
-    (cinfo.countUniform as { value: number }).value = config.collisionPlanes.length;
+    for (let i = 0; i < encoded2.length; i++)
+      if (arr[off2 + i] !== encoded2[i]) {
+        changed2 = true;
+        break;
+      }
+    if (changed2) {
+      arr.set(encoded2, off2);
+      cd.addUpdateRange(off2, encoded2.length);
+      cd.needsUpdate = true;
+    }
+    (cinfo.countUniform as { value: number }).value =
+      config.collisionPlanes.length;
   }
 };
 
@@ -939,7 +994,9 @@ const _uploadFFAndCollisionTails = (
 // the CPU-side typed arrays so three.js WebGPU backend will upload them
 // before the render pass. (The compute kernels themselves run against these
 // same GPU buffers; the upload is only needed on the FIRST frame.)
-const _markBufferAttributeUploads = (buffers: Record<string, THREE.BufferAttribute>): void => {};
+const _markBufferAttributeUploads = (
+  buffers: Record<string, THREE.BufferAttribute>
+): void => {};
 
 // Default texture fallback (single white 1?1 pixel; matches upstream @newkrok).
 let _defaultTexture: THREE.Texture | null = null;
@@ -947,12 +1004,92 @@ const getDefaultTexture = (): THREE.Texture | null => {
   if (_defaultTexture) return _defaultTexture;
   if (typeof document === 'undefined') return null;
   const canvas = document.createElement('canvas');
-  canvas.width = 1; canvas.height = 1;
+  canvas.width = 1;
+  canvas.height = 1;
   const ctx = canvas.getContext('2d');
-  if (ctx) { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 1, 1); }
+  if (ctx) {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 1, 1);
+  }
   _defaultTexture = new THREE.Texture(canvas as unknown as TexImageSource);
   _defaultTexture.needsUpdate = true;
   return _defaultTexture;
+};
+/**
+ * Prefill the eight per-particle storage buffers for the FLUID solver so the
+ * first rendered frame already shows the dambreak lattice. Mirrors the CPU
+ * writes of the base emit kernel: `color / particleState / startValues /
+ * startColorsExt / orbitalIsActive`, with the two shared pos/vec4 already
+ * written by `initMLSMPMDambreak` / `initSPHDambreak`. Slots beyond the
+ * solver's `count` stay zeroed (material's `aColor.w > 0` guard makes them
+ * invisible).
+ */
+export const prefillFluidState = (
+  buffers: Record<string, unknown>,
+  count: number,
+  cfg: NormalizedParticleSystemConfig
+): void => {
+  const pairOf = (v: unknown, fb: number): [number, number] => {
+    if (typeof v === 'number' && Number.isFinite(v)) return [v, v];
+    if (v && typeof v === 'object') {
+      const m = (v as { min?: unknown; max?: unknown }).min;
+      const x = (v as { min?: unknown; max?: unknown }).max;
+      const mn = typeof m === 'number' && Number.isFinite(m) ? m : fb;
+      const mx = typeof x === 'number' && Number.isFinite(x) ? x : fb;
+      return [mn, mx];
+    }
+    return [fb, fb];
+  };
+  const mid = (p: [number, number]): number => (p[0] + p[1]) * 0.5;
+  const lifeMid = mid(pairOf(cfg.startLifetime, 5)) * 1000; // ms
+  const sizeMid = mid(pairOf(cfg.startSize, 1));
+  const rotMid = mid(pairOf(cfg.startRotation, 0));
+  const opMid = mid(pairOf(cfg.startOpacity, 1));
+  const cMin = cfg.startColor?.min ?? { r: 1, g: 1, b: 1 };
+  const cMax = cfg.startColor?.max ?? { r: 1, g: 1, b: 1 };
+  const cr = ((cMin.r ?? 1) + (cMax.r ?? 1)) * 0.5;
+  const cg = ((cMin.g ?? 1) + (cMax.g ?? 1)) * 0.5;
+  const cb = ((cMin.b ?? 1) + (cMax.b ?? 1)) * 0.5;
+  // Some pools (e.g. minimal test stubs) omit the optional extension stacks,
+  // so every write is guarded on the array being present.
+  const w = (a: unknown): Float32Array | null =>
+    (a as { array?: Float32Array } | undefined)?.array ?? null;
+  const col = w(buffers.color);
+  const ps = w(buffers.particleState);
+  const sv = w(buffers.startValues);
+  const ex = w(buffers.startColorsExt);
+  const oi = w(buffers.orbitalIsActive);
+  for (let i = 0; i < count; i++) {
+    const b = i * 4;
+    if (col) {
+      col[b] = cr;
+      col[b + 1] = cg;
+      col[b + 2] = cb;
+      col[b + 3] = opMid;
+    }
+    if (ps) {
+      ps[b] = 0;
+      ps[b + 1] = sizeMid;
+      ps[b + 2] = rotMid;
+      ps[b + 3] = 0;
+    }
+    if (sv) {
+      sv[b] = lifeMid;
+      sv[b + 1] = sizeMid;
+      sv[b + 2] = opMid;
+      sv[b + 3] = cr;
+    }
+    if (ex) {
+      ex[b] = cg;
+      ex[b + 1] = cb;
+      ex[b + 2] = 0;
+      ex[b + 3] = i; // stable per-particle seed (integer 0..2^24-1)
+    }
+    if (oi) {
+      // The solver owns all slots from frame #1 (emitCount is forced to 0).
+      oi[b] = 1;
+    }
+  }
 };
 /**
  * Create a new particle system (GPU-only). Every per-particle slot lives
@@ -992,7 +1129,8 @@ export const createParticleSystem = (
     );
   }
 
-  const maxParticles = config.maxParticles || DEFAULT_PARTICLE_SYSTEM_CONFIG.maxParticles!;
+  const maxParticles =
+    config.maxParticles || DEFAULT_PARTICLE_SYSTEM_CONFIG.maxParticles!;
   const normalizedConfig = ObjectUtils.deepMerge(
     DEFAULT_PARTICLE_SYSTEM_CONFIG as unknown as NormalizedParticleSystemConfig,
     config,
@@ -1005,7 +1143,8 @@ export const createParticleSystem = (
     if (!_cpuPreferenceWarned) {
       _cpuPreferencePreferenceWarn();
     }
-    normalizedConfig.simulationBackend = SimulationBackend.GPU as typeof normalizedConfig.simulationBackend;
+    normalizedConfig.simulationBackend =
+      SimulationBackend.GPU as typeof normalizedConfig.simulationBackend;
   }
 
   const requestedRendererType =
@@ -1021,7 +1160,8 @@ export const createParticleSystem = (
   const rrType = effectiveRendererType;
   const useInstancing =
     effectiveRendererType === RendererType.INSTANCED ||
-    effectiveRendererType === RendererType.MESH;
+    effectiveRendererType === RendererType.MESH ||
+    effectiveRendererType === RendererType.FLUID;
 
   // ?? 1b. Trail history ring (GPU-native, filled by the simulation kernel) ??
   const trailConfig = normalizedConfig.renderer.trail;
@@ -1068,19 +1208,123 @@ export const createParticleSystem = (
   const fifoBaseStride = fifos.reduce((m, f) => Math.max(m, f.windowSize), 0);
 
   const forceFields = normalizeForceFields(normalizedConfig.forceFields);
-  const collisionPlanes = normalizeCollisionPlanes(normalizedConfig.collisionPlanes);
+  const collisionPlanes = normalizeCollisionPlanes(
+    normalizedConfig.collisionPlanes
+  );
 
   // ?? 2. GPU compute pipeline (emit + simulation kernels) ??
-  const pipeline: NonNullable<ParticleSystemInstance['computePipeline']> = factory.createComputePipeline(
-    maxParticles,
-    useInstancing,
-    normalizedConfig,
-    _particleSystemId, // pre-increment inside generalData below would be off by 1; use the raw next id
-    forceFields.length,
-    collisionPlanes.length,
-    fifos,
-    trailDesc ?? undefined
-  );
+  const pipeline: NonNullable<ParticleSystemInstance['computePipeline']> =
+    factory.createComputePipeline(
+      maxParticles,
+      useInstancing,
+      normalizedConfig,
+      _particleSystemId, // pre-increment inside generalData below would be off by 1; use the raw next id
+      forceFields.length,
+      collisionPlanes.length,
+      fifos,
+      trailDesc ?? undefined
+    );
+
+  // ?? 2a. FLUID solver extension (opt-in SPH, MLS-MPM otherwise).
+  //
+  // Shares the base pipeline's `position` / `velocity` storage attributes so
+  // the FLUID render material's `instanceOffset` / `instanceVelocity` see the
+  // integrated result, seeds them with the dambreak lattice, merges the
+  // solver's own buffers into the first-frame upload set, and appends its
+  // per-substep compute nodes to the dispatch list. Each per-pass budget
+  // stays <= 8 (2 shared + up-to-6 solver-owned, per the solver layout).
+  // Solver-derived snapshots consumed by the `generalData` block below.
+  let fluidHighWater = 0;
+  let fluidSolverId: FluidSolverId | null = null;
+  let fluidBoxWidthRatioValue = 1;
+  if (rrType === RendererType.FLUID) {
+    type SB =
+      | StorageBufferAttribute
+      | import('three/webgpu').StorageInstancedBufferAttribute;
+    const sharedPos = pipeline.buffers.position as unknown as SB;
+    const sharedVel = pipeline.buffers.velocity as unknown as SB;
+    const pb = pipeline.buffers as unknown as Record<string, unknown>;
+    const solverName = String(
+      (
+        normalizedConfig.renderer.fluid as unknown as
+          { solver?: string } | undefined
+      )?.solver ?? ''
+    )
+      .trim()
+      .toUpperCase();
+    const isSPHSolver = solverName === 'SPH';
+    const solverId: FluidSolverId = isSPHSolver ? 'SPH' : 'MLS-MPM';
+    const solverPrefix = isSPHSolver ? 'sph' : 'mlsmpm';
+    const solver: FluidSimPipeline = createFluidSimPipeline(
+      solverId,
+      {
+        position: sharedPos as unknown as { array: Float32Array },
+        velocity: sharedVel as unknown as { array: Float32Array },
+      },
+      maxParticles,
+      normalizedConfig
+    );
+    // Merge the solver-owned scratch into the base pool so the one-shot
+    // first-frame upload (`_lastUploadStampMap` in the update loop) covers it.
+    if (isSPHSolver) {
+      pb.fluidForceDensity = solver.buffers.forceDensity;
+      pb.fluidSortedPosition = solver.buffers.sortedPosition;
+      pb.fluidSortedVelocity = solver.buffers.sortedVelocity;
+      pb.fluidSortedForceDensity = solver.buffers.sortedForceDensity;
+      pb.fluidCellCounts = solver.buffers.cellCounts;
+      pb.fluidPrefixSums = solver.buffers.prefixSums;
+      pb.fluidParticleCellOffsets = solver.buffers.particleCellOffsets;
+      pb.fluidBlockPartials = solver.buffers.blockPartials;
+      pb.fluidBlockInclusive = solver.buffers.blockInclusive;
+      pb.fluidBlockOffsets = solver.buffers.blockOffsets;
+    } else {
+      pb.fluidCoefficients = solver.buffers.coefficients;
+      pb.fluidCells = solver.buffers.cells;
+    }
+    fluidHighWater = solver.numParticles;
+    fluidSolverId = solverId;
+    fluidBoxWidthRatioValue = isSPHSolver
+      ? (normalizedConfig.renderer.sph?.boxWidthRatio ?? 1)
+      : (normalizedConfig.renderer.mlsMpm?.boxWidthRatio ?? 1);
+    prefillFluidState(pipeline.buffers, solver.numParticles, normalizedConfig);
+    // The solver owns positions/velocities after pre-seeding; disable the
+    // base shape-emission pass (every slot is alive from frame #1) so the
+    // Euler step cannot overwrite the solver's result downstream.
+    if (pipeline.uniforms.emitCount) {
+      (pipeline.uniforms.emitCount as { value: number }).value = 0;
+    }
+    // Live `z` squeeze of the simulation box (`changeBoxSize` upstream),
+    // refreshed from `normalizedConfig` every frame like the other scalars.
+    (pipeline.uniforms as Record<string, unknown>).fluidBoxWidthRatio =
+      solver.uniforms.boxWidthRatio;
+    const fl = pipeline as unknown as {
+      computeNodes?: unknown[];
+      passNames?: string[];
+      passLayouts?: Array<{
+        name: string;
+        storageBindings: number;
+        uniformBindings: number;
+      }>;
+    };
+    fl.computeNodes = [
+      ...(fl.computeNodes ??
+        (pipeline.emitNode && pipeline.simNode
+          ? [pipeline.emitNode, pipeline.simNode]
+          : [])),
+      ...solver.computeNodes,
+    ];
+    fl.passNames = [
+      ...(fl.passNames ?? ['emit', 'simulate']),
+      ...solver.passNames.map((n) => `${solverPrefix}:${n}`),
+    ];
+    fl.passLayouts = [
+      ...(fl.passLayouts ?? []),
+      ...solver.passLayouts.map((p) => ({
+        ...p,
+        name: `${solverPrefix}:${p.name}`,
+      })),
+    ];
+  }
 
   // ?? 2b. Trail ribbon expansion kernel (history ring -> ribbon vertices) ??
   const ribbonPipeline: {
@@ -1115,19 +1359,34 @@ export const createParticleSystem = (
         particleColor: pipeline.buffers.color as StorageBufferAttribute,
         curveFns: {
           width: trailConfig?.widthOverTrail
-            ? getCurveFunctionFromConfig(_particleSystemId, trailConfig.widthOverTrail)
+            ? getCurveFunctionFromConfig(
+                _particleSystemId,
+                trailConfig.widthOverTrail
+              )
             : undefined,
           opacity: trailConfig?.opacityOverTrail
-            ? getCurveFunctionFromConfig(_particleSystemId, trailConfig.opacityOverTrail)
+            ? getCurveFunctionFromConfig(
+                _particleSystemId,
+                trailConfig.opacityOverTrail
+              )
             : undefined,
           colorR: trailConfig?.colorOverTrail?.isActive
-            ? getCurveFunctionFromConfig(_particleSystemId, trailConfig.colorOverTrail.r as unknown as LifetimeCurve)
+            ? getCurveFunctionFromConfig(
+                _particleSystemId,
+                trailConfig.colorOverTrail.r as unknown as LifetimeCurve
+              )
             : undefined,
           colorG: trailConfig?.colorOverTrail?.isActive
-            ? getCurveFunctionFromConfig(_particleSystemId, trailConfig.colorOverTrail.g as unknown as LifetimeCurve)
+            ? getCurveFunctionFromConfig(
+                _particleSystemId,
+                trailConfig.colorOverTrail.g as unknown as LifetimeCurve
+              )
             : undefined,
           colorB: trailConfig?.colorOverTrail?.isActive
-            ? getCurveFunctionFromConfig(_particleSystemId, trailConfig.colorOverTrail.b as unknown as LifetimeCurve)
+            ? getCurveFunctionFromConfig(
+                _particleSystemId,
+                trailConfig.colorOverTrail.b as unknown as LifetimeCurve
+              )
             : undefined,
         },
         width: trailConfig?.width ?? 1,
@@ -1167,7 +1426,19 @@ export const createParticleSystem = (
     acc: number;
     lastEmit: number;
     poseFrom: 'parent' | 'self';
-    selfPose: { x: number; y: number; z: number; qx: number; qy: number; qz: number; qw: number; sx: number; sy: number; sz: number; isWorld: 0 | 1 };
+    selfPose: {
+      x: number;
+      y: number;
+      z: number;
+      qx: number;
+      qy: number;
+      qz: number;
+      qw: number;
+      sx: number;
+      sy: number;
+      sz: number;
+      isWorld: 0 | 1;
+    };
   };
   const subEntries: SubEntry[] = [];
   for (let fi = 0; fi < subEmitterConfigs.length; fi++) {
@@ -1175,7 +1446,7 @@ export const createParticleSystem = (
     const fifo = fifos[fi];
     const childCfg = ObjectUtils.deepMerge(
       getDefaultParticleSystemConfig() as unknown as NormalizedParticleSystemConfig,
-      ((se.config ?? {}) as unknown) as NormalizedParticleSystemConfig,
+      (se.config ?? {}) as unknown as NormalizedParticleSystemConfig,
       { applyToFirstObject: false, skippedProperties: [] }
     ) as NormalizedParticleSystemConfig;
     // Particles created per event: first burst count (max bound), else 1.
@@ -1184,11 +1455,8 @@ export const createParticleSystem = (
       ? Math.max(
           1,
           Math.ceil(
-            calculateValue(
-              _particleSystemId + 1 + fi,
-              firstBurst.count,
-              0
-            ) * (firstBurst.cycles ?? 1)
+            calculateValue(_particleSystemId + 1 + fi, firstBurst.count, 0) *
+              (firstBurst.cycles ?? 1)
           )
         )
       : 1;
@@ -1230,8 +1498,16 @@ export const createParticleSystem = (
       se.inheritVelocity ?? 0,
       perEvent,
       {
-        linear: [childVel?.linear?.x as never, childVel?.linear?.y as never, childVel?.linear?.z as never],
-        orbital: [childVel?.orbital?.x as never, childVel?.orbital?.y as never, childVel?.orbital?.z as never],
+        linear: [
+          childVel?.linear?.x as never,
+          childVel?.linear?.y as never,
+          childVel?.linear?.z as never,
+        ],
+        orbital: [
+          childVel?.orbital?.x as never,
+          childVel?.orbital?.y as never,
+          childVel?.orbital?.z as never,
+        ],
       }
     ) as {
       commandBuildNode: unknown;
@@ -1264,8 +1540,7 @@ export const createParticleSystem = (
         ? {
             isActive: true,
             strength: childCfg.noise.strength,
-             noisePower:
-               0.15 * childCfg.noise.strength,
+            noisePower: 0.15 * childCfg.noise.strength,
             frequency: childCfg.noise.frequency,
             positionAmount: childCfg.noise.positionAmount,
             rotationAmount: childCfg.noise.rotationAmount,
@@ -1274,20 +1549,37 @@ export const createParticleSystem = (
           }
         : null,
       rate: childCfg.emission?.rateOverTime
-        ? calculateValue(_particleSystemId + 1 + fi, childCfg.emission.rateOverTime, 0)
+        ? calculateValue(
+            _particleSystemId + 1 + fi,
+            childCfg.emission.rateOverTime,
+            0
+          )
         : 0,
       acc: 0,
       lastEmit: 0,
       poseFrom: 'self',
-      selfPose: { x: 0, y: 0, z: 0, qx: 0, qy: 0, qz: 0, qw: 1, sx: 1, sy: 1, sz: 1, isWorld: childCfg.simulationSpace === SimulationSpace.WORLD ? 1 : 0 },
+      selfPose: {
+        x: 0,
+        y: 0,
+        z: 0,
+        qx: 0,
+        qy: 0,
+        qz: 0,
+        qw: 1,
+        sx: 1,
+        sy: 1,
+        sz: 1,
+        isWorld: childCfg.simulationSpace === SimulationSpace.WORLD ? 1 : 0,
+      },
     });
   }
 
   // ?? 3. shared uniform table (TSL) ??
   // §10 normalization happens through the module-level helpers
   // (`normalizeVector2Value` etc.) defined above `createParticleSystem`.
-  const cameraNearFarSource = (normalizedConfig.renderer as unknown as Record<string, unknown>)
-    .cameraNearFar;
+  const cameraNearFarSource = (
+    normalizedConfig.renderer as unknown as Record<string, unknown>
+  ).cameraNearFar;
   const tilesSource = normalizedConfig.textureSheetAnimation?.tiles;
   const elapsedUniform: { value: number } = { value: 0 };
   const sharedUniforms: { [k: string]: { value: unknown } } = {
@@ -1297,27 +1589,36 @@ export const createParticleSystem = (
       value: normalizeVector2Value(
         cameraNearFarSource,
         [0.1, 1000],
-        "renderer.cameraNearFar"
+        'renderer.cameraNearFar'
       ),
     },
     useInstancing: { value: useInstancing },
-    softParticlesEnabled: { value: !!normalizedConfig.renderer.softParticles?.enabled },
+    softParticlesEnabled: {
+      value: !!normalizedConfig.renderer.softParticles?.enabled,
+    },
     softParticlesIntensity: {
-      value: Math.max(normalizedConfig.renderer.softParticles?.intensity ?? 1, 0.001),
+      value: Math.max(
+        normalizedConfig.renderer.softParticles?.intensity ?? 1,
+        0.001
+      ),
     },
     sceneDepthTexture: {
       value: normalizeDepthTextureValue(
         normalizedConfig.renderer.softParticles?.depthTexture,
-        "renderer.softParticles.depthTexture"
+        'renderer.softParticles.depthTexture'
       ),
     },
-    discardBackgroundColor: { value: !!normalizedConfig.renderer.discardBackgroundColor },
+    discardBackgroundColor: {
+      value: !!normalizedConfig.renderer.discardBackgroundColor,
+    },
     backgroundColor: { value: new THREE.Color(0xffffff) },
-    backgroundColorTolerance: { value: normalizedConfig.renderer.backgroundColorTolerance ?? 0 },
+    backgroundColorTolerance: {
+      value: normalizedConfig.renderer.backgroundColorTolerance ?? 0,
+    },
     map: {
       value: normalizeTextureValue(
         normalizedConfig.map ?? getDefaultTexture(),
-        "map"
+        'map'
       ),
     },
     startLifetime: { value: 0 },
@@ -1339,15 +1640,90 @@ export const createParticleSystem = (
       value: normalizeVector2Value(
         tilesSource,
         [1, 1],
-        "textureSheetAnimation.tiles"
+        'textureSheetAnimation.tiles'
       ),
+    },
+    // FLUID metaball renderer parameters (consumed by createFluidTSLMaterial).
+    fluidStretch: {
+      value:
+        typeof normalizedConfig.renderer.fluid?.stretch === 'number' &&
+        Number.isFinite(normalizedConfig.renderer.fluid.stretch)
+          ? (normalizedConfig.renderer.fluid.stretch as number)
+          : 1,
+    },
+    fluidAbsorption: {
+      value:
+        typeof normalizedConfig.renderer.fluid?.absorption === 'number' &&
+        Number.isFinite(normalizedConfig.renderer.fluid.absorption)
+          ? (normalizedConfig.renderer.fluid.absorption as number)
+          : 1.44,
+    },
+    fluidIor: {
+      value:
+        typeof normalizedConfig.renderer.fluid?.ior === 'number' &&
+        Number.isFinite(normalizedConfig.renderer.fluid.ior)
+          ? (normalizedConfig.renderer.fluid.ior as number)
+          : 1.33,
+    },
+    // Extra knobs consumed by the screen-space pass chain
+    // (`tsl-fluid-screen-space-material.ts`). Missing entries fall back to
+    // the documented {@link FluidConfig} defaults; all three are stored as
+    // plain scalars / fixed-length tuples so the TSL side can read them
+    // without per-frame normalization.
+    fluidSphereSize: {
+      value:
+        typeof normalizedConfig.renderer.fluid?.sphereSize === 'number' &&
+        Number.isFinite(normalizedConfig.renderer.fluid.sphereSize)
+          ? (normalizedConfig.renderer.fluid.sphereSize as number)
+          : 1.2,
+    },
+    fluidDensity: {
+      value:
+        typeof normalizedConfig.renderer.fluid?.density === 'number' &&
+        Number.isFinite(normalizedConfig.renderer.fluid.density)
+          ? (normalizedConfig.renderer.fluid.density as number)
+          : 0.7,
+    },
+    fluidWaterColor: {
+      value:
+        Array.isArray(normalizedConfig.renderer.fluid?.waterColor) &&
+        (normalizedConfig.renderer.fluid!.waterColor as readonly number[])
+          .length === 3
+          ? [
+              Number(
+                (
+                  normalizedConfig.renderer.fluid!
+                    .waterColor as readonly number[]
+                )[0]
+              ) || 0,
+              Number(
+                (
+                  normalizedConfig.renderer.fluid!
+                    .waterColor as readonly number[]
+                )[1]
+              ) || 0,
+              Number(
+                (
+                  normalizedConfig.renderer.fluid!
+                    .waterColor as readonly number[]
+                )[2]
+              ) || 0,
+            ]
+          : [0.0, 0.7375, 0.95],
+    },
+    fluidSphereRender: {
+      value: !!normalizedConfig.renderer.fluid?.sphereRender,
     },
   };
   const bgVec = normalizeBackgroundToVector3(
     normalizedConfig.renderer.backgroundColor,
-    "renderer.backgroundColor"
+    'renderer.backgroundColor'
   );
-  (sharedUniforms.backgroundColor.value as THREE.Color).setRGB(bgVec.x, bgVec.y, bgVec.z);
+  (sharedUniforms.backgroundColor.value as THREE.Color).setRGB(
+    bgVec.x,
+    bgVec.y,
+    bgVec.z
+  );
 
   const rendererConfig: {
     transparent: boolean;
@@ -1360,12 +1736,8 @@ export const createParticleSystem = (
     depthTest: normalizedConfig.renderer.depthTest !== false,
     depthWrite: normalizedConfig.renderer.depthWrite !== false,
   };
-  const material = factory.createTSLParticleMaterial(
-    rrType,
-    sharedUniforms,
-    rendererConfig,
-    true
-  );
+  // The TSL material is created *after* the geometry (below): the FLUID pass
+  // chain needs the final instanced pool for its depth / thickness passes.
 
   // ?? 4. GPU-backed geometry ??
   const buffers = pipeline.buffers as Record<string, THREE.BufferAttribute>;
@@ -1378,14 +1750,19 @@ export const createParticleSystem = (
         ? meshGeometry
         : new THREE.BufferGeometry();
     if (rrType !== RendererType.MESH || !meshGeometry) {
-      const quad = new Float32Array([-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0]);
+      const quad = new Float32Array([
+        -0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0,
+      ]);
       const quadUV = new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]);
       const quadNormal = new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1]);
       const idx = new Uint16Array([0, 1, 2, 0, 2, 3]);
       baseGeometry.setAttribute('position', new THREE.BufferAttribute(quad, 3));
       // MESH node materials sample the sprite map via `uv` and read `normal`.
       baseGeometry.setAttribute('uv', new THREE.BufferAttribute(quadUV, 2));
-      baseGeometry.setAttribute('normal', new THREE.BufferAttribute(quadNormal, 3));
+      baseGeometry.setAttribute(
+        'normal',
+        new THREE.BufferAttribute(quadNormal, 3)
+      );
       baseGeometry.setIndex(new THREE.BufferAttribute(idx, 1));
     }
     g.setAttribute('position', baseGeometry.getAttribute('position'));
@@ -1397,6 +1774,12 @@ export const createParticleSystem = (
     g.setAttribute('instanceColor', buffers.color);
     g.setAttribute('instanceParticleState', buffers.particleState);
     g.setAttribute('instanceStartValues', buffers.startValues);
+    // FLUID also reads the per-particle velocity (vec4: xyz + w padding) for
+    // the velocity-stretched metaball quad. Only bound for the fluid class so
+    // the other renderers keep their existing 4-attribute contract.
+    if (rrType === RendererType.FLUID) {
+      g.setAttribute('instanceVelocity', buffers.velocity);
+    }
     geometry = g;
   } else {
     const g = new THREE.BufferGeometry();
@@ -1409,10 +1792,21 @@ export const createParticleSystem = (
     (g as unknown as { instanceCount: number }).instanceCount = maxParticles;
   }
 
+  const material = factory.createTSLParticleMaterial(
+    rrType,
+    sharedUniforms,
+    rendererConfig,
+    true,
+    geometry as THREE.BufferGeometry
+  );
+
   // ?? 4b. TRAIL renderer: indexed ribbon geometry + ribbon TSL material ??
   let trailGeometry: THREE.BufferGeometry | null = null;
   if (ribbonPipeline && trailDesc) {
-    const rb = ribbonPipeline.buffers as unknown as Record<string, THREE.BufferAttribute>;
+    const rb = ribbonPipeline.buffers as unknown as Record<
+      string,
+      THREE.BufferAttribute
+    >;
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', rb.position);
     g.setAttribute('trailNext', rb.next);
@@ -1423,8 +1817,12 @@ export const createParticleSystem = (
     for (let pIdx = 0; pIdx < maxParticles; pIdx++) {
       for (let s = 0; s < trailLength - 1; s++) {
         const b = pIdx * trailLength * 2 + s * 2;
-        idx[o++] = b; idx[o++] = b + 1; idx[o++] = b + 2;
-        idx[o++] = b + 1; idx[o++] = b + 3; idx[o++] = b + 2;
+        idx[o++] = b;
+        idx[o++] = b + 1;
+        idx[o++] = b + 2;
+        idx[o++] = b + 1;
+        idx[o++] = b + 3;
+        idx[o++] = b + 2;
       }
     }
     g.setIndex(new THREE.BufferAttribute(idx, 1));
@@ -1436,17 +1834,36 @@ export const createParticleSystem = (
   const trailMaterial = trailGeometry
     ? factory.createTSLTrailMaterial(
         {
-          map: { value: (normalizedConfig.map ?? getDefaultTexture()) as unknown as THREE.Texture },
+          map: {
+            value: (normalizedConfig.map ??
+              getDefaultTexture()) as unknown as THREE.Texture,
+          },
           useMap: { value: !!normalizedConfig.map },
-          discardBackgroundColor: { value: !!normalizedConfig.renderer.discardBackgroundColor },
-          backgroundColor: { value: normalizedConfig.renderer.backgroundColor ?? { r: 1, g: 1, b: 1 } },
-          backgroundColorTolerance: { value: normalizedConfig.renderer.backgroundColorTolerance ?? 0 },
-          softParticlesEnabled: { value: !!normalizedConfig.renderer.softParticles?.enabled },
+          discardBackgroundColor: {
+            value: !!normalizedConfig.renderer.discardBackgroundColor,
+          },
+          backgroundColor: {
+            value: normalizedConfig.renderer.backgroundColor ?? {
+              r: 1,
+              g: 1,
+              b: 1,
+            },
+          },
+          backgroundColorTolerance: {
+            value: normalizedConfig.renderer.backgroundColorTolerance ?? 0,
+          },
+          softParticlesEnabled: {
+            value: !!normalizedConfig.renderer.softParticles?.enabled,
+          },
           softParticlesIntensity: {
-            value: Math.max(normalizedConfig.renderer.softParticles?.intensity ?? 1, 0.001),
+            value: Math.max(
+              normalizedConfig.renderer.softParticles?.intensity ?? 1,
+              0.001
+            ),
           },
           sceneDepthTexture: {
-            value: (normalizedConfig.renderer.softParticles?.depthTexture ?? null) as unknown as THREE.Texture,
+            value: (normalizedConfig.renderer.softParticles?.depthTexture ??
+              null) as unknown as THREE.Texture,
           },
           cameraNearFar: { value: new THREE.Vector2(0.1, 1000) },
         },
@@ -1458,10 +1875,15 @@ export const createParticleSystem = (
         }
       )
     : null;
+  // FLUID's visible object is the fullscreen `fluid.wgsl` pass; the instanced
+  // pool keeps driving the pass chain through the shared attribute handles.
+  const fluidPassGeometry = (
+    material as unknown as { __fluidPassGeometry?: THREE.BufferGeometry }
+  ).__fluidPassGeometry;
   const particleSystem: THREE.Points | THREE.Mesh = trailGeometry
     ? new THREE.Mesh(trailGeometry, trailMaterial as THREE.Material)
     : useInstancing
-      ? new THREE.Mesh(geometry, material)
+      ? new THREE.Mesh(fluidPassGeometry ?? geometry, material)
       : new THREE.Points(geometry, material);
   particleSystem.frustumCulled = false;
 
@@ -1469,29 +1891,35 @@ export const createParticleSystem = (
   for (const e of subEntries) {
     const cb = e.pipeline.buffers as Record<string, THREE.BufferAttribute>;
     const childMax = (e.pipeline.allocatorCount as number) - 1;
-    const childGeometry: THREE.BufferGeometry | THREE.InstancedBufferGeometry = e.instanced
-      ? (() => {
-          const g = new THREE.InstancedBufferGeometry();
-          const quad = new Float32Array([-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0]);
-          const idx = new Uint16Array([0, 1, 2, 0, 2, 3]);
-          g.setAttribute('position', new THREE.BufferAttribute(quad, 3));
-          g.setIndex(new THREE.BufferAttribute(idx, 1));
-          g.instanceCount = childMax;
-          g.setAttribute('instanceOffset', cb.position);
-          g.setAttribute('instanceColor', cb.color);
-          g.setAttribute('instanceParticleState', cb.particleState);
-          g.setAttribute('instanceStartValues', cb.startValues);
-          return g;
-        })()
-      : (() => {
-          const g = new THREE.BufferGeometry();
-          g.setAttribute('position', cb.position);
-          g.setAttribute('color', cb.color);
-          g.setAttribute('particleState', cb.particleState);
-          g.setAttribute('startValues', cb.startValues);
-          g.setDrawRange(0, childMax);
-          return g;
-        })();
+    const childGeometry: THREE.BufferGeometry | THREE.InstancedBufferGeometry =
+      e.instanced
+        ? (() => {
+            const g = new THREE.InstancedBufferGeometry();
+            const quad = new Float32Array([
+              -0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0,
+            ]);
+            const idx = new Uint16Array([0, 1, 2, 0, 2, 3]);
+            g.setAttribute('position', new THREE.BufferAttribute(quad, 3));
+            g.setIndex(new THREE.BufferAttribute(idx, 1));
+            g.instanceCount = childMax;
+            g.setAttribute('instanceOffset', cb.position);
+            g.setAttribute('instanceColor', cb.color);
+            g.setAttribute('instanceParticleState', cb.particleState);
+            g.setAttribute('instanceStartValues', cb.startValues);
+            if (e.effectiveRendererType === RendererType.FLUID) {
+              g.setAttribute('instanceVelocity', cb.velocity);
+            }
+            return g;
+          })()
+        : (() => {
+            const g = new THREE.BufferGeometry();
+            g.setAttribute('position', cb.position);
+            g.setAttribute('color', cb.color);
+            g.setAttribute('particleState', cb.particleState);
+            g.setAttribute('startValues', cb.startValues);
+            g.setDrawRange(0, childMax);
+            return g;
+          })();
     const childUniforms: { [k: string]: { value: unknown } } = {
       ...sharedUniforms,
       useInstancing: { value: e.instanced },
@@ -1512,20 +1940,26 @@ export const createParticleSystem = (
 
   // ?? Construction-time attribute-contract assertion (development only) ????
   // Runs once per particle system; no per-frame work and no particle scan.
-  if ((import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV !== false) {
+  if (
+    (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV !== false
+  ) {
     const required = useInstancing
       ? [
           'position', // quad / mesh vertex positions
           'instanceOffset', // GPU particle position
           'instanceColor', // GPU particle RGBA
           'instanceParticleState', // GPU packed state vec4
-          'instanceStartValues' // GPU packed initial-state vec4
+          'instanceStartValues', // GPU packed initial-state vec4
         ]
       : ['position', 'color', 'particleState', 'startValues'];
     for (const name of required) {
       if (!geometry.getAttribute(name)) {
         throw new Error(
-          'three-particles: ' + (useInstancing ? 'instanced' : 'POINTS') + ' geometry ' + name + ' is missing its required contract attribute.'
+          'three-particles: ' +
+            (useInstancing ? 'instanced' : 'POINTS') +
+            ' geometry ' +
+            name +
+            ' is missing its required contract attribute.'
         );
       }
     }
@@ -1574,13 +2008,17 @@ export const createParticleSystem = (
     // (position, velocity, color, particleState, startValues,
     // startColorsExt, orbitalIsActive, allocator); trail and the sub-emitter
     // FIFO resources live in their own dedicated passes.
-    type PassLayoutT = { name: string; storageBindings: number; uniformBindings: number };
+    type PassLayoutT = {
+      name: string;
+      storageBindings: number;
+      uniformBindings: number;
+    };
     const passLayouts = [
-      ...(((pipeline.passLayouts ?? []) as unknown) as PassLayoutT[]),
-      ...(((ribbonPipeline?.passLayouts ?? []) as unknown) as PassLayoutT[]),
+      ...((pipeline.passLayouts ?? []) as unknown as PassLayoutT[]),
+      ...((ribbonPipeline?.passLayouts ?? []) as unknown as PassLayoutT[]),
       ...subEntries.flatMap((e) => [
-        ...(((e.init.passLayouts ?? []) as unknown) as PassLayoutT[]),
-        ...(((e.pipeline.passLayouts ?? []) as unknown) as PassLayoutT[]).map(
+        ...((e.init.passLayouts ?? []) as unknown as PassLayoutT[]),
+        ...((e.pipeline.passLayouts ?? []) as unknown as PassLayoutT[]).map(
           (p) => ({ ...p, name: `child:${p.name}` })
         ),
       ]),
@@ -1619,11 +2057,13 @@ export const createParticleSystem = (
   // the pose is delivered to the kernels through the emitter-pose uniforms.
   const _numOr = (v: unknown, d: number): number =>
     typeof v === 'number' && Number.isFinite(v) ? v : d;
-  const xform = normalizedConfig.transform as unknown as {
-    position?: Partial<THREE.Vector3>;
-    rotation?: Partial<THREE.Vector3>;
-    scale?: Partial<THREE.Vector3>;
-  } | undefined;
+  const xform = normalizedConfig.transform as unknown as
+    | {
+        position?: Partial<THREE.Vector3>;
+        rotation?: Partial<THREE.Vector3>;
+        scale?: Partial<THREE.Vector3>;
+      }
+    | undefined;
   if (xform?.position) {
     particleSystem.position.set(
       _numOr(xform.position.x, 0),
@@ -1673,7 +2113,10 @@ export const createParticleSystem = (
     lifetimeValues: {},
     creationTimes: new Float32Array(0),
     cpuDirtyParticleWatermark: -1,
-    highWaterIndex: 0,
+    highWaterIndex: fluidHighWater,
+    // FLUID solver snapshots (§2a); `null` keeps the single-pass metaball path.
+    fluidSolver: fluidSolverId,
+    fluidBoxWidthRatio: fluidBoxWidthRatioValue,
     noise: {
       isActive: normalizedConfig.noise.isActive,
       strength: normalizedConfig.noise.strength,
@@ -1755,14 +2198,15 @@ export const createParticleSystem = (
       ...subEntries.flatMap((e) => [
         e.init.commandBuildNode,
         e.init.childInitNode,
-        ...(e.init.counterClearNode != null
+        ...(e.init.counterClearNode !== null &&
+        e.init.counterClearNode !== undefined
           ? [e.init.counterClearNode]
           : []),
-        ...(((e.pipeline.computeNodes ?? []) as unknown[])),
+        ...((e.pipeline.computeNodes ?? []) as unknown[]),
       ]),
     ],
     passNames: [
-      ...(((pipeline.passNames ?? ['emit', 'simulate']) as string[])),
+      ...((pipeline.passNames ?? ['emit', 'simulate']) as string[]),
       ...(ribbonPipeline ? ['trail-ribbon'] : []),
       ...subEntries.flatMap((e, ei) => [
         `sub${ei}:command-build`,
@@ -1777,7 +2221,10 @@ export const createParticleSystem = (
       ? (ribbonPipeline.uniforms as Record<string, { value: unknown }>)
       : undefined,
     ribbonBuffers: ribbonPipeline
-      ? (ribbonPipeline.buffers as unknown as Record<string, THREE.BufferAttribute>)
+      ? (ribbonPipeline.buffers as unknown as Record<
+          string,
+          THREE.BufferAttribute
+        >)
       : undefined,
     frameParity: 0,
     subEntries: subEntries.map((e) => ({
@@ -1791,23 +2238,55 @@ export const createParticleSystem = (
       rate: e.rate,
       acc: 0,
       isWorld: e.selfPose.isWorld,
-      quat: [e.selfPose.qx, e.selfPose.qy, e.selfPose.qz, e.selfPose.qw] as [number, number, number, number],
-      scale: [e.selfPose.sx, e.selfPose.sy, e.selfPose.sz] as [number, number, number],
+      quat: [e.selfPose.qx, e.selfPose.qy, e.selfPose.qz, e.selfPose.qw] as [
+        number,
+        number,
+        number,
+        number,
+      ],
+      scale: [e.selfPose.sx, e.selfPose.sy, e.selfPose.sz] as [
+        number,
+        number,
+        number,
+      ],
       position: [
-        _numOr((e.cfg.transform as unknown as { position?: { x?: number; y?: number; z?: number } })?.position?.x, 0),
-        _numOr((e.cfg.transform as unknown as { position?: { x?: number; y?: number; z?: number } })?.position?.y, 0),
-        _numOr((e.cfg.transform as unknown as { position?: { x?: number; y?: number; z?: number } })?.position?.z, 0),
+        _numOr(
+          (
+            e.cfg.transform as unknown as {
+              position?: { x?: number; y?: number; z?: number };
+            }
+          )?.position?.x,
+          0
+        ),
+        _numOr(
+          (
+            e.cfg.transform as unknown as {
+              position?: { x?: number; y?: number; z?: number };
+            }
+          )?.position?.y,
+          0
+        ),
+        _numOr(
+          (
+            e.cfg.transform as unknown as {
+              position?: { x?: number; y?: number; z?: number };
+            }
+          )?.position?.z,
+          0
+        ),
       ] as [number, number, number],
     })),
   };
   // Self transform of each child object (LOCAL space) mirrors the main path.
   for (const e of subEntries) {
     if (!e.object) continue;
-    const tf = e.cfg.transform as unknown as {
-      position?: Partial<THREE.Vector3>;
-      rotation?: Partial<THREE.Vector3>;
-      scale?: Partial<THREE.Vector3>;
-    } | undefined;
+    const tf = e.cfg.transform as unknown as
+      | {
+          position?: Partial<THREE.Vector3>;
+          rotation?: Partial<THREE.Vector3>;
+          scale?: Partial<THREE.Vector3>;
+        }
+      | undefined;
     if (tf?.position) {
       e.object.position.set(
         _numOr(tf.position.x, 0),
@@ -1832,9 +2311,15 @@ export const createParticleSystem = (
     e.object.updateMatrix();
     const q = new THREE.Quaternion().setFromEuler(
       new THREE.Euler(
-        THREE.MathUtils.degToRad(_numOr((tf?.rotation as Partial<THREE.Vector3> | undefined)?.x, 0)),
-        THREE.MathUtils.degToRad(_numOr((tf?.rotation as Partial<THREE.Vector3> | undefined)?.y, 0)),
-        THREE.MathUtils.degToRad(_numOr((tf?.rotation as Partial<THREE.Vector3> | undefined)?.z, 0)),
+        THREE.MathUtils.degToRad(
+          _numOr((tf?.rotation as Partial<THREE.Vector3> | undefined)?.x, 0)
+        ),
+        THREE.MathUtils.degToRad(
+          _numOr((tf?.rotation as Partial<THREE.Vector3> | undefined)?.y, 0)
+        ),
+        THREE.MathUtils.degToRad(
+          _numOr((tf?.rotation as Partial<THREE.Vector3> | undefined)?.z, 0)
+        ),
         'XYZ'
       )
     );
@@ -1858,12 +2343,18 @@ export const createParticleSystem = (
   // build, sub-child-init, sub-counter-clear); velocity-axis values are
   // seed-derived (no extra buffer).
   const _dbgPassCounts: Array<[string, number]> = [
-    ...((pipeline.passLayouts ?? []) as Array<{ name: string; storageBindings: number }>).map(
-      (p) => [p.name, p.storageBindings] as [string, number]
-    ),
-    ...((ribbonPipeline?.passLayouts ?? []) as Array<{ name: string; storageBindings: number }>).map(
-      (p) => [p.name, p.storageBindings] as [string, number]
-    ),
+    ...(
+      (pipeline.passLayouts ?? []) as Array<{
+        name: string;
+        storageBindings: number;
+      }>
+    ).map((p) => [p.name, p.storageBindings] as [string, number]),
+    ...(
+      (ribbonPipeline?.passLayouts ?? []) as Array<{
+        name: string;
+        storageBindings: number;
+      }>
+    ).map((p) => [p.name, p.storageBindings] as [string, number]),
     ...subEntries.flatMap((e, ei): Array<[string, number]> => [
       ...(e.init.passLayouts ?? []).map(
         (p) => [`sub${ei}:${p.name}`, p.storageBindings] as [string, number]
@@ -1943,16 +2434,20 @@ export const createParticleSystem = (
           !!logCfg.velocityOverLifetime?.isActive &&
           (u.linearVelX !== undefined ||
             u.axisLinXMin !== undefined ||
-            !!(logCfg.velocityOverLifetime?.linear &&
+            !!(
+              logCfg.velocityOverLifetime?.linear &&
               Object.values(logCfg.velocityOverLifetime.linear).some(
                 (value: any) => value !== undefined && value !== 0
-              ))),
+              )
+            )),
         orbitalVelocity:
           !!logCfg.velocityOverLifetime?.isActive &&
-          !!(logCfg.velocityOverLifetime?.orbital &&
+          !!(
+            logCfg.velocityOverLifetime?.orbital &&
             Object.values(logCfg.velocityOverLifetime.orbital).some(
               (value: any) => value !== undefined && value !== 0
-            )),
+            )
+          ),
         sizeOverLifetime: !!normalizedConfig.sizeOverLifetime?.isActive,
         opacityOverLifetime: !!normalizedConfig.opacityOverLifetime?.isActive,
         colorOverLifetime: !!normalizedConfig.colorOverLifetime?.isActive,
@@ -1977,9 +2472,15 @@ export const createParticleSystem = (
     lastSeed = Math.random();
   };
 
-  const resumeEmitter = (): void => { generalData.isEnabled = true; };
-  const pauseEmitter = (): void => { generalData.isEnabled = false; };
-  const dispose = (): void => { destroyParticleSystem(particleSystem); };
+  const resumeEmitter = (): void => {
+    generalData.isEnabled = true;
+  };
+  const pauseEmitter = (): void => {
+    generalData.isEnabled = false;
+  };
+  const dispose = (): void => {
+    destroyParticleSystem(particleSystem);
+  };
   const updateConfig = (partial: Partial<ParticleSystemConfig>): void => {
     ObjectUtils.deepMerge(normalizedConfig, partial, {
       applyToFirstObject: true,
@@ -2011,7 +2512,8 @@ export const createParticleSystem = (
     /**
      * ?? Temporary one-shot GPU debug handle (deprecated, no per-frame cost) ????
      * getActiveParticleCount() stays -1; this object is the raw material for an
-     * explicit enderer.getArrayBufferAsync(...) read-back (bytes, multiples of 4).
+     * explicit 
+enderer.getArrayBufferAsync(...) read-back (bytes, multiples of 4).
      * lastEmitCount() mirrors uEmitCount, the u32 count written per frame.
      */
     gpuDebug: {
@@ -2026,7 +2528,10 @@ export const createParticleSystem = (
           value: unknown;
         }
       ).value as number,
-      buffers: pipeline.buffers as unknown as Record<string, THREE.BufferAttribute>,
+      buffers: pipeline.buffers as unknown as Record<
+        string,
+        THREE.BufferAttribute
+      >,
       emitNode: pipeline.emitNode,
       simNode: pipeline.simNode,
       passNames: (pipeline.passNames ?? ['emit', 'simulate']) as string[],
@@ -2048,9 +2553,17 @@ export const createParticleSystem = (
       snapshot: () => {
         const shp = normalizedConfig.shape as ShapeConfig & {
           sphere?: { radius?: number; radiusThickness?: number; arc?: number };
-          cone?: { radius?: number; radiusThickness?: number; arc?: number; angle?: number };
+          cone?: {
+            radius?: number;
+            radiusThickness?: number;
+            arc?: number;
+            angle?: number;
+          };
           circle?: { radius?: number; radiusThickness?: number; arc?: number };
-          rectangle?: { scale?: { x?: number; y?: number }; rotation?: { x?: number; y?: number } };
+          rectangle?: {
+            scale?: { x?: number; y?: number };
+            rotation?: { x?: number; y?: number };
+          };
           box?: { scale?: unknown; emitFrom?: string };
         };
         const branch =
@@ -2060,8 +2573,7 @@ export const createParticleSystem = (
               ? shp.circle
               : shp.sphere;
         const tex = normalizedConfig.map as unknown as
-          | { image?: { width?: number; height?: number } | null }
-          | undefined;
+          { image?: { width?: number; height?: number } | null } | undefined;
         return {
           systemId: generalData.particleSystemId,
           // Canonical effective + original requested renderer classes (§2).
@@ -2078,7 +2590,8 @@ export const createParticleSystem = (
             radius: branch?.radius ?? null,
             radiusThickness: branch?.radiusThickness ?? null,
             arcDeg: branch?.arc ?? null,
-            coneAngleDeg: shp.shape === 'CONE' ? shp.cone?.angle ?? null : null,
+            coneAngleDeg:
+              shp.shape === 'CONE' ? (shp.cone?.angle ?? null) : null,
             rectScale: shp.rectangle?.scale ?? null,
             rectRotation: shp.rectangle?.rotation ?? null,
             boxScale: shp.box?.scale ?? null,
@@ -2106,7 +2619,10 @@ export const createParticleSystem = (
 
 // ?? GPU-only per-frame path: writes ~12 scalar uniforms + 2 dispatches ??
 // No per-particle JS loop anywhere in this function.
-const _lastUploadStampMap = new WeakMap<Record<string, THREE.BufferAttribute>, number>();
+const _lastUploadStampMap = new WeakMap<
+  Record<string, THREE.BufferAttribute>,
+  number
+>();
 /** One-shot first-frame upload marker for the sub-emitter command buffers. */
 const _cmdUploadSeen = new WeakSet<object>();
 const updateParticleSystemInstance = (
@@ -2135,7 +2651,10 @@ const updateParticleSystemInstance = (
   const lifetime = now - creationTime;
   const loop = normalizedConfig.looping;
   const iterationTimeMs = loop ? lifetime % (dur * 1000) : lifetime;
-  generalData.normalizedLifetimePercentage = Math.max(Math.min((iterationTimeMs / 1000) / dur, 1), 0);
+  generalData.normalizedLifetimePercentage = Math.max(
+    Math.min(iterationTimeMs / 1000 / dur, 1),
+    0
+  );
   (elapsedUniform as { value: number }).value = elapsed;
 
   // Emitter pose + gravity reference frame (oracle parity, scalar-only work).
@@ -2184,16 +2703,21 @@ const updateParticleSystemInstance = (
     if (emissionDelta > 0) {
       props.lastEmissionTime = now;
       if (emission.rateOverTime) {
-        props.emissionAccumulator += calculateValue(
-          generalData.particleSystemId,
-          emission.rateOverTime,
-          generalData.normalizedLifetimePercentage
-        ) * (emissionDelta / 1000);
+        props.emissionAccumulator +=
+          calculateValue(
+            generalData.particleSystemId,
+            emission.rateOverTime,
+            generalData.normalizedLifetimePercentage
+          ) *
+          (emissionDelta / 1000);
       }
     }
     emitCount += Math.floor(props.emissionAccumulator);
     if (emitCount > 0) props.emissionAccumulator -= emitCount;
-    if (emission.rateOverDistance && generalData.distanceFromLastEmitByDistance > 0) {
+    if (
+      emission.rateOverDistance &&
+      generalData.distanceFromLastEmitByDistance > 0
+    ) {
       const r = calculateValue(
         generalData.particleSystemId,
         emission.rateOverDistance,
@@ -2217,21 +2741,29 @@ const updateParticleSystemInstance = (
         const b = bursts[i];
         const s = states[i];
         const cyc = b.cycles ?? 1;
-        const iv = (b.interval ?? 0);
+        const iv = b.interval ?? 0;
         const prob = b.probability ?? 1;
         if (loop && tSec < (b.time ?? 0) && s.cyclesExecuted > 0) {
-          s.cyclesExecuted = 0; s.lastCycleTime = 0; s.probabilityPassed = false;
+          s.cyclesExecuted = 0;
+          s.lastCycleTime = 0;
+          s.probabilityPassed = false;
         }
         if (s.cyclesExecuted >= cyc) continue;
         const next = (b.time ?? 0) + s.cyclesExecuted * iv;
         if (tSec >= next) {
-          if (s.cyclesExecuted === 0) s.probabilityPassed = Math.random() < prob;
+          if (s.cyclesExecuted === 0)
+            s.probabilityPassed = Math.random() < prob;
           if (s.probabilityPassed) {
             emitCount += Math.floor(
-              calculateValue(generalData.particleSystemId, b.count, generalData.normalizedLifetimePercentage)
+              calculateValue(
+                generalData.particleSystemId,
+                b.count,
+                generalData.normalizedLifetimePercentage
+              )
             );
           }
-          s.cyclesExecuted++; s.lastCycleTime = tSec;
+          s.cyclesExecuted++;
+          s.lastCycleTime = tSec;
         }
       }
     }
@@ -2241,14 +2773,17 @@ const updateParticleSystemInstance = (
   // Uniform writes (scalars only) ? no per-particle loops anywhere.
   (u.delta as { value: number }).value = delta;
   (u.deltaMs as { value: number }).value = delta * 1000;
-  ((u.gravityVelocity as { value: THREE.Vector3 }).value).copy(gv);
+  (u.gravityVelocity as { value: THREE.Vector3 }).value.copy(gv);
   (u.emitCount as { value: number }).value = emitCount;
   // Dynamic emit dispatch: the numeric `ComputeNode.count` is the real dispatch
   // size and also feeds the generated `instanceIndex >= count` bound guard.
   // Never dispatch 0 workgroups (r186 warns about it): the host always runs at
   // least one invocation and uEmitCount (u32) bounds the useful work inside
   // the kernel. See If(i.lessThan(uEmitCount), ...) in the emit kernel.
-  (pipeline.emitNode as unknown as { count: number }).count = Math.max(1, emitCount);
+  (pipeline.emitNode as unknown as { count: number }).count = Math.max(
+    1,
+    emitCount
+  );
   // The dedicated BIRTH event pass consumes exactly this frame's born slots.
   if (pipeline.subBirthEventsNode) {
     (pipeline.subBirthEventsNode as unknown as { count: number }).count =
@@ -2256,12 +2791,32 @@ const updateParticleSystemInstance = (
   }
   // uSystemSeed is written ONCE at pipeline creation (§5): no per-frame seed.
   const n = generalData.noise;
-  if (u.noiseStrength) (u.noiseStrength as { value: number }).value = n.strength;
+  if (u.noiseStrength)
+    (u.noiseStrength as { value: number }).value = n.strength;
   if (u.noisePower) (u.noisePower as { value: number }).value = n.noisePower;
-  if (u.noiseFrequency) (u.noiseFrequency as { value: number }).value = n.frequency;
-  if (u.noisePositionAmount) (u.noisePositionAmount as { value: number }).value = n.positionAmount;
-  if (u.noiseRotationAmount) (u.noiseRotationAmount as { value: number }).value = n.rotationAmount;
-  if (u.noiseSizeAmount) (u.noiseSizeAmount as { value: number }).value = n.sizeAmount;
+  if (u.noiseFrequency)
+    (u.noiseFrequency as { value: number }).value = n.frequency;
+  if (u.noisePositionAmount)
+    (u.noisePositionAmount as { value: number }).value = n.positionAmount;
+  if (u.noiseRotationAmount)
+    (u.noiseRotationAmount as { value: number }).value = n.rotationAmount;
+  if (u.noiseSizeAmount)
+    (u.noiseSizeAmount as { value: number }).value = n.sizeAmount;
+
+  // ?? FLUID solver frame rules ??
+  // The dambreak lattice is seeded once at creation, so the shape-emission pass
+  // stays parked (`count = 1`, `uEmitCount = 0`) and the solver kernels own
+  // `position` / `velocity` from the first frame on. The animated `z` squeeze of
+  // the simulation box (`changeBoxSize` upstream) is refreshed here, like every
+  // other scalar, so `updateConfig` picks it up without rebuilding the pool.
+  if (generalData.fluidSolver) {
+    (u.emitCount as { value: number }).value = 0;
+    (pipeline.emitNode as unknown as { count: number }).count = 1;
+    if (u.fluidBoxWidthRatio) {
+      (u.fluidBoxWidthRatio as { value: number }).value =
+        generalData.fluidBoxWidthRatio ?? 1;
+    }
+  }
 
   // ?? Emitter pose for the emit kernel (scalar/vector writes only) ??
   // LOCAL: identity quaternion, zero translation, unit scale ? the drawn object's
@@ -2305,16 +2860,18 @@ const updateParticleSystemInstance = (
 
   // ?? Sub-emitter children: scalar writes + their own continuous emission ??
   for (const e of subEntries ?? []) {
-    const cp = e.pipeline as unknown as {
-      emitNode?: { count: number };
-      uniforms: Record<string, { value: unknown }>;
-      emitterPose?: {
-        positionW: { value: THREE.Vector4 };
-        wrapperQuat: { value: THREE.Vector4 };
-        worldScale: { value: THREE.Vector3 };
-      };
-      allocatorCount?: number;
-    } | undefined;
+    const cp = e.pipeline as unknown as
+      | {
+          emitNode?: { count: number };
+          uniforms: Record<string, { value: unknown }>;
+          emitterPose?: {
+            positionW: { value: THREE.Vector4 };
+            wrapperQuat: { value: THREE.Vector4 };
+            worldScale: { value: THREE.Vector3 };
+          };
+          allocatorCount?: number;
+        }
+      | undefined;
     if (!cp) continue;
     const cu = cp.uniforms;
     if (cu.delta) (cu.delta as { value: number }).value = delta;
@@ -2322,19 +2879,27 @@ const updateParticleSystemInstance = (
     if (cu.nowMs) (cu.nowMs as { value: number }).value = now;
     // child uSystemSeed: written ONCE at pipeline creation (no per-frame seed).
     if (cu.gravityVelocity) {
-      ((cu.gravityVelocity as { value: THREE.Vector3 }).value).set(
+      (cu.gravityVelocity as { value: THREE.Vector3 }).value.set(
         0,
         e.gravity,
         0
       );
     }
     if (e.noise) {
-      if (cu.noiseStrength) (cu.noiseStrength as { value: number }).value = e.noise.strength;
-      if (cu.noisePower) (cu.noisePower as { value: number }).value = e.noise.noisePower;
-      if (cu.noiseFrequency) (cu.noiseFrequency as { value: number }).value = e.noise.frequency;
-      if (cu.noisePositionAmount) (cu.noisePositionAmount as { value: number }).value = e.noise.positionAmount;
-      if (cu.noiseRotationAmount) (cu.noiseRotationAmount as { value: number }).value = e.noise.rotationAmount;
-      if (cu.noiseSizeAmount) (cu.noiseSizeAmount as { value: number }).value = e.noise.sizeAmount;
+      if (cu.noiseStrength)
+        (cu.noiseStrength as { value: number }).value = e.noise.strength;
+      if (cu.noisePower)
+        (cu.noisePower as { value: number }).value = e.noise.noisePower;
+      if (cu.noiseFrequency)
+        (cu.noiseFrequency as { value: number }).value = e.noise.frequency;
+      if (cu.noisePositionAmount)
+        (cu.noisePositionAmount as { value: number }).value =
+          e.noise.positionAmount;
+      if (cu.noiseRotationAmount)
+        (cu.noiseRotationAmount as { value: number }).value =
+          e.noise.rotationAmount;
+      if (cu.noiseSizeAmount)
+        (cu.noiseSizeAmount as { value: number }).value = e.noise.sizeAmount;
     }
     if (cu.fifoBase) (cu.fifoBase as { value: number }).value = fifoBase;
     // child-init pipeline system seed: written ONCE at creation.
@@ -2355,7 +2920,12 @@ const updateParticleSystemInstance = (
     const cpose = cp.emitterPose;
     if (cpose) {
       if (e.isWorld === 1) {
-        cpose.positionW.value.set(e.position[0], e.position[1], e.position[2], 1);
+        cpose.positionW.value.set(
+          e.position[0],
+          e.position[1],
+          e.position[2],
+          1
+        );
         cpose.wrapperQuat.value.set(e.quat[0], e.quat[1], e.quat[2], e.quat[3]);
         cpose.worldScale.value.set(e.scale[0], e.scale[1], e.scale[2]);
       } else {
@@ -2380,8 +2950,14 @@ const updateParticleSystemInstance = (
   }
 
   // Force-field / collision-plane records in the packed f32 uniform table.
-  const ffInfo = pipeline.forceFieldInfo as { offset: number; countUniform: { value: number } } | null;
-  const cInfo = (pipeline.collisionPlaneInfo ?? null) as { offset: number; countUniform: { value: number } } | null;
+  const ffInfo = pipeline.forceFieldInfo as {
+    offset: number;
+    countUniform: { value: number };
+  } | null;
+  const cInfo = (pipeline.collisionPlaneInfo ?? null) as {
+    offset: number;
+    countUniform: { value: number };
+  } | null;
   if ((ffInfo || cInfo) && _tslMaterialFactory) {
     // Read-mostly uniform buffer (non-atomic f32): the CPU owns these record
     // regions, the kernels only load them.
@@ -2391,24 +2967,49 @@ const updateParticleSystemInstance = (
       needsUpdate: boolean;
     };
     if (ffInfo && normalizedForceFields.length > 0) {
-      const encFF = _tslMaterialFactory.encodeForceFieldsForGPU!(normalizedForceFields, generalData.particleSystemId, generalData.normalizedLifetimePercentage);
+      const encFF = _tslMaterialFactory.encodeForceFieldsForGPU!(
+        normalizedForceFields,
+        generalData.particleSystemId,
+        generalData.normalizedLifetimePercentage
+      );
       let changedFF = false;
-      for (let k = 0; k < encFF.length; k++) if (cdArr[ffInfo.offset + k] !== encFF[k]) { changedFF = true; break; }
-      if (changedFF) { cdArr.set(encFF, ffInfo.offset); cdNode.addUpdateRange(ffInfo.offset, encFF.length); cdNode.needsUpdate = true; }
+      for (let k = 0; k < encFF.length; k++)
+        if (cdArr[ffInfo.offset + k] !== encFF[k]) {
+          changedFF = true;
+          break;
+        }
+      if (changedFF) {
+        cdArr.set(encFF, ffInfo.offset);
+        cdNode.addUpdateRange(ffInfo.offset, encFF.length);
+        cdNode.needsUpdate = true;
+      }
       ffInfo.countUniform.value = normalizedForceFields.length;
     }
     if (cInfo && normalizedCollisionPlanes.length > 0) {
-      const encCP = _tslMaterialFactory.encodeCollisionPlanesForGPU!(normalizedCollisionPlanes);
+      const encCP = _tslMaterialFactory.encodeCollisionPlanesForGPU!(
+        normalizedCollisionPlanes
+      );
       let changedCP = false;
-      for (let k = 0; k < encCP.length; k++) if (cdArr[cInfo.offset + k] !== encCP[k]) { changedCP = true; break; }
-      if (changedCP) { cdArr.set(encCP, cInfo.offset); cdNode.addUpdateRange(cInfo.offset, encCP.length); cdNode.needsUpdate = true; }
+      for (let k = 0; k < encCP.length; k++)
+        if (cdArr[cInfo.offset + k] !== encCP[k]) {
+          changedCP = true;
+          break;
+        }
+      if (changedCP) {
+        cdArr.set(encCP, cInfo.offset);
+        cdNode.addUpdateRange(cInfo.offset, encCP.length);
+        cdNode.needsUpdate = true;
+      }
       cInfo.countUniform.value = normalizedCollisionPlanes.length;
     }
   }
 
   // First-frame buffer upload: storage attributes start with their CPU Float32Array
   // contents; after that the compute kernels own all changes on the GPU.
-  const bufs = pipeline.buffers as unknown as Record<string, THREE.BufferAttribute>;
+  const bufs = pipeline.buffers as unknown as Record<
+    string,
+    THREE.BufferAttribute
+  >;
   let stamp = _lastUploadStampMap.get(bufs);
   if (stamp === undefined || stamp === 0) {
     for (const key of Object.keys(bufs)) {
@@ -2423,14 +3024,25 @@ const updateParticleSystemInstance = (
   // First-frame upload for the child pools, sub-emitter command buffers and
   // trail ribbon streams as well.
   for (const e of subEntries ?? []) {
-    const cb = (e.pipeline as unknown as { buffers?: Record<string, THREE.BufferAttribute> })
-      ?.buffers;
-    if (cb && !_lastUploadStampMap.has(cb as unknown as Record<string, THREE.BufferAttribute>)) {
+    const cb = (
+      e.pipeline as unknown as {
+        buffers?: Record<string, THREE.BufferAttribute>;
+      }
+    )?.buffers;
+    if (
+      cb &&
+      !_lastUploadStampMap.has(
+        cb as unknown as Record<string, THREE.BufferAttribute>
+      )
+    ) {
       for (const key of Object.keys(cb)) {
         const a = cb[key];
         if (a && 'needsUpdate' in a) a.needsUpdate = true;
       }
-      _lastUploadStampMap.set(cb as unknown as Record<string, THREE.BufferAttribute>, 1);
+      _lastUploadStampMap.set(
+        cb as unknown as Record<string, THREE.BufferAttribute>,
+        1
+      );
     }
     const cmd = e.init.commandBuffer as THREE.BufferAttribute | undefined;
     if (cmd && 'needsUpdate' in cmd && !_cmdUploadSeen.has(cmd)) {
@@ -2438,8 +3050,11 @@ const updateParticleSystemInstance = (
       _cmdUploadSeen.add(cmd);
     }
   }
-  const rb = (props as unknown as { ribbonBuffers?: Record<string, THREE.BufferAttribute> })
-    .ribbonBuffers;
+  const rb = (
+    props as unknown as {
+      ribbonBuffers?: Record<string, THREE.BufferAttribute>;
+    }
+  ).ribbonBuffers;
   if (rb && !_lastUploadStampMap.has(rb)) {
     for (const key of Object.keys(rb)) {
       const a = rb[key];
@@ -3509,4 +4124,3 @@ export const updateParticleSystems = (cycleData: CycleData) => {
     updateParticleSystemInstance(props, cycleData)
   );
 };
-

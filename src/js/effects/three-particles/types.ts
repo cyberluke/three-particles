@@ -600,6 +600,139 @@ export type MeshConfig = {
 };
 
 /**
+ * Configuration for the fluid (metaball) particle renderer.
+ * Only used when `rendererType` is {@link RendererType.FLUID}.
+ *
+ * Each particle is drawn as a velocity-stretched, camera-facing quad whose
+ * fragment reconstructs a hemispherical metaball normal and applies a simple
+ * water-like response (key light, Beer-Lambert absorption through the sphere
+ * thickness, Fresnel-mixed reflection).
+ *
+ * @property stretch - Longitudinal velocity-stretch multiplier for the quad.
+ *   `1` matches the physical velocity; higher values smear fast particles
+ *   further along their motion. Values above ~4 saturate.
+ *   @default 1
+ * @property absorption - Beer-Lambert density of the sphere volume. Higher
+ *   values darken the thicker centres of each blob faster.
+ *   @default 1.44 (~e^-t)
+ * @property ior - Index of refraction used by the Schlick Fresnel term.
+ *   `1.33` ≈ water.
+ *   @default 1.33
+ *
+ * @example
+ * ```typescript
+ * // Water-like blobs with modest motion smear
+ * renderer: {
+ *   rendererType: RendererType.FLUID,
+ *   fluid: { stretch: 1.5 },
+ * }
+ * ```
+ */
+export type FluidConfig = {
+  /** Longitudinal velocity-stretch multiplier on the billboard quad. @default 1 */
+  stretch?: number;
+  /** Beer-Lambert absorption coefficient. @default 1.44 (≈ 1/e log2e form) */
+  absorption?: number;
+  /** Index of refraction for the Fresnel term. @default 1.33 (water) */
+  ior?: number;
+  /** Sphere radius in world units used by the screen-space pass chain. @default 1.2 */
+  sphereSize?: number;
+  /** Beer-Lambert density `k` consumed by the screen-space shading pass. @default 0.7 */
+  density?: number;
+  /** Per-channel water RGB tint (0..1) for Beer-Lambert absorption. @default [0, 0.7375, 0.95] */
+  waterColor?: readonly [number, number, number];
+  /** Draw the per-particle debug spheres instead of the metaball pass. @default false */
+  sphereRender?: boolean;
+  /**
+   * Solver used to advance the particles when `rendererType` is FLUID.
+   * `'MLS-MPM'` runs the grid-based material-point-method kernels (2 sub-steps
+   * per frame, `64^3` lattice); `'SPH'` runs the fixed-radius neighbour search
+   * with double-density relaxation. @default 'MLS-MPM'
+   */
+  solver?: 'MLS-MPM' | 'SPH';
+  /**
+   * Animated `z`-squeeze of the simulation box (upstream `changeBoxSize`).
+   * The walls / lattice follow `extent * ratio`; `1` keeps the init box.
+   * @default 1
+   */
+  boxWidthRatio?: number;
+};
+
+/**
+ * Scalar parameter block for the MLS-MPM fluid solver.
+ * Only read when a system is built around the MLS-MPM pipeline; every field
+ * has a sensible default, so an empty object is a valid configuration.
+ *
+ * @see {@link ../webgpu/fluid-mpm.ts} for the concrete solver implementation.
+ */
+export type MLSMPMConfig = {
+  /** Pressure stiffness (`k` in the upstream `p2g_2` pass). */
+  stiffness?: number;
+  /** Rest density of the fluid (`d0` in the upstream `p2g_2` pass). */
+  restDensity?: number;
+  /** Dynamic viscosity coefficient (`mu`). */
+  dynamicViscosity?: number;
+  /** Integration timestep of one MLS-MPM sub-step. */
+  dt?: number;
+  /** Constant downward acceleration applied to every cell velocity. */
+  gravity?: number;
+  /** World-space lattice-cell spacing; typically `1` (grid-aligned). */
+  cellSize?: number;
+  /** Per-axis grid budget: `Nx = Ny = Nz = gridSize`. */
+  gridSize?: number;
+  /** Billboard sphere-size multiplier of the depth/thickness pass. */
+  sphereSize?: number;
+  /** Simulation box `[x, y, z]` (also the dambreak lattice extent). */
+  boxSize?: readonly [number, number, number];
+  /** Animated `z` squeeze ratio of the box (`changeBoxSize`). @default 1 */
+  boxWidthRatio?: number;
+};
+
+/**
+ * Scalar parameter block for the SPH fluid solver (`sph/sph.ts`).
+ *
+ * @see {@link ../webgpu/fluid-sph.ts} for the concrete solver implementation.
+ */
+export type SPHConfig = {
+  /** Smoothing radius `h`. */
+  kernelRadius?: number;
+  /** Per-particle mass (`m`). */
+  mass?: number;
+  /** Rest density used by the double-density-relaxation force. */
+  restDensity?: number;
+  /** Pressure stiffness of the standard density-based term. */
+  stiffness?: number;
+  /** Near-pressure stiffness (`nearStiffness`). */
+  nearStiffness?: number;
+  /** Artificial viscosity coefficient (`mu`). */
+  viscosity?: number;
+  /** Integration timestep of one SPH sub-step. */
+  dt?: number;
+  /** Constant downward acceleration applied to every particle. */
+  gravity?: number;
+  /** Billboard sphere-size multiplier. */
+  sphereSize?: number;
+  /** Half-extents `[x, y, z]` of the simulation box (dambreak extent). */
+  halfBoxSize?: readonly [number, number, number];
+  /** Animated `z` squeeze ratio of the box (`changeBoxSize`). @default 1 */
+  boxWidthRatio?: number;
+};
+
+/**
+ * Real per-pass resource budget (number of storage / uniform bindings) for a
+ * WebGPU compute kernel. The engine asserts `storageBindings <= 8` so the
+ * pipeline fits within the WebGPU `MAX_STORAGE_BINDINGS_PER_STAGE` budget.
+ */
+export type PassLayout = {
+  /** Semantic pass name, matching the corresponding `computeNodes[i]`. */
+  name: string;
+  /** Number of `StorageBufferAttribute` bindings this pass occupies. */
+  storageBindings: number;
+  /** Number of `Uniform`-style bindings this pass occupies. */
+  uniformBindings: number;
+};
+
+/**
  * Configuration for the particle system renderer, controlling blending, transparency, depth, and background color behavior.
  *
  * @property blending - Defines the blending mode for the particle system (e.g., additive blending).
@@ -668,6 +801,30 @@ export type Renderer = {
    * @see MeshConfig
    */
   mesh?: MeshConfig;
+
+  /**
+   * Fluid (metaball) particle renderer configuration.
+   * Only used when `rendererType` is `RendererType.FLUID`.
+   *
+   * @see FluidConfig
+   */
+  fluid?: FluidConfig;
+
+  /**
+   * MLS-MPM solver parameters (`gridDim`, stiffness, ..). Read only when
+   * `renderer.fluid.solver` resolves to `'MLS-MPM'`.
+   *
+   * @see MLSMPMConfig
+   */
+  mlsMpm?: MLSMPMConfig;
+
+  /**
+   * SPH solver parameters (`kernelRadius`, `restDensity`, ..). Read only when
+   * `renderer.fluid.solver` resolves to `'SPH'`.
+   *
+   * @see SPHConfig
+   */
+  sph?: SPHConfig;
 
   /**
    * Soft particles configuration.
@@ -1745,6 +1902,15 @@ export type GeneralData = {
   highWaterIndex: number;
 
   /**
+   * Fluid solver chosen for `RendererType.FLUID` (`null` / undefined when the
+   * single-pass metaball material is used). Selects which solver-specific
+   * scalars the per-frame uniform write refreshes.
+   */
+  fluidSolver?: 'MLS-MPM' | 'SPH' | null;
+  /** Animated `z` squeeze of the simulation box (upstream `changeBoxSize`). */
+  fluidBoxWidthRatio?: number;
+
+  /**
    * Pre-resolved lifetime-curve functions for the size / opacity / color
    * modifiers (scale already applied). Resolved once at system creation and
    * re-resolved by `updateConfig` ??? evaluating these per particle per frame
@@ -1943,11 +2109,11 @@ export type ParticleSystemInstance = {
   /** Attached geometry (used to sync `instanceCount` on CPU/GPU transitions). */
   geometry?: THREE.BufferGeometry | THREE.InstancedBufferGeometry;
   /** Chosen renderer type; used to derive `instanceCount` behaviour after `updateConfig`. */
-  rrType?: "POINTS" | "INSTANCED" | "MESH" | "TRAIL";
+  rrType?: 'POINTS' | 'INSTANCED' | 'MESH' | 'TRAIL' | 'FLUID';
   /** Original `renderer.rendererType` from the config (§2). */
-  requestedRendererType?: "POINTS" | "INSTANCED" | "MESH" | "TRAIL";
+  requestedRendererType?: 'POINTS' | 'INSTANCED' | 'MESH' | 'TRAIL' | 'FLUID';
   /** Canonical effective GPU renderer class after POINTS resolution (§2). */
-  effectiveRendererType?: "POINTS" | "INSTANCED" | "MESH" | "TRAIL";
+  effectiveRendererType?: 'POINTS' | 'INSTANCED' | 'MESH' | 'TRAIL' | 'FLUID';
   /** Cached TSL shared uniform table. */
   sharedUniforms?: { [k: string]: { value: unknown } };
   /**
@@ -1960,8 +2126,8 @@ export type ParticleSystemInstance = {
   /** Per-system sub-emitter child kernels + their own scalar state. */
   subEntries?: {
     fifo: { capacity: number; windowSize: number };
-    requestedRendererType?: "POINTS" | "INSTANCED" | "MESH" | "TRAIL";
-    effectiveRendererType?: "POINTS" | "INSTANCED" | "MESH" | "TRAIL";
+    requestedRendererType?: 'POINTS' | 'INSTANCED' | 'MESH' | 'TRAIL' | 'FLUID';
+    effectiveRendererType?: 'POINTS' | 'INSTANCED' | 'MESH' | 'TRAIL' | 'FLUID';
     pipeline: Record<string, any> | undefined;
     init: {
       commandBuildNode: unknown;

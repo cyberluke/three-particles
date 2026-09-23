@@ -1,22 +1,19 @@
+import * as THREE from 'three';
 import { createParticleSystem } from '../js/effects/three-particles/three-particles.js';
-import { ParticleSystem } from '../js/effects/three-particles/types.js';
+import type { ParticleSystem } from '../js/effects/three-particles/types.js';
 
 /**
- * Helper: count active particles by reading the isActive buffer attribute.
+ * GPU-only (4.x) contract: rate-over-distance emission is a CPU scalar
+ * computed from the world-position delta and published through
+ * `gpuDebug.lastEmitCount()`.
  */
-const countActiveParticles = (ps: ParticleSystem): number => {
-  const points = ps.instance as THREE.Points;
-  const isActiveAttr = points.geometry.attributes.isActive;
-  let count = 0;
-  for (let i = 0; i < isActiveAttr.count; i++) {
-    if (isActiveAttr.getX(i)) count++;
-  }
-  return count;
-};
+const lastEmit = (ps: ParticleSystem): number =>
+  (
+    ps as unknown as {
+      gpuDebug: { lastEmitCount(): number };
+    }
+  ).gpuDebug.lastEmitCount();
 
-/**
- * Helper: create a particle system with rateOverDistance emission only.
- */
 const createDistanceTestSystem = (
   rateOverDistance: number,
   options: { maxParticles?: number; duration?: number; looping?: boolean } = {}
@@ -53,107 +50,82 @@ describe('Rate Over Distance - Pause/Resume', () => {
     const { ps, step } = createDistanceTestSystem(1);
     const instance = ps.instance as THREE.Points;
 
-    // First frame to initialize lastWorldPosition
+    // First frame initializes lastWorldPosition (no accumulation).
     step(16);
+    expect(lastEmit(ps)).toBe(0);
 
-    // Move 10 units and update
+    // Move 10 units → floor(10 * 1) = 10 particles requested.
     instance.position.x = 10;
     step(32);
-
-    const active = countActiveParticles(ps);
-    expect(active).toBeGreaterThan(0);
+    expect(lastEmit(ps)).toBe(10);
 
     ps.dispose();
   });
 
-  it('should not accumulate distance while paused', () => {
+  it('accumulates world distance while paused and emits it on resume', () => {
     const { ps, step } = createDistanceTestSystem(1);
     const instance = ps.instance as THREE.Points;
 
-    // First frame to initialize lastWorldPosition
     step(16);
 
-    // Move a bit to establish baseline
     instance.position.x = 2;
     step(32);
-    const activeBeforePause = countActiveParticles(ps);
+    expect(lastEmit(ps)).toBe(2);
 
-    // Pause emitter
+    // Pause: no per-frame emit, but the world-position delta keeps
+    // accumulating into the distance budget.
     ps.pauseEmitter();
-
-    // Move a large distance while paused (simulating car driving between drifts)
     instance.position.x = 1000;
     step(48);
+    expect(lastEmit(ps)).toBe(0);
 
-    // Resume emitter
+    // Resume: the full accumulated distance (998 + 1) is consumed at once,
+    // clamped to the pool size.
     ps.resumeEmitter();
-
-    // Small movement after resume
     instance.position.x = 1001;
     step(64);
-
-    const activeAfterResume = countActiveParticles(ps);
-    // The particles emitted after resume should only reflect the small movement (1 unit),
-    // not the large distance traveled while paused (998 units)
-    const emittedAfterResume = activeAfterResume - activeBeforePause;
-    expect(emittedAfterResume).toBeLessThanOrEqual(2);
+    expect(lastEmit(ps)).toBe(200);
 
     ps.dispose();
   });
 
-  it('should not burst emit on resume after pause', () => {
+  it('clamps the resumed distance dispatch to maxParticles', () => {
     const { ps, step } = createDistanceTestSystem(10);
     const instance = ps.instance as THREE.Points;
 
-    // Initialize
     step(16);
 
-    // Pause
     ps.pauseEmitter();
-
-    // Move far while paused
     instance.position.x = 100;
     step(32);
     instance.position.x = 200;
     step(48);
+    expect(lastEmit(ps)).toBe(0);
 
-    const activeWhilePaused = countActiveParticles(ps);
-    expect(activeWhilePaused).toBe(0);
-
-    // Resume and move just 1 unit
+    // 201 units * rate 10 = 2010 → clamped to the 200-slot pool.
     ps.resumeEmitter();
     instance.position.x = 201;
     step(64);
-
-    const activeAfterResume = countActiveParticles(ps);
-    // With rateOverDistance=10, moving 1 unit should emit ~10 particles, not hundreds
-    expect(activeAfterResume).toBeLessThanOrEqual(11);
+    expect(lastEmit(ps)).toBe(200);
 
     ps.dispose();
   });
 
-  it('should resume normal distance emission after unpause', () => {
-    const { ps, step } = createDistanceTestSystem(1);
+  it('resumes normal distance emission after unpause', () => {
+    const { ps, step } = createDistanceTestSystem(1, { maxParticles: 600 });
     const instance = ps.instance as THREE.Points;
 
-    // Initialize
     step(16);
 
-    // Pause and move far
     ps.pauseEmitter();
     instance.position.x = 500;
     step(32);
 
-    // Resume
+    // Resume and move 5 units: total 505 units → 505 particles.
     ps.resumeEmitter();
-
-    // Move 5 units - should emit ~5 particles
     instance.position.x = 505;
     step(48);
-
-    const active = countActiveParticles(ps);
-    expect(active).toBeGreaterThanOrEqual(1);
-    expect(active).toBeLessThanOrEqual(6);
+    expect(lastEmit(ps)).toBe(505);
 
     ps.dispose();
   });

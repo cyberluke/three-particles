@@ -21,17 +21,26 @@
   <script type="importmap">
   {
     "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.182.0/build/three.module.js",
-      "three/": "https://cdn.jsdelivr.net/npm/three@0.182.0/"
+      "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js",
+      "three/": "https://cdn.jsdelivr.net/npm/three@0.186.0/",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/",
+      "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.tsl.js",
+      "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.webgpu.js",
+      "@newkrok/three-utils": "https://cdn.jsdelivr.net/npm/@newkrok/three-utils@2.0.2/dist/index.js",
+      "@newkrok/three-utils/assets": "https://cdn.jsdelivr.net/npm/@newkrok/three-utils@2.0.2/dist/assets/index.js",
+      "@newkrok/three-utils/audio": "https://cdn.jsdelivr.net/npm/@newkrok/three-utils@2.0.2/dist/audio/index.js",
+      "easing-functions": "https://cdn.jsdelivr.net/npm/easing-functions@1.3.0/index.js",
+      "three-noise/build/three-noise.module.js": "https://cdn.jsdelivr.net/npm/three-noise@1.1.2/build/three-noise.module.js"
     }
   }
   </script>
   <script type="module">
     import * as THREE from "three";
-    import { createParticleSystem } from "./three-particles.esm.js";
+    import * as particleModule from "./three-particles.esm.js";
+    const { examples } = await import("./examples-data.js");
 
     const TEXTURE_MAP = {
-      FLAME: "textures/flame.webp",
+      FLAME: "textures/1_flame.webp",
       CLOUD: "textures/cloud.webp",
       SNOWFLAKE: "textures/snowflake.webp",
       GRADIENT_POINT: "textures/gradient-point.webp",
@@ -48,7 +57,7 @@
       STARBURST: "textures/starbust.webp",
       SOFT_SMOKE: "textures/soft-smoke.webp",
       BUBBLES: "textures/bubbles.webp",
-      FEATHER: "textures/feather.webp",
+      FEATHER: "textures/leaf.webp",
     };
 
     const textureLoader = new THREE.TextureLoader();
@@ -78,8 +87,6 @@
       CYLINDER: () => new THREE.CylinderGeometry(0.3, 0.3, 1, 8),
     };
 
-    const { examples } = await import("./examples-data.js");
-
     const status = document.getElementById("status");
     const container = document.getElementById("container");
     const downloadBtn = document.getElementById("download-all");
@@ -102,11 +109,15 @@
 
     status.textContent = `${missing.length} missing preview(s) out of ${examples.length}. Generating...`;
 
-    for (let i = 0; i < missing.length; i++) {
-      const example = missing[i];
-      status.textContent = `[${i + 1}/${missing.length}] Rendering: ${example.title}...`;
+    // Feature-gated entries: skip when the local module lacks the export.
+    const queue = missing.filter(
+      (e) => !e.requiresFeature || typeof particleModule[e.requiresFeature] === "function"
+    );
 
-      // Create a canvas for this demo
+    for (let i = 0; i < queue.length; i++) {
+      const example = queue[i];
+      status.textContent = `[${i + 1}/${queue.length}] Rendering: ${example.title}...`;
+
       const slot = document.createElement("div");
       slot.className = "preview-slot";
       const canvas = document.createElement("canvas");
@@ -121,126 +132,190 @@
       slot.appendChild(label);
       container.appendChild(slot);
 
-      // Load texture
-      let tex = null;
-      if (example.textureId && TEXTURE_MAP[example.textureId]) {
-        try {
-          tex = await loadTextureAsync(TEXTURE_MAP[example.textureId]);
-          tex.flipY = false;
-        } catch (e) {
-          console.warn(`Texture load failed for ${example.textureId}`, e);
-        }
-      }
+      let system = null;
+      let animateArc = null;
 
-      // Prepare config
-      const config = JSON.parse(JSON.stringify(example.config));
-      delete config._editorData;
+      if (example.kind === "electric-arc") {
+        // ── Electric Arc preview (§35): cinematic lab scene, CPU fallback path ──
+        const renderer = new THREE.WebGLRenderer({
+          canvas,
+          antialias: true,
+          alpha: true,
+          preserveDrawingBuffer: true,
+        });
+        renderer.setSize(640, 440);
+        renderer.setPixelRatio(1);
 
-      // Preview generator uses WebGLRenderer (CPU only) — force CPU backend,
-      // cap particle counts so GPU-designed demos don't freeze the browser,
-      // and upgrade POINTS → INSTANCED so small startSize values stay visible
-      // (POINTS uses gl_PointSize which makes sub-pixel particles invisible).
-      config.simulationBackend = "CPU";
-      if (!config.renderer) config.renderer = {};
-      const rt = config.renderer.rendererType;
-      if (!rt || rt === "POINTS") {
-        config.renderer.rendererType = "INSTANCED";
-      }
-      const MAX_PREVIEW_PARTICLES = 5000;
-      if (config.maxParticles > MAX_PREVIEW_PARTICLES) {
-        const scale = MAX_PREVIEW_PARTICLES / config.maxParticles;
-        config.maxParticles = MAX_PREVIEW_PARTICLES;
-        if (config.emission) {
-          if (config.emission.rateOverTime) {
-            config.emission.rateOverTime = Math.ceil(config.emission.rateOverTime * scale);
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xe8e4d8);
+        const camera = new THREE.PerspectiveCamera(45, 640 / 440, 0.1, 100);
+        camera.position.set(0, 0.35, 4.3);
+        camera.lookAt(0, 0, 0);
+
+        const conductorMat = new THREE.MeshPhysicalMaterial({
+          color: "#e8e2d5",
+          roughness: 0.24,
+          metalness: 0.08,
+          clearcoat: 0.55,
+          clearcoatRoughness: 0.18,
+        });
+        const terminalMat = new THREE.MeshPhysicalMaterial({
+          color: "#4a5240",
+          roughness: 0.35,
+          metalness: 0.6,
+        });
+        const leftCurve = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(-2.2, -0.2, 0),
+          new THREE.Vector3(-1.8, 0, 0),
+          new THREE.Vector3(-1.45, 0.15, 0),
+          new THREE.Vector3(-1.12, 0, 0),
+        ]);
+        const rightCurve = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(2.2, -0.2, 0),
+          new THREE.Vector3(1.8, 0, 0),
+          new THREE.Vector3(1.45, 0.15, 0),
+          new THREE.Vector3(1.12, 0, 0),
+        ]);
+        const left = new THREE.Mesh(new THREE.TubeGeometry(leftCurve, 48, 0.06, 12, false), conductorMat);
+        const right = new THREE.Mesh(new THREE.TubeGeometry(rightCurve, 48, 0.06, 12, false), conductorMat);
+        const leftCap = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.05, 16), terminalMat);
+        leftCap.rotation.z = Math.PI / 2;
+        leftCap.position.set(-1.12, 0, 0);
+        const rightCap = leftCap.clone();
+        rightCap.position.set(1.12, 0, 0);
+        const leftAnchor = new THREE.Object3D();
+        leftAnchor.position.set(-1.1, 0, 0);
+        const rightAnchor = new THREE.Object3D();
+        rightAnchor.position.set(1.1, 0, 0);
+        scene.add(left, right, leftCap, rightCap, leftAnchor, rightAnchor);
+        scene.add(new THREE.AmbientLight(0xfff6e0, 1.1));
+        const key = new THREE.DirectionalLight(0xffffff, 2.2);
+        key.position.set(2.5, 4, 3);
+        scene.add(key);
+
+        const cfg = JSON.parse(JSON.stringify(example.config));
+        cfg.simulationBackend = "CPU";
+        system = particleModule.createElectricArc(cfg);
+        scene.add(system.instance);
+        system.bindEndpoints({ start: leftAnchor, end: rightAnchor });
+        animateArc = (t) => {
+          const s = Math.sin(t * 0.8);
+          left.position.x = -2.2 + 0.04 * s;
+          right.position.x = 2.2 - 0.04 * s;
+          leftCap.position.x = -1.12 + 0.04 * s;
+          rightCap.position.x = 1.12 - 0.04 * s;
+        };
+
+        await new Promise((resolve) => {
+          const startTime = performance.now();
+          const duration = (example.previewTime || 2) * 1000;
+          let lastTime = startTime;
+          function frame(now) {
+            const elapsed = (now - startTime) / 1000;
+            const delta = (now - lastTime) / 1000;
+            lastTime = now;
+            if (animateArc) animateArc(elapsed);
+            system.update({ now: Date.now(), delta, elapsed });
+            renderer.render(scene, camera);
+            if (now - startTime < duration) requestAnimationFrame(frame);
+            else resolve();
           }
-          if (config.emission.bursts) {
-            for (const burst of config.emission.bursts) {
-              burst.count = Math.ceil(burst.count * scale);
-            }
+          requestAnimationFrame(frame);
+        });
+      } else {
+        // ── Particle systems: existing preview pipeline ─────────────────────
+        let tex = null;
+        if (example.textureId && TEXTURE_MAP[example.textureId]) {
+          try {
+            tex = await loadTextureAsync(TEXTURE_MAP[example.textureId]);
+            tex.flipY = false;
+          } catch (e) {
+            console.warn(`Texture load failed for ${example.textureId}`, e);
           }
         }
-      }
 
-      if (config.renderer?.blending) {
-        config.renderer.blending = resolveBlending(config.renderer.blending);
-      }
-      if (tex) config.map = tex;
-      // Attach mesh geometry for MESH renderer examples
-      if (example.meshType && MESH_GEOMETRIES[example.meshType]) {
+        const config = JSON.parse(JSON.stringify(example.config));
+        delete config._editorData;
+        config.simulationBackend = "CPU";
         if (!config.renderer) config.renderer = {};
-        config.renderer.mesh = { geometry: MESH_GEOMETRIES[example.meshType]() };
-      }
-      if (config.subEmitters) {
-        for (const sub of config.subEmitters) {
-          if (sub.config?.renderer?.blending) {
-            sub.config.renderer.blending = resolveBlending(sub.config.renderer.blending);
+        const rt = config.renderer.rendererType;
+        if (!rt || rt === "POINTS") config.renderer.rendererType = "INSTANCED";
+        const MAX_PREVIEW_PARTICLES = 5000;
+        if (config.maxParticles > MAX_PREVIEW_PARTICLES) {
+          const scale = MAX_PREVIEW_PARTICLES / config.maxParticles;
+          config.maxParticles = MAX_PREVIEW_PARTICLES;
+          if (config.emission) {
+            if (config.emission.rateOverTime)
+              config.emission.rateOverTime = Math.ceil(config.emission.rateOverTime * scale);
+            if (config.emission.bursts)
+              for (const burst of config.emission.bursts)
+                burst.count = Math.ceil(burst.count * scale);
           }
-          if (sub.textureId && TEXTURE_MAP[sub.textureId]) {
-            try {
-              const subTex = await loadTextureAsync(TEXTURE_MAP[sub.textureId]);
-              subTex.flipY = false;
-              sub.config.map = subTex;
-            } catch (e) {
-              console.warn(`Sub-emitter texture load failed for ${sub.textureId}`, e);
+        }
+        if (config.renderer?.blending)
+          config.renderer.blending = resolveBlending(config.renderer.blending);
+        if (tex) config.map = tex;
+        if (example.meshType && MESH_GEOMETRIES[example.meshType]) {
+          if (!config.renderer) config.renderer = {};
+          config.renderer.mesh = { geometry: MESH_GEOMETRIES[example.meshType]() };
+        }
+        if (config.subEmitters) {
+          for (const sub of config.subEmitters) {
+            if (sub.config?.renderer?.blending)
+              sub.config.renderer.blending = resolveBlending(sub.config.renderer.blending);
+            if (sub.textureId && TEXTURE_MAP[sub.textureId]) {
+              try {
+                const subTex = await loadTextureAsync(TEXTURE_MAP[sub.textureId]);
+                subTex.flipY = false;
+                sub.config.map = subTex;
+              } catch (e) {
+                console.warn(`Sub-emitter texture load failed for ${sub.textureId}`, e);
+              }
+              delete sub.textureId;
             }
-            delete sub.textureId;
           }
         }
+
+        const renderer = new THREE.WebGLRenderer({
+          canvas,
+          antialias: true,
+          alpha: true,
+          preserveDrawingBuffer: true,
+        });
+        renderer.setSize(640, 440);
+        renderer.setPixelRatio(1);
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, 640 / 440, 1, 100);
+        camera.position.set(0, 0, 15);
+        camera.lookAt(0, 0, 0);
+
+        system = particleModule.createParticleSystem(config);
+        scene.add(system.instance);
+
+        await new Promise((resolve) => {
+          const startTime = performance.now();
+          const duration = (example.previewTime || 2) * 1000;
+          let lastTime = startTime;
+          function frame(now) {
+            const elapsed = (now - startTime) / 1000;
+            const delta = (now - lastTime) / 1000;
+            lastTime = now;
+            system.update({ now: Date.now(), delta, elapsed });
+            renderer.render(scene, camera);
+            if (now - startTime < duration) requestAnimationFrame(frame);
+            else resolve();
+          }
+          requestAnimationFrame(frame);
+        });
       }
 
-      // Create renderer + scene
-      const renderer = new THREE.WebGLRenderer({
-        canvas,
-        antialias: true,
-        alpha: true,
-        preserveDrawingBuffer: true,
-      });
-      renderer.setSize(640, 440);
-      renderer.setPixelRatio(1);
-
-      const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(45, 640 / 440, 1, 100);
-      camera.position.set(0, 0, 15);
-      camera.lookAt(0, 0, 0);
-
-      const system = createParticleSystem(config);
-      scene.add(system.instance);
-
-      // Animate until previewTime (or 2s default) using requestAnimationFrame
-      await new Promise((resolve) => {
-        const startTime = performance.now();
-        const duration = (example.previewTime || 2) * 1000;
-        let lastTime = startTime;
-
-        function frame(now) {
-          const elapsed = (now - startTime) / 1000;
-          const delta = (now - lastTime) / 1000;
-          lastTime = now;
-
-          system.update({ now: Date.now(), delta, elapsed });
-          renderer.render(scene, camera);
-
-          if (now - startTime < duration) {
-            requestAnimationFrame(frame);
-          } else {
-            resolve();
-          }
-        }
-        requestAnimationFrame(frame);
-      });
-
-      // Screenshot
+      await new Promise((r) => setTimeout(r, 20));
       const dataUrl = canvas.toDataURL("image/webp", 0.85);
       results.push({ id: example.id, dataUrl });
 
-      // Cleanup
-      system.dispose();
-      renderer.dispose();
-      renderer.forceContextLoss();
-
-      // Small delay to let browser reclaim context
-      await new Promise((r) => setTimeout(r, 100));
+      if (system) system.dispose();
+      requestAnimationFrame(() => {});
     }
 
     status.textContent = `Done! ${results.length} previews generated. Click button to download.`;
@@ -251,7 +326,6 @@
       status.textContent = "Building ZIP...";
       downloadBtn.disabled = true;
 
-      // Minimal ZIP builder (no dependencies)
       const files = [];
       for (const { id, dataUrl } of results) {
         const resp = await fetch(dataUrl);
@@ -284,16 +358,16 @@
         const local = new Uint8Array(30 + nameBytes.length + file.data.length);
         const lv = new DataView(local.buffer);
         lv.setUint32(0, 0x04034b50, true);  // signature
-        lv.setUint16(4, 20, true);           // version needed
-        lv.setUint16(6, 0, true);            // flags
-        lv.setUint16(8, 0, true);            // compression (store)
-        lv.setUint16(10, 0, true);           // mod time
-        lv.setUint16(12, 0, true);           // mod date
+        lv.setUint16(4, 20, true);          // version needed
+        lv.setUint16(6, 0, true);           // flags
+        lv.setUint16(8, 0, true);           // compression (store)
+        lv.setUint16(10, 0, true);          // mod time
+        lv.setUint16(12, 0, true);          // mod date
         lv.setUint32(14, crc32(file.data), true);
         lv.setUint32(18, file.data.length, true); // compressed
         lv.setUint32(22, file.data.length, true); // uncompressed
         lv.setUint16(26, nameBytes.length, true);
-        lv.setUint16(28, 0, true);           // extra length
+        lv.setUint16(28, 0, true);          // extra length
         local.set(nameBytes, 30);
         local.set(file.data, 30 + nameBytes.length);
         localParts.push(local);
@@ -306,8 +380,8 @@
         cv.setUint16(6, 20, true);
         cv.setUint16(8, 0, true);
         cv.setUint16(10, 0, true);
-        cv.setUint16(12, 0, true);
-        cv.setUint16(14, 0, true);
+        cv.setUint16(10 + 6, 0, true);
+        cv.setUint16(16, 0, true);
         cv.setUint32(16, crc32(file.data), true);
         cv.setUint32(20, file.data.length, true);
         cv.setUint32(24, file.data.length, true);
@@ -316,8 +390,8 @@
         cv.setUint16(32, 0, true);
         cv.setUint16(34, 0, true);
         cv.setUint16(36, 0, true);
-        cv.setUint32(38, 0x20, true);        // external attrs
-        cv.setUint32(42, offset, true);       // local header offset
+        cv.setUint32(38, 0x20, true);       // external attrs
+        cv.setUint32(42, offset, true);     // local header offset
         cd.set(nameBytes, 46);
         centralDir.push(cd);
 

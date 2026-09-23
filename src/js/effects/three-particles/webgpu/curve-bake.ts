@@ -12,6 +12,7 @@
  * @module
  */
 
+import * as THREE from 'three';
 import {
   getCurveFunctionFromConfig,
   isLifeTimeCurve,
@@ -412,8 +413,6 @@ export function createCurveDataTexture(
 
   // Deferred import so this module remains usable in non-browser / test
   // environments where the THREE globals may not be set up.
-
-  const THREE = require('three') as typeof import('three');
 
   const width = bakedCurves.curveCount * CURVE_RESOLUTION;
   const texture = new THREE.DataTexture(

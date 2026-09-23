@@ -25,6 +25,11 @@ import {
   Discard,
   If,
   length,
+  normalize,
+  cross,
+  dot,
+  mix,
+  cameraViewMatrix,
   type ShaderNodeObject,
   type Node,
 } from 'three/tsl';
@@ -198,6 +203,53 @@ export const computeSoftParticleFade = Fn(
     });
 
     return softFade;
+  }
+);
+
+// ─── Billboard ribbon frame ──────────────────────────────────────────────────
+
+/**
+ * Camera-facing ribbon perpendicular (§14): `cross(tangent, viewDir)` with
+ * the camera-right degeneracy protection shared by the trail ribbon and the
+ * electric arc materials.
+ *
+ * Extracted verbatim from `createTrailRibbonTSLMaterial` (single source of
+ * truth — both materials consume this helper):
+ *   - near-zero cross product (edge-on) -> camera-right projection fallback
+ *   - otherwise smooth-blend toward the fallback over perpLen in [0, 0.7]
+ *
+ * `tangent` must be pre-normalized; `viewDir` = normalize(cameraPos - current).
+ */
+export const billboardPerp: ReturnType<typeof Fn> = Fn(
+  ({ tangent, viewDir }: Record<string, ShaderNodeObject<Node>>) => {
+    const rawPerp = cross(tangent, viewDir).toVar();
+    const perpLen = length(rawPerp);
+
+    // Camera right vector extracted from the view matrix (column 0)
+    const camRight = vec3(
+      cameraViewMatrix.element(0).element(0),
+      cameraViewMatrix.element(1).element(0),
+      cameraViewMatrix.element(2).element(0)
+    );
+    const camRightDotTangent = dot(camRight, tangent);
+    const fallbackPerp = normalize(
+      camRight.sub(tangent.mul(camRightDotTangent))
+    );
+
+    return normalize(
+      perpLen
+        .lessThan(0.0001)
+        .select(
+          fallbackPerp,
+          normalize(
+            mix(
+              fallbackPerp,
+              normalize(rawPerp),
+              smoothstep(float(0.0), float(0.7), perpLen)
+            )
+          )
+        )
+    );
   }
 );
 

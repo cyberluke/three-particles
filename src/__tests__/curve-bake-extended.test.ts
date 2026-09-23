@@ -57,7 +57,7 @@ describe('bakeParticleSystemCurves — velocity axes', () => {
     expect(result.data[CURVE_RESOLUTION - 1]).toBeCloseTo(1, 1);
   });
 
-  it('bakes constant velocity as a flat curve', () => {
+  it('does not bake constant velocity axes (per-particle state, not a table)', () => {
     const config = createConfig({
       velocityOverLifetime: {
         isActive: true,
@@ -67,15 +67,14 @@ describe('bakeParticleSystemCurves — velocity axes', () => {
     });
 
     const result = bakeParticleSystemCurves(config, 0);
-    expect(result.linearVelX).toBe(0);
-    expect(result.curveCount).toBe(1);
-    // All samples should be the constant value (mid-point of calculateValue)
-    for (let i = 0; i < CURVE_RESOLUTION; i++) {
-      expect(result.data[i]).toBeCloseTo(3.5, 3);
-    }
+    // Only lifetime-curve axes get flat-table slots; constants are written
+    // to the per-particle start-values state at emission.
+    expect(result.linearVelX).toBe(-1);
+    expect(result.curveCount).toBe(0);
+    expect(result.data.length).toBe(0);
   });
 
-  it('bakes random range velocity as a flat curve using mid-point', () => {
+  it('does not bake random-range velocity axes (per-particle state)', () => {
     const config = createConfig({
       velocityOverLifetime: {
         isActive: true,
@@ -85,35 +84,31 @@ describe('bakeParticleSystemCurves — velocity axes', () => {
     });
 
     const result = bakeParticleSystemCurves(config, 0);
-    expect(result.linearVelX).toBe(0);
-    expect(result.curveCount).toBe(1);
-    // min==max==2, so mid-point is 2
-    for (let i = 0; i < CURVE_RESOLUTION; i++) {
-      expect(result.data[i]).toBeCloseTo(2, 3);
-    }
+    expect(result.linearVelX).toBe(-1);
+    expect(result.curveCount).toBe(0);
   });
 
-  it('bakes all 6 velocity axes when all are non-zero', () => {
+  it('bakes only the lifetime-curve velocity axes of a mixed set', () => {
     const config = createConfig({
       velocityOverLifetime: {
         isActive: true,
-        linear: { x: 1, y: 2, z: 3 },
-        orbital: { x: 4, y: 5, z: 6 },
+        linear: { x: linearBezier, y: 2, z: 3 },
+        orbital: { x: 4, y: 5, z: linearBezier },
       },
     });
 
     const result = bakeParticleSystemCurves(config, 0);
-    expect(result.curveCount).toBe(6);
+    expect(result.curveCount).toBe(2);
     expect(result.linearVelX).toBe(0);
-    expect(result.linearVelY).toBe(1);
-    expect(result.linearVelZ).toBe(2);
-    expect(result.orbitalVelX).toBe(3);
-    expect(result.orbitalVelY).toBe(4);
-    expect(result.orbitalVelZ).toBe(5);
-    expect(result.data.length).toBe(CURVE_RESOLUTION * 6);
+    expect(result.linearVelY).toBe(-1);
+    expect(result.linearVelZ).toBe(-1);
+    expect(result.orbitalVelX).toBe(-1);
+    expect(result.orbitalVelY).toBe(-1);
+    expect(result.orbitalVelZ).toBe(1);
+    expect(result.data.length).toBe(CURVE_RESOLUTION * 2);
   });
 
-  it('skips velocity axes that are 0', () => {
+  it('skips constant and zero velocity axes', () => {
     const config = createConfig({
       velocityOverLifetime: {
         isActive: true,
@@ -123,9 +118,9 @@ describe('bakeParticleSystemCurves — velocity axes', () => {
     });
 
     const result = bakeParticleSystemCurves(config, 0);
-    expect(result.curveCount).toBe(1);
-    expect(result.linearVelX).toBe(-1); // 0 is skipped
-    expect(result.linearVelY).toBe(0);
+    expect(result.curveCount).toBe(0);
+    expect(result.linearVelX).toBe(-1);
+    expect(result.linearVelY).toBe(-1); // constant — not a table curve
     expect(result.linearVelZ).toBe(-1);
   });
 
@@ -139,10 +134,10 @@ describe('bakeParticleSystemCurves — velocity axes', () => {
     });
 
     const result = bakeParticleSystemCurves(config, 0);
-    expect(result.curveCount).toBe(1);
+    expect(result.curveCount).toBe(0);
     expect(result.linearVelX).toBe(-1);
     expect(result.linearVelY).toBe(-1);
-    expect(result.linearVelZ).toBe(0);
+    expect(result.linearVelZ).toBe(-1);
   });
 
   it('does not bake velocity when velocityOverLifetime is inactive', () => {

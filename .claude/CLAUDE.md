@@ -33,6 +33,10 @@ src/js/effects/three-particles/
     ????????? tsl-instanced-billboard-material.ts # INSTANCED renderer TSL material
     ????????? tsl-mesh-particle-material.ts # MESH renderer TSL material
     ????????? tsl-trail-ribbon-material.ts  # TRAIL renderer TSL material
+    ????????? tsl-fluid-metaball-material.ts # FLUID single-pass metaball material
+    ????????? tsl-fluid-screen-space-material.ts # FLUID screen-space pass chain
+    ????????? fluid-mpm.ts                  # MLS-MPM solver (grid, 2 sub-steps)
+    ????????? fluid-sph.ts                  # SPH solver (neighbour search + double-density)
     ????????? compute-particle-update.ts    # Core physics compute shader
     ????????? compute-modifiers.ts          # All 7 modifiers compute shader
     ????????? compute-force-fields.ts       # Force field GPU compute
@@ -132,6 +136,7 @@ The library supports a **dual-path architecture**: WebGL (CPU simulation + GLSL)
 - **Curve baking:** Lifetime curves are pre-baked to 256-sample Float32Arrays at system creation, stored in the `curveData` buffer.
 - **Sub-emitters forced to CPU:** Sub-emitters always use `SimulationBackend.CPU` because they need CPU-side death detection callbacks.
 - **Trail always CPU:** `RendererType.TRAIL` uses CPU simulation regardless of backend setting.
+- **Fluid family (`RendererType.FLUID`) is solver-discriminated:** `renderer.fluid.solver` selects the kernels; `'MLS-MPM'` (default, `webgpu/fluid-mpm.ts`) runs `clearGrid / p2g_1 / p2g_2 / updateGrid / g2p` twice per frame on a `64^3` lattice with a fixed-point `u32` atomic scatter (`1e7`, two's-complement decode); `'SPH'` (`webgpu/fluid-sph.ts`) runs `gridClear / gridBuild / 3-pass exclusive prefix scan / reorder / density / reorder / force / integrate`. `createFluidSimPipeline()` in `webgpu/tsl-materials.ts` seeds the shared `position` / `velocity` storage with the dambreak lattice, resolves `renderer.mlsMpm` / `renderer.sph`, and reports the real per-pass binding budget; the base `emit` pass is parked (`count = 1`, `uEmitCount = 0`) and the solver owns the state. Rendering uses `webgpu/tsl-fluid-screen-space-material.ts` (depth map -> 4 bilateral levels -> additive thickness map -> separable Gaussian -> Beer-Lambert + Fresnel shading) or `renderer.fluid.sphereRender` for the direct sphere pass; the `pass()` nodes are late-bound with the scene camera (`__fluidPassNodes`). `renderer.fluid.boxWidthRatio` reproduces the upstream `changeBoxSize()`.
 
 ### When Working on WebGPU Code
 

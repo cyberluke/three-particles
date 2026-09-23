@@ -9,6 +9,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 import { float, vec3 } from 'three/tsl';
 import {
   snoise3D,
@@ -66,9 +67,12 @@ describe('particleNoise3 — three-axis noise', () => {
 // ─── Source structural checks ───────────────────────────────────────────────
 
 describe('tsl-noise source structure', () => {
+  // ESM has no ambient `__dirname`; derive the base from this module's URL
+  // so the path resolves identically under the engine and root jest configs.
+  const here = fileURLToPath(new URL('.', import.meta.url));
   const src = fs.readFileSync(
     path.resolve(
-      __dirname,
+      here,
       '../js/effects/three-particles/webgpu/tsl-noise.ts'
     ),
     'utf-8'

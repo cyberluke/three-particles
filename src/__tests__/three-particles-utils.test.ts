@@ -217,12 +217,11 @@ describe('getCurveFunctionFromConfig function tests', () => {
   });
 
   it('throws an error for unsupported curve type', () => {
-    // Create a curve with an invalid type that will pass TypeScript but fail at runtime
+    // No `type` and no inferable payload (no bezierPoints / curveFunction)
+    // → the runtime cannot resolve a curve function and must throw.
     const invalidCurve = {
-      type: 999 as unknown as LifeTimeCurve, // Invalid enum value
       scale: 1,
-      bezierPoints: [], // Add this to satisfy TypeScript
-    } as LifetimeCurve;
+    } as unknown as LifetimeCurve;
 
     expect(() => getCurveFunctionFromConfig(1, invalidCurve)).toThrow(
       'Unsupported value type'

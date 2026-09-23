@@ -64,21 +64,21 @@ import {
   StorageBufferAttribute,
   StorageInstancedBufferAttribute,
 } from 'three/webgpu';
+import { sRGBToLinear } from '../color-utils.js';
+import {
+  COLLISION_PLANE_DATA_SIZE,
+  createCollisionPlaneTSL,
+} from './compute-collision-planes.js';
+import {
+  FORCE_FIELD_DATA_SIZE,
+  createForceFieldTSL,
+} from './compute-force-fields.js';
 import {
   CURVE_RESOLUTION,
   bakeCurve,
   type BakedCurveMap,
 } from './curve-bake.js';
 import { snoise3D } from './tsl-noise.js';
-import {
-  FORCE_FIELD_DATA_SIZE,
-  createForceFieldTSL,
-} from './compute-force-fields.js';
-import {
-  COLLISION_PLANE_DATA_SIZE,
-  createCollisionPlaneTSL,
-} from './compute-collision-planes.js';
-import { sRGBToLinear } from '../color-utils.js';
 
 // ??? Buffer layout constants ????????????????????????????????????????????????
 // Each `vec4 * maxParticles` slot is stored as 4 floats in row order. Indices
@@ -96,6 +96,51 @@ export const S_EXY = 1; // startColorsExt.y: startColorB
 export const S_EXZ = 2; // startColorsExt.z: rotationSpeed (rad/s)
 export const S_EXW = 3; // startColorsExt.w: noiseOffset
 export const S_ORW = 3; // orbitalIsActive.w: isActive flag
+
+/**
+ * Floats per particle in the legacy CPU-side `curveData` init tail
+ * (4 position+flag, 4 velocity+pad, 4 color, 4 state, 4 orbital, 8 ext).
+ * Kept as an exported constant because the bounds-check parity tests
+ * reproduce the kernel index arithmetic against it.
+ */
+export const INIT_STRIDE = 28;
+
+/**
+ * CPU reference for the GPU orbital-velocity rotation in the simulation
+ * kernel: Euler(`speedX*dt`, `speedZ*dt`, `speedY*dt`) with order 'XYZ'
+ * (intrinsic XYZ ⇒ matrix Rx·Ry·Rz, so the vector product applies Z first,
+ * then Y, then X). Mutates `offset` in place, exactly mirroring the TSL
+ * sequence `fx/fy/fz` in {@link createModifierComputeUpdate}.
+ */
+export function applyOrbitalRotation(
+  offset: { x: number; y: number; z: number },
+  speedX: number,
+  speedY: number,
+  speedZ: number,
+  delta: number
+): void {
+  const angX = speedX * delta;
+  const angY = speedZ * delta;
+  const angZ = speedY * delta;
+  // Z rotation (applied first).
+  const c3 = Math.cos(angZ);
+  const s3 = Math.sin(angZ);
+  const zx = offset.x * c3 - offset.y * s3;
+  const zy = offset.x * s3 + offset.y * c3;
+  const zz = offset.z;
+  // Y rotation.
+  const c2 = Math.cos(angY);
+  const s2 = Math.sin(angY);
+  const yx = zx * c2 + zz * s2;
+  const yz = -zx * s2 + zz * c2;
+  const yy = zy;
+  // X rotation (applied last).
+  const c1 = Math.cos(angX);
+  const s1 = Math.sin(angX);
+  offset.x = yx;
+  offset.y = yy * c1 - yz * s1;
+  offset.z = yy * s1 + yz * c1;
+}
 
 // ??? Modifier flags ?????????????????????????????????????????????????????????
 export type ModifierFlags = {
@@ -176,7 +221,7 @@ export type ShapeEmitParams = {
   colorBMax: number;
   startFrameMin: number;
   startFrameMax: number;
-rotationCurveActive: boolean;
+  rotationCurveActive: boolean;
   rotationalXCurve: number; // index or -1
   rotationalYCurve: number;
   rotationalZCurve: number;
@@ -190,6 +235,58 @@ rotationCurveActive: boolean;
   noiseOctaves: number;
   /** noise.useRandomOffset — per-particle random offset in [0,100). */
   noiseUseRandomOffset: boolean;
+};
+
+/**
+ * Default 4-arg shape for {@link createModifierComputeUpdate} so the pipeline
+ * can be bootstrapped in 1-line tests (no-op emitter) and every field still
+ * round-trips. The 5-arg / 10-arg calls used elsewhere all provide their own
+ * concrete values, so this default only kicks in when the caller omits the
+ * full parameter set.
+ */
+export const DEFAULT_SHAPE_EMIT_PARAMS: ShapeEmitParams = {
+  shapeKind: 0,
+  radius: 1,
+  radiusThickness: 1,
+  arcDeg: 360,
+  coneAngleDeg: 90,
+  rectangleRotXDeg: 0,
+  rectangleRotYDeg: 0,
+  rectangleScaleX: 1,
+  rectangleScaleY: 1,
+  boxScaleX: 1,
+  boxScaleY: 1,
+  boxScaleZ: 1,
+  boxEmitFrom: 0,
+  speedMin: 1,
+  speedMax: 1,
+  sizeMin: 1,
+  sizeMax: 1,
+  rotMin: 0,
+  rotMax: 0,
+  opacityMin: 1,
+  opacityMax: 1,
+  lifeMin: 1,
+  lifeMax: 1,
+  colorRMin: 1,
+  colorRMax: 1,
+  colorGMin: 1,
+  colorGMax: 1,
+  colorBMin: 1,
+  colorBMax: 1,
+  startFrameMin: 0,
+  startFrameMax: 0,
+  rotationCurveActive: false,
+  rotationalXCurve: -1,
+  rotationalYCurve: -1,
+  rotationalZCurve: -1,
+  linearXCurve: -1,
+  linearYCurve: -1,
+  linearZCurve: -1,
+  rotOverLifeMin: 0,
+  rotOverLifeMax: 0,
+  noiseOctaves: 1,
+  noiseUseRandomOffset: false,
 };
 
 /**
@@ -247,7 +344,9 @@ export const pcgRawU32 = (
 
 /** PCG hash in [0,1): integer mixing first, single f32 conversion at the end. */
 export const pcg01 = (seedU: ShaderNodeObject<Node>): ShaderNodeObject<Node> =>
-  pcgRawU32(seedU).toFloat().mul(float(1 / 4294967296));
+  pcgRawU32(seedU)
+    .toFloat()
+    .mul(float(1 / 4294967296));
 
 /** Integer channel mix (all u32): birthNo*Knuth_odd ^ systemSeed ^ channel. */
 export const mixBirthSeed = (
@@ -265,7 +364,8 @@ export const randomChannel = (
   birthNoU: ShaderNodeObject<Node>,
   systemSeedU: ShaderNodeObject<Node>,
   channelU: ShaderNodeObject<Node>
-): ShaderNodeObject<Node> => pcg01(mixBirthSeed(birthNoU, systemSeedU, channelU));
+): ShaderNodeObject<Node> =>
+  pcg01(mixBirthSeed(birthNoU, systemSeedU, channelU));
 
 /** 24-bit exact-in-f32 stable seed stored in `startColorsExt.w`. */
 export const stableSeedU32 = (
@@ -313,13 +413,13 @@ export const CH = {
  * `atomic<u32>` counter pair (ping-pong) plus two ordinary f32 payload
  * windows. Float payload never goes through an atomic; counters are integer.
  */
-export const createSubEmitterFifoAttribute = (capacity: number): SubEmitterFifo =>
+export const createSubEmitterFifoAttribute = (
+  capacity: number
+): SubEmitterFifo =>
   ({
     counter: new StorageBufferAttribute(new Uint32Array(2), 1),
     payload: new StorageBufferAttribute(
-      new Float32Array(
-        2 * SUB_EMITTER_EVENT_STRIDE * Math.max(1, capacity)
-      ),
+      new Float32Array(2 * SUB_EMITTER_EVENT_STRIDE * Math.max(1, capacity)),
       1
     ),
     trigger: 1,
@@ -497,8 +597,8 @@ export function createModifierStorageBuffers(
     : StorageBufferAttribute;
 
   const curveLen = Math.max(curveData.length, 1);
-  const ffSize  = hasForceFields     ? FORCE_FIELD_DATA_SIZE     : 0;
-  const cpSize  = hasCollisionPlanes ? COLLISION_PLANE_DATA_SIZE : 0;
+  const ffSize = hasForceFields ? FORCE_FIELD_DATA_SIZE : 0;
+  const cpSize = hasCollisionPlanes ? COLLISION_PLANE_DATA_SIZE : 0;
   // Read-mostly f32 table layout (uniform-backed, non-atomic):
   //   [0 .. curveLen-1]                        baked curve samples
   //   [curveLen .. curveLen + ffSize - 1]      force-field records   (if any)
@@ -512,7 +612,7 @@ export function createModifierStorageBuffers(
   // never underflow and every slot index is always in range (a plain
   // atomicSub stack wraps 0 -> 0xffffffff and indexes out of bounds).
   const allocatorCount = maxParticles + 1;
-  const allocatorData  = new Uint32Array(allocatorCount);
+  const allocatorData = new Uint32Array(allocatorCount);
   allocatorData[0] = 0;
   for (let i = 0; i < maxParticles; i++) allocatorData[i + 1] = i;
 
@@ -527,14 +627,23 @@ export function createModifierStorageBuffers(
 
   return {
     buffers: {
-      position:        new Cls(new Float32Array(maxParticles * 4), 4),
-      velocity:        new StorageBufferAttribute(new Float32Array(maxParticles * 4), 4),
-      color:           new Cls(new Float32Array(maxParticles * 4), 4),
-      particleState:   new Cls(new Float32Array(maxParticles * 4), 4),
-      startValues:     new Cls(new Float32Array(maxParticles * 4), 4),
-      startColorsExt:  new StorageBufferAttribute(new Float32Array(maxParticles * 4), 4),
-      orbitalIsActive: new StorageBufferAttribute(new Float32Array(maxParticles * 4), 4),
-      allocator:       new StorageBufferAttribute(allocatorData, 1),
+      position: new Cls(new Float32Array(maxParticles * 4), 4),
+      velocity: new StorageBufferAttribute(
+        new Float32Array(maxParticles * 4),
+        4
+      ),
+      color: new Cls(new Float32Array(maxParticles * 4), 4),
+      particleState: new Cls(new Float32Array(maxParticles * 4), 4),
+      startValues: new Cls(new Float32Array(maxParticles * 4), 4),
+      startColorsExt: new StorageBufferAttribute(
+        new Float32Array(maxParticles * 4),
+        4
+      ),
+      orbitalIsActive: new StorageBufferAttribute(
+        new Float32Array(maxParticles * 4),
+        4
+      ),
+      allocator: new StorageBufferAttribute(allocatorData, 1),
       trailMeta,
       packedData,
     },
@@ -544,16 +653,26 @@ export function createModifierStorageBuffers(
 
 // ??? Curve lookup helper ????????????????????????????????????????????????????
 function createCurveLookup(sCurveData: ShaderNodeObject<Node>) {
-  return Fn(({ curveIndex, t }: { curveIndex: ShaderNodeObject<Node>; t: ShaderNodeObject<Node> }) => {
-    const clamped = tslMin(t, float(1.0));
-    const pos = clamped.mul(CURVE_RESOLUTION - 1);
-    const idx0 = floor(pos);
-    const f = fract(pos);
-    const base = curveIndex.mul(CURVE_RESOLUTION);
-    const v0 = sCurveData.element(base.add(idx0));
-    const v1 = sCurveData.element(base.add(tslMin(idx0.add(1.0), float(CURVE_RESOLUTION - 1))));
-    return mix(v0, v1, f);
-  });
+  return Fn(
+    ({
+      curveIndex,
+      t,
+    }: {
+      curveIndex: ShaderNodeObject<Node>;
+      t: ShaderNodeObject<Node>;
+    }) => {
+      const clamped = tslMin(t, float(1.0));
+      const pos = clamped.mul(CURVE_RESOLUTION - 1);
+      const idx0 = floor(pos);
+      const f = fract(pos);
+      const base = curveIndex.mul(CURVE_RESOLUTION);
+      const v0 = sCurveData.element(base.add(idx0));
+      const v1 = sCurveData.element(
+        base.add(tslMin(idx0.add(1.0), float(CURVE_RESOLUTION - 1)))
+      );
+      return mix(v0, v1, f);
+    }
+  );
 }
 
 // ??? Kernel builder ????????????????????????????????????????????????????????
@@ -762,9 +881,18 @@ function quatRotateNodes(
   const scaleV = qw.mul(qw).mul(float(2.0)).sub(float(1.0));
   const twoW = qw.mul(float(2.0));
   return [
-    x.mul(scaleV).add(qx.mul(projD)).add(qy.mul(z).sub(qz.mul(y)).mul(twoW)),
-    y.mul(scaleV).add(qy.mul(projD)).add(qz.mul(x).sub(qx.mul(z)).mul(twoW)),
-    z.mul(scaleV).add(qz.mul(projD)).add(qx.mul(y).sub(qy.mul(x)).mul(twoW)),
+    x
+      .mul(scaleV)
+      .add(qx.mul(projD))
+      .add(qy.mul(z).sub(qz.mul(y)).mul(twoW)),
+    y
+      .mul(scaleV)
+      .add(qy.mul(projD))
+      .add(qz.mul(x).sub(qx.mul(z)).mul(twoW)),
+    z
+      .mul(scaleV)
+      .add(qz.mul(projD))
+      .add(qx.mul(y).sub(qy.mul(x)).mul(twoW)),
   ];
 }
 
@@ -789,7 +917,7 @@ export function createModifierComputeUpdate(
   maxParticles: number,
   curveMap: BakedCurveMap,
   flags: ModifierFlags,
-  shapeParams: ShapeEmitParams,
+  shapeParams: ShapeEmitParams = DEFAULT_SHAPE_EMIT_PARAMS,
   forceFieldCount = 0,
   collisionPlaneCount = 0,
   subFifos: SubEmitterFifo[] = [],
@@ -868,13 +996,13 @@ export function createModifierComputeUpdate(
   const uFrMax = sh('startFrameMax', shapeParams.startFrameMax);
 
   // ?? Particle-state storage nodes (bindings 1-7) ??
-  const sPos  = storage(buffers.position, 'vec4', maxParticles);
-  const sVel  = storage(buffers.velocity, 'vec4', maxParticles);
-  const sCol  = storage(buffers.color, 'vec4', maxParticles);
-  const sPS   = storage(buffers.particleState, 'vec4', maxParticles);
-  const sSV   = storage(buffers.startValues, 'vec4', maxParticles);
-  const sEx   = storage(buffers.startColorsExt, 'vec4', maxParticles);
-  const sOIA  = storage(buffers.orbitalIsActive, 'vec4', maxParticles);
+  const sPos = storage(buffers.position, 'vec4', maxParticles);
+  const sVel = storage(buffers.velocity, 'vec4', maxParticles);
+  const sCol = storage(buffers.color, 'vec4', maxParticles);
+  const sPS = storage(buffers.particleState, 'vec4', maxParticles);
+  const sSV = storage(buffers.startValues, 'vec4', maxParticles);
+  const sEx = storage(buffers.startColorsExt, 'vec4', maxParticles);
+  const sOIA = storage(buffers.orbitalIsActive, 'vec4', maxParticles);
 
   // ?? Binding 8: integer ring-allocator counter ??
   // `array<atomic<u32>, 1>` (only index 0 is live): a monotonic birth counter,
@@ -885,7 +1013,11 @@ export function createModifierComputeUpdate(
   const ringMod = float(maxParticles);
   // u32 ring modulus (§4): birthNo and slot modulo stay native integers.
   const ringModU = tuint(maxParticles);
-  const sAllocator     = storage(buffers.allocator, 'uint', Math.max(1, allocatorCount)).toAtomic();
+  const sAllocator = storage(
+    buffers.allocator,
+    'uint',
+    Math.max(1, allocatorCount)
+  ).toAtomic();
 
   // ?? Read-mostly f32 tables: uniform buffer binding, non-atomic ??
   // Baked curve samples plus optional force-field / collision-plane records.
@@ -966,13 +1098,16 @@ export function createModifierComputeUpdate(
   const curveLen = Math.max(curveMap.data.length, 1);
 
   // ?? Force-field + collision-plane TSL readers ??
-  const forceFieldOffset  = curveLen;
-  const collisionOffset   = forceFieldOffset + (flags.forceFields ? FORCE_FIELD_DATA_SIZE : 0);
+  const forceFieldOffset = curveLen;
+  const collisionOffset =
+    forceFieldOffset + (flags.forceFields ? FORCE_FIELD_DATA_SIZE : 0);
 
   const ffNodes = flags.forceFields
-    ? createForceFieldTSL(sCD, forceFieldOffset, forceFieldCount) : null;
+    ? createForceFieldTSL(sCD, forceFieldOffset, forceFieldCount)
+    : null;
   const cpNodes = flags.collisionPlanes
-    ? createCollisionPlaneTSL(sCD, collisionOffset, collisionPlaneCount) : null;
+    ? createCollisionPlaneTSL(sCD, collisionOffset, collisionPlaneCount)
+    : null;
 
   // Per-axis raw velocity-over-lifetime values (constant / random-range /
   // curve) — oracle parity: random ranges are sampled PER PARTICLE from the
@@ -999,7 +1134,12 @@ export function createModifierComputeUpdate(
     if (curveIdx >= 0) {
       return { ci: curveIdx, min: 0, max: 0, isRange: false };
     }
-    if (rawAxis && typeof rawAxis === 'object' && 'min' in rawAxis && 'max' in rawAxis) {
+    if (
+      rawAxis &&
+      typeof rawAxis === 'object' &&
+      'min' in rawAxis &&
+      'max' in rawAxis
+    ) {
       const mn = Number(rawAxis.min) || 0;
       const mx = Number(rawAxis.max) || 0;
       return { ci: -1, min: mn, max: mx, isRange: mn !== mx };
@@ -1128,8 +1268,18 @@ export function createModifierComputeUpdate(
 
       // ?? Emitter pose: rotate by the wrapper quaternion, then (WORLD only)
       // apply the per-axis world scale and add the emitter translation.
-      const [rotPX, rotPY, rotPZ] = quatRotateNodes(pxL, pyL, pzL, uWrapperQuat);
-      const [rotVX, rotVY, rotVZ] = quatRotateNodes(vxL, vyL, vzL, uWrapperQuat);
+      const [rotPX, rotPY, rotPZ] = quatRotateNodes(
+        pxL,
+        pyL,
+        pzL,
+        uWrapperQuat
+      );
+      const [rotVX, rotVY, rotVZ] = quatRotateNodes(
+        vxL,
+        vyL,
+        vzL,
+        uWrapperQuat
+      );
 
       // LOCAL (w = 0): identity quaternion, no translation, no extra scale
       // (three applies matrixWorld at draw time). WORLD (w = 1): per-axis world
@@ -1167,9 +1317,9 @@ export function createModifierComputeUpdate(
       // startValues = (startLife, size, opacity, colorR)
       sSV.element(slotIdx).assign(vec4(slife, ssize, opac, clR));
       // ext = (colorG, colorB, rotSpeed, stableSeed 0..0xFFFFFF)
-      sEx.element(slotIdx).assign(
-        vec4(clG, clB, rotSpeed, stableSeedU.toFloat())
-      );
+      sEx
+        .element(slotIdx)
+        .assign(vec4(clG, clB, rotSpeed, stableSeedU.toFloat()));
       // Orbital pivot = rotated shape offset (oracle positionOffset), w=1.
       sOIA.element(slotIdx).assign(vec4(rotPX, rotPY, rotPZ, float(1.0)));
 
@@ -1184,7 +1334,10 @@ export function createModifierComputeUpdate(
   // `updateParticleSystems` inner loop exactly:
   //   gravity -> force fields -> integrate -> collisions -> modifiers ->
   //   lifetime += dt -> trail sample -> write back -> death.
-  const noiseOctavesCount = Math.max(1, Math.round(shapeParams.noiseOctaves || 1));
+  const noiseOctavesCount = Math.max(
+    1,
+    Math.round(shapeParams.noiseOctaves || 1)
+  );
   // three-noise FBm divides the accumulated octaves by
   // `max = 1 + 0.5 + ... + 0.5^octaves = 2 - 2^-octaves` (the sum includes
   // the trailing 0.5^n exactly like the oracle's `fbmMax` constant).
@@ -1201,9 +1354,9 @@ export function createModifierComputeUpdate(
       If(oiaVec.w.greaterThanEqual(float(0.5)), () => {
         const pos = sPos.element(i).xyz.toVar();
         const vel = sVel.element(i).xyz.toVar();
-        const ps  = sPS.element(i).toVar();
-        const sv  = sSV.element(i);
-        const ex  = sEx.element(i);
+        const ps = sPS.element(i).toVar();
+        const sv = sSV.element(i);
+        const ex = sEx.element(i);
         const startLife = sv.x;
         const life = ps.x;
         const lifePct = tslMin(life.div(startLife), float(1.0));
@@ -1218,11 +1371,17 @@ export function createModifierComputeUpdate(
         pos.assign(pos.add(vel.mul(uDelta)));
 
         // 4. Collisions
-        if (cpNodes) cpNodes.apply({
-          pos, vel, oiaVec,
-          sColorNode: sCol, ps, startLife,
-          particleIdx: i, sOrbitalIsActiveNode: sOIA,
-        });
+        if (cpNodes)
+          cpNodes.apply({
+            pos,
+            vel,
+            oiaVec,
+            sColorNode: sCol,
+            ps,
+            startLife,
+            particleIdx: i,
+            sOrbitalIsActiveNode: sOIA,
+          });
 
         // 5. Modifiers — oracle semantics.
         // 5a. Linear velocity over lifetime: per-axis value is either the
@@ -1230,9 +1389,24 @@ export function createModifierComputeUpdate(
         // birth seed in `startColorsExt.w` (constant direct, range via a
         // fixed salt). position.w / velocity.w are plain padding 0.
         if (flags.linearVelocity) {
-          const lvx = simAxis(linAxes[0], lifePct, stableSeedFromExt(ex.w), CH.LIN_X);
-          const lvy = simAxis(linAxes[1], lifePct, stableSeedFromExt(ex.w), CH.LIN_Y);
-          const lvz = simAxis(linAxes[2], lifePct, stableSeedFromExt(ex.w), CH.LIN_Z);
+          const lvx = simAxis(
+            linAxes[0],
+            lifePct,
+            stableSeedFromExt(ex.w),
+            CH.LIN_X
+          );
+          const lvy = simAxis(
+            linAxes[1],
+            lifePct,
+            stableSeedFromExt(ex.w),
+            CH.LIN_Y
+          );
+          const lvz = simAxis(
+            linAxes[2],
+            lifePct,
+            stableSeedFromExt(ex.w),
+            CH.LIN_Z
+          );
           pos.assign(pos.add(vec3(lvx, lvy, lvz).mul(uDelta)));
         }
         if (flags.orbitalVelocity) {
@@ -1241,9 +1415,24 @@ export function createModifierComputeUpdate(
           // stored in oia.xyz). Axis speeds derive from the birth seed.
           const offset = vec3(oiaVec.x, oiaVec.y, oiaVec.z).toVar();
           pos.assign(pos.sub(offset));
-          const oX = simAxis(orbAxes[0], lifePct, stableSeedFromExt(ex.w), CH.ORB_X);
-          const oY = simAxis(orbAxes[1], lifePct, stableSeedFromExt(ex.w), CH.ORB_Y);
-          const oZ = simAxis(orbAxes[2], lifePct, stableSeedFromExt(ex.w), CH.ORB_Z);
+          const oX = simAxis(
+            orbAxes[0],
+            lifePct,
+            stableSeedFromExt(ex.w),
+            CH.ORB_X
+          );
+          const oY = simAxis(
+            orbAxes[1],
+            lifePct,
+            stableSeedFromExt(ex.w),
+            CH.ORB_Y
+          );
+          const oZ = simAxis(
+            orbAxes[2],
+            lifePct,
+            stableSeedFromExt(ex.w),
+            CH.ORB_Z
+          );
           // Oracle: Euler(speedX*dt, speedZ*dt, speedY*dt) with order 'XYZ' —
           // intrinsic XYZ. Its matrix is Rx·Ry·Rz, so the vector product
           // applies Z FIRST, then Y, then X (extrinsic Z→Y→X). Keep the
@@ -1251,15 +1440,18 @@ export function createModifierComputeUpdate(
           const angX = oX.mul(uDelta);
           const angY = oZ.mul(uDelta);
           const angZ = oY.mul(uDelta);
-          const c3 = cos(angZ), s3 = sin(angZ);
+          const c3 = cos(angZ),
+            s3 = sin(angZ);
           const zx = offset.x.mul(c3).sub(offset.y.mul(s3));
           const zy = offset.x.mul(s3).add(offset.y.mul(c3));
           const zz = offset.z;
-          const c2 = cos(angY), s2 = sin(angY);
+          const c2 = cos(angY),
+            s2 = sin(angY);
           const yx = zx.mul(c2).add(zz.mul(s2));
           const yz = zx.mul(s2).negate().add(zz.mul(c2));
           const yy = zy;
-          const c1 = cos(angX), s1 = sin(angX);
+          const c1 = cos(angX),
+            s1 = sin(angX);
           const fx = yx;
           const fy = yy.mul(c1).sub(yz.mul(s1));
           const fz = yy.mul(s1).add(yz.mul(c1));
@@ -1268,11 +1460,17 @@ export function createModifierComputeUpdate(
         }
         // 5b. Size / opacity / color over lifetime — start value * multiplier.
         if (flags.sizeOverLifetime) {
-          const s = lookupCurve({ curveIndex: float(curveMap.sizeOverLifetime), t: lifePct });
+          const s = lookupCurve({
+            curveIndex: float(curveMap.sizeOverLifetime),
+            t: lifePct,
+          });
           ps.y.assign(s.mul(sv.y));
         }
         if (flags.opacityOverLifetime) {
-          const op = lookupCurve({ curveIndex: float(curveMap.opacityOverLifetime), t: lifePct });
+          const op = lookupCurve({
+            curveIndex: float(curveMap.opacityOverLifetime),
+            t: lifePct,
+          });
           const col = sCol.element(i).toVar();
           col.w.assign(op.mul(sv.z));
           sCol.element(i).assign(col);
@@ -1283,13 +1481,25 @@ export function createModifierComputeUpdate(
           const col = sCol.element(i).toVar();
           const sce = sEx.element(i);
           if (curveMap.colorR >= 0) {
-            col.x.assign(sv.w.mul(lookupCurve({ curveIndex: float(curveMap.colorR), t: lifePct })));
+            col.x.assign(
+              sv.w.mul(
+                lookupCurve({ curveIndex: float(curveMap.colorR), t: lifePct })
+              )
+            );
           }
           if (curveMap.colorG >= 0) {
-            col.y.assign(sce.x.mul(lookupCurve({ curveIndex: float(curveMap.colorG), t: lifePct })));
+            col.y.assign(
+              sce.x.mul(
+                lookupCurve({ curveIndex: float(curveMap.colorG), t: lifePct })
+              )
+            );
           }
           if (curveMap.colorB >= 0) {
-            col.z.assign(sce.y.mul(lookupCurve({ curveIndex: float(curveMap.colorB), t: lifePct })));
+            col.z.assign(
+              sce.y.mul(
+                lookupCurve({ curveIndex: float(curveMap.colorB), t: lifePct })
+              )
+            );
           }
           sCol.element(i).assign(col);
         }
@@ -1325,22 +1535,32 @@ export function createModifierComputeUpdate(
           for (let o = 0; o < noiseOctavesCount; o++) {
             const t = np.mul(float(lac));
             const sc = float(amp / noiseFbmMax);
-            noiseX.assign(noiseX.add(snoise3D({ v: vec3(t, float(0), float(0)) }).mul(sc)));
-            noiseY.assign(noiseY.add(snoise3D({ v: vec3(t, t, float(0)) }).mul(sc)));
+            noiseX.assign(
+              noiseX.add(snoise3D({ v: vec3(t, float(0), float(0)) }).mul(sc))
+            );
+            noiseY.assign(
+              noiseY.add(snoise3D({ v: vec3(t, t, float(0)) }).mul(sc))
+            );
             noiseZ.assign(noiseZ.add(snoise3D({ v: vec3(t, t, t) }).mul(sc)));
             amp *= 0.5;
             lac *= 2.0;
           }
           If(uNoisePosAmount.greaterThan(float(0.001)), () => {
             pos.assign(
-              pos.add(vec3(noiseX, noiseY, noiseZ).mul(uNoisePower).mul(uNoisePosAmount))
+              pos.add(
+                vec3(noiseX, noiseY, noiseZ)
+                  .mul(uNoisePower)
+                  .mul(uNoisePosAmount)
+              )
             );
           });
           If(uNoiseRotAmount.greaterThan(float(0.001)), () => {
             ps.z.assign(ps.z.add(noiseX.mul(uNoisePower).mul(uNoiseRotAmount)));
           });
           If(uNoiseSizeAmount.greaterThan(float(0.001)), () => {
-            ps.y.assign(ps.y.add(noiseX.mul(uNoisePower).mul(uNoiseSizeAmount)));
+            ps.y.assign(
+              ps.y.add(noiseX.mul(uNoisePower).mul(uNoiseSizeAmount))
+            );
           });
         }
 
@@ -1361,15 +1581,19 @@ export function createModifierComputeUpdate(
         // dedicated `sub-death-events` pass writes the FIFO then clears to 0.
         If(ps.x.greaterThan(startLife), () => {
           const inactive = sOIA.element(i).toVar();
-          sOIA.element(i).assign(
-            vec4(
-              inactive.x,
-              inactive.y,
-              inactive.z,
-              hasDeathFifo ? float(-1.0) : float(0.0)
-            )
-          );
-          sCol.element(i).assign(vec4(float(0.0), float(0.0), float(0.0), float(0.0)));
+          sOIA
+            .element(i)
+            .assign(
+              vec4(
+                inactive.x,
+                inactive.y,
+                inactive.z,
+                hasDeathFifo ? float(-1.0) : float(0.0)
+              )
+            );
+          sCol
+            .element(i)
+            .assign(vec4(float(0.0), float(0.0), float(0.0), float(0.0)));
         });
       });
     });
@@ -1404,9 +1628,7 @@ export function createModifierComputeUpdate(
           const ddx = pos.x.sub(prev.x);
           const ddy = pos.y.sub(prev.y);
           const ddz = pos.z.sub(prev.z);
-          const dist = sqrt(
-            ddx.mul(ddx).add(ddy.mul(ddy)).add(ddz.mul(ddz))
-          );
+          const dist = sqrt(ddx.mul(ddx).add(ddy.mul(ddy)).add(ddz.mul(ddz)));
           const firstSample = count.lessThan(float(0.5));
           const farEnough = dist.greaterThanEqual(
             float(Math.max(1e-6, trailDesc.minVertexDistance))
@@ -1416,13 +1638,10 @@ export function createModifierComputeUpdate(
             const newCursor = cursor
               .greaterThanEqual(L.sub(float(1)))
               .select(float(0), cursor.add(float(1)));
-            sTrail.element(baseI.add(newCursor)).assign(
-              vec4(pos.x, pos.y, pos.z, uNowMs)
-            );
-            atomicStore(
-              sTrailMeta.element(curIdx),
-              newCursor.toUint()
-            );
+            sTrail
+              .element(baseI.add(newCursor))
+              .assign(vec4(pos.x, pos.y, pos.z, uNowMs));
+            atomicStore(sTrailMeta.element(curIdx), newCursor.toUint());
             atomicStore(
               sTrailMeta.element(curIdx.add(tuint(1))),
               tslMin(count.add(float(1)), float(trailDesc.length)).toUint()
@@ -1470,9 +1689,9 @@ export function createModifierComputeUpdate(
           for (const f of deathFifos) {
             writeFifoEvent(f, p.x, p.y, p.z, v.x, v.y, v.z);
           }
-          sOIA.element(i).assign(
-            vec4(oiaVec.x, oiaVec.y, oiaVec.z, float(0.0))
-          );
+          sOIA
+            .element(i)
+            .assign(vec4(oiaVec.x, oiaVec.y, oiaVec.z, float(0.0)));
         });
       });
     });
@@ -1486,8 +1705,12 @@ export function createModifierComputeUpdate(
     uniformNodes: Array<ShaderNodeObject<Node> | null>
   ): PassLayout => ({
     name,
-    storageBindings: new Set(storageNodes.filter((n) => n != null)).size,
-    uniformBindings: new Set(uniformNodes.filter((n) => n != null)).size,
+    storageBindings: new Set(
+      storageNodes.filter((n) => n !== null && n !== undefined)
+    ).size,
+    uniformBindings: new Set(
+      uniformNodes.filter((n) => n !== null && n !== undefined)
+    ).size,
   });
   const basePool = [sPos, sVel, sCol, sPS, sSV, sEx, sOIA, sAllocator];
   const emitUniforms: Array<ShaderNodeObject<Node>> = [
@@ -1570,12 +1793,7 @@ export function createModifierComputeUpdate(
     passLayouts.push(
       layout(
         'sub-death-events',
-        [
-          sPos,
-          sVel,
-          sOIA,
-          ...deathFifos.flatMap((f) => [f.count, f.payload]),
-        ],
+        [sPos, sVel, sOIA, ...deathFifos.flatMap((f) => [f.count, f.payload])],
         [uFifoBase]
       )
     );
@@ -1750,7 +1968,8 @@ export function createSubEmitterInitUpdate(
   const cRingMod = float(childMax);
   // Uint ring modulus for the integer slot modulo in Pass A (§4).
   const cRingModU = tuint(childMax);
-  void parent; void parentMax; // read through the FIFO payload only
+  void parent;
+  void parentMax; // read through the FIFO payload only
   // Compact spawn-command buffer (vec4 stream). Command `m` = the child
   // particle with flat index `m` (event i, slot jj -> m = i*perEvent + jj):
   //   vec4 1+2m : (ringSlot, eventX, eventY, eventZ)
@@ -1794,7 +2013,8 @@ export function createSubEmitterInitUpdate(
   };
   const cLin = [0, 1, 2].map((k) => cParseAxis(cVv.linear[k], -1));
   const cOrb = [0, 1, 2].map((k) => cParseAxis(cVv.orbital[k], -1));
-  void cLin; void cOrb; // seed-derived in the child sim kernel (no axis buffer)
+  void cLin;
+  void cOrb; // seed-derived in the child sim kernel (no axis buffer)
 
   // The *other* window's counter is cleared by a dedicated 1-invocation
   // pass so the next frame's writers start from 0 (no race with this frame).
@@ -1869,17 +2089,39 @@ export function createSubEmitterInitUpdate(
       {
         // Integer channel mixes per child particle `m` (flat command index):
         // one dedicated channel id + one PCG draw each (u32, uint-first).
-        const rcA = pcg01(mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.SHAPE_A));
-        const rcB = pcg01(mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.SHAPE_B));
-        const rcC = pcg01(mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.SHAPE_C));
-        const rcSpeed = pcg01(mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.SPEED));
-        const rcSize = pcg01(mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.SIZE));
-        const rcRot = pcg01(mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.ROTATION));
-        const rcOpacity = pcg01(mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.OPACITY));
-        const rcSheet = pcg01(mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.START_FRAME));
-        const rcLife = pcg01(mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.LIFETIME));
-        const rcColor = pcg01(mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.COLOR));
-        const rcRotOl = pcg01(mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.ROTOL));
+        const rcA = pcg01(
+          mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.SHAPE_A)
+        );
+        const rcB = pcg01(
+          mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.SHAPE_B)
+        );
+        const rcC = pcg01(
+          mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.SHAPE_C)
+        );
+        const rcSpeed = pcg01(
+          mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.SPEED)
+        );
+        const rcSize = pcg01(
+          mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.SIZE)
+        );
+        const rcRot = pcg01(
+          mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.ROTATION)
+        );
+        const rcOpacity = pcg01(
+          mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.OPACITY)
+        );
+        const rcSheet = pcg01(
+          mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.START_FRAME)
+        );
+        const rcLife = pcg01(
+          mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.LIFETIME)
+        );
+        const rcColor = pcg01(
+          mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.COLOR)
+        );
+        const rcRotOl = pcg01(
+          mU.mul(tuint(2654435761)).bitXor(uSystemSeed).bitXor(CH.ROTOL)
+        );
 
         const shE = shapeEmitNodes(
           {
@@ -1953,14 +2195,12 @@ export function createSubEmitterInitUpdate(
         cPos.element(slot).assign(vec4(px, py, pz, float(0.0)));
         cVel.element(slot).assign(vec4(rvx, rvy, rvz, float(0.0)));
         cCol.element(slot).assign(vec4(clR, clG, clB, opac));
-        cPS.element(slot).assign(
-          vec4(float(0.0), ssize, srot, startFrame)
-        );
+        cPS.element(slot).assign(vec4(float(0.0), ssize, srot, startFrame));
         cSV.element(slot).assign(vec4(slife, ssize, opac, clR));
         // ext = (colorG, colorB, rotSpeed, stableSeed 0..0xFFFFFF)
-        cEx.element(slot).assign(
-          vec4(clG, clB, rotSpeed, stableSeedU.toFloat())
-        );
+        cEx
+          .element(slot)
+          .assign(vec4(clG, clB, rotSpeed, stableSeedU.toFloat()));
         // Orbital pivot = rotated child shape offset (oracle parity).
         cOIA.element(slot).assign(vec4(rx, ry, rz, float(1.0)));
       }
@@ -2081,9 +2321,7 @@ export function createTrailRibbonUpdate(
 
     If(i.lessThan(float(desc.maxParticles)), () => {
       const base = i.mul(rowF);
-      const cursor = float(
-        atomicLoad(sMeta.element(i.mul(float(2))))
-      ).toVar();
+      const cursor = float(atomicLoad(sMeta.element(i.mul(float(2))))).toVar();
       const count = float(
         atomicLoad(sMeta.element(i.mul(float(2)).add(float(1))))
       ).toVar();
@@ -2121,9 +2359,10 @@ export function createTrailRibbonUpdate(
 
         // Age expiry (trail.maxTime) and unused-slot masking.
         const inRange = s.lessThan(count);
-        const ageOk = desc.maxTime > 0
-          ? uNowMs.sub(sample.w).lessThanEqual(float(desc.maxTime))
-          : inRange;
+        const ageOk =
+          desc.maxTime > 0
+            ? uNowMs.sub(sample.w).lessThanEqual(float(desc.maxTime))
+            : inRange;
         const alive = inRange.and(ageOk);
         const hw = alive.select(halfWidthBase.mul(wScale), float(0));
         const alpha = alive.select(oScale.mul(pcol.w), float(0));
@@ -2135,18 +2374,14 @@ export function createTrailRibbonUpdate(
         // Two vertices per slot: side 0 (uv.x = 0) and side 1 (uv.x = 1).
         for (let side = 0; side < 2; side++) {
           const vi = float(idx).mul(float(2)).add(float(side));
-          aPos.element(vi).assign(
-            vec4(sample.x, sample.y, sample.z, hw)
-          );
-          aNext.element(vi).assign(
-            vec4(nPos.x, nPos.y, nPos.z, alpha)
-          );
-          aUVA.element(vi).assign(
-            vec4(float(side), t, cr.mul(pcol.x), cg.mul(pcol.y))
-          );
-          aColB.element(vi).assign(
-            vec4(cb.mul(pcol.z), alpha, float(0), float(0))
-          );
+          aPos.element(vi).assign(vec4(sample.x, sample.y, sample.z, hw));
+          aNext.element(vi).assign(vec4(nPos.x, nPos.y, nPos.z, alpha));
+          aUVA
+            .element(vi)
+            .assign(vec4(float(side), t, cr.mul(pcol.x), cg.mul(pcol.y)));
+          aColB
+            .element(vi)
+            .assign(vec4(cb.mul(pcol.z), alpha, float(0), float(0)));
         }
       });
     });
@@ -2170,5 +2405,3 @@ export function createTrailRibbonUpdate(
     },
   };
 }
-
-

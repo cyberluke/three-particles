@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { storage } from 'three/tsl';
 import { StorageBufferAttribute } from 'three/webgpu';
+import { fileURLToPath } from 'url';
 import {
   ForceFieldFalloff,
   ForceFieldType,
@@ -202,7 +203,7 @@ describe('TSL force field loop uses Continue() and void type', () => {
     const path = await import('path');
     const src = fs.readFileSync(
       path.resolve(
-        __dirname,
+        fileURLToPath(new URL('.', import.meta.url)),
         '../js/effects/three-particles/webgpu/compute-force-fields.ts'
       ),
       'utf-8'
@@ -243,7 +244,7 @@ describe('TSL force field loop uses Continue() and void type', () => {
     const path = await import('path');
     const src = fs.readFileSync(
       path.resolve(
-        __dirname,
+        fileURLToPath(new URL('.', import.meta.url)),
         '../js/effects/three-particles/webgpu/compute-force-fields.ts'
       ),
       'utf-8'

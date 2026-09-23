@@ -43,7 +43,11 @@ import {
 } from 'three/tsl';
 import { MeshBasicNodeMaterial } from 'three/webgpu';
 import { ALPHA_DISCARD_THRESHOLD } from '../three-particles-constants.js';
-import { getDummyTexture, linearizeDepth } from './tsl-shared.js';
+import {
+  billboardPerp,
+  getDummyTexture,
+  linearizeDepth,
+} from './tsl-shared.js';
 import type * as THREE from 'three';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -88,11 +92,13 @@ function createTrailUniforms(trailUniforms: TrailUniforms) {
       float(trailUniforms.discardBackgroundColor.value ? 1 : 0)
     ),
     uBgColor: uniform(
-      new (trailUniforms.cameraNearFar.value.constructor as new (
-        x: number,
-        y: number,
-        z: number
-      ) => THREE.Vector3)(
+      new (
+        trailUniforms.cameraNearFar.value.constructor as new (
+          x: number,
+          y: number,
+          z: number
+        ) => THREE.Vector3
+      )(
         trailUniforms.backgroundColor.value.r,
         trailUniforms.backgroundColor.value.g,
         trailUniforms.backgroundColor.value.b
@@ -195,41 +201,11 @@ export function createTrailRibbonTSLMaterial(
     // View direction in local/world space (tangent is in the same space)
     const viewDir = normalize(cameraPosition.sub(current));
 
-    // Primary billboard perpendicular
-    const rawPerp = cross(tangent, viewDir);
-    const perpLen = length(rawPerp);
-
-    // Camera right vector extracted from the view matrix (column 0)
-    // Using cameraViewMatrix (view-only, no model transform)
-    const camRight = vec3(
-      cameraViewMatrix.element(0).element(0),
-      cameraViewMatrix.element(1).element(0),
-      cameraViewMatrix.element(2).element(0)
-    );
-
-    // Fallback perpendicular: project camRight onto the plane perpendicular to tangent
-    const camRightDotTangent = dot(camRight, tangent);
-    const fallbackPerp = normalize(
-      camRight.sub(tangent.mul(camRightDotTangent))
-    );
-
-    // When perpLen is near zero the ribbon is edge-on; use fallback.
-    // Otherwise blend smoothly toward fallback over a wide range (0 → 0.7)
-    // to prevent abrupt flipping, matching the GLSL shader exactly.
-    const perp = normalize(
-      perpLen
-        .lessThan(0.0001)
-        .select(
-          fallbackPerp,
-          normalize(
-            mix(
-              fallbackPerp,
-              normalize(rawPerp),
-              smoothstep(float(0.0), float(0.7), perpLen)
-            )
-          )
-        )
-    );
+    // Billboard frame shared with the electric-arc ribbon material:
+    // cross(tangent, viewDir) with the camera-right edge-on fallback,
+    // blended over perpLen in [0, 0.7] (single source of truth in
+    // `tsl-shared.ts`).
+    const perp = billboardPerp({ tangent, viewDir });
 
     // Expand ribbon vertex by offset side and half-width
     const offsetPos = current.add(perp.mul(aTrailOffset).mul(aTrailHalfWidth));

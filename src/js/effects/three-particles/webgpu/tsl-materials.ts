@@ -4,9 +4,11 @@
  *
  * @module
  */
+import { StorageBufferAttribute } from 'three/webgpu';
+import { sRGBToLinear } from '../color-utils.js';
 import { RendererType } from '../three-particles-enums.js';
 import { isLifeTimeCurve } from '../three-particles-utils.js';
-import { sRGBToLinear } from '../color-utils.js';
+
 import {
   createModifierStorageBuffers,
   createModifierComputeUpdate,
@@ -44,9 +46,31 @@ export type {
   TrailRibbonDesc,
   TrailRibbonPipeline,
 };
-
-
 import { bakeParticleSystemCurves } from './curve-bake.js';
+import {
+  createMLSMPMPipeline,
+  resolveMLSMPMParams,
+  initMLSMPMDambreak,
+  MLS_MPM_DEFAULTS,
+  type MLSMPMPipeline,
+} from './fluid-mpm.js';
+import {
+  createSPHPipeline,
+  resolveSPHParams,
+  initSPHDambreak,
+  SPH_DEFAULTS,
+  type SPHPipeline,
+} from './fluid-sph.js';
+import { createFluidTSLMaterial } from './tsl-fluid-metaball-material.js';
+import {
+  createFluidSphereTSLMaterial,
+  createFluidDepthTSLMaterial,
+  createFluidThicknessTSLMaterial,
+  createFluidBilateralTSLMaterial,
+  createFluidGaussianTSLMaterial,
+  createFluidShadingTSLMaterial,
+  buildFluidScreenSpacePasses,
+} from './tsl-fluid-screen-space-material.js';
 import { createInstancedBillboardTSLMaterial } from './tsl-instanced-billboard-material.js';
 import { createMeshParticleTSLMaterial } from './tsl-mesh-particle-material.js';
 import { createPointSpriteTSLMaterial } from './tsl-point-sprite-material.js';
@@ -56,14 +80,46 @@ import {
 } from './tsl-trail-ribbon-material.js';
 import type { SharedUniforms } from './tsl-shared.js';
 import type {
+  FluidConfig,
   NormalizedParticleSystemConfig,
+  PassLayout,
   ShapeConfig,
 } from '../types.js';
-
 import type * as THREE from 'three';
-import { StorageBufferAttribute } from 'three/webgpu';
+
+/** Solver discriminator accepted by {@link createFluidSimPipeline}. */
+export type FluidSolverId = 'MLS-MPM' | 'SPH';
+
+/** GPU storage + kernels of one fluid solver (see `fluid-mpm` / `fluid-sph`). */
+export type FluidSimPipeline = {
+  /** Solver kernels in strict dispatch order. */
+  computeNodes: unknown[];
+  /** Semantic pass names aligned with {@link FluidSimPipeline.computeNodes}. */
+  passNames: string[];
+  /** Real per-pass storage / uniform budgets (`<= 8` storages each). */
+  passLayouts: PassLayout[];
+  /** Solver-owned storage plus the two shared position / velocity handles. */
+  buffers: Record<string, unknown>;
+  /** Host-written scalars (`boxWidthRatio` = animated `z` squeeze). */
+  uniforms: Record<string, { value: unknown }>;
+  /** Lattice size of the solver grid. */
+  gridCount: number;
+  /** Particle count actually filled by the dambreak initialisation. */
+  numParticles: number;
+};
 
 export type { TrailUniforms };
+
+export {
+  createFluidSphereTSLMaterial,
+  createFluidTSLMaterial,
+  createFluidDepthTSLMaterial,
+  createFluidThicknessTSLMaterial,
+  createFluidBilateralTSLMaterial,
+  createFluidGaussianTSLMaterial,
+  createFluidShadingTSLMaterial,
+  buildFluidScreenSpacePasses,
+};
 
 export type RendererConfig = {
   transparent: boolean;
@@ -79,17 +135,197 @@ export function createTSLParticleMaterial(
   rendererType: RendererType,
   sharedUniforms: SharedUniforms,
   rendererConfig: RendererConfig,
-  gpuCompute = false
+  gpuCompute = false,
+  particleGeometry?: THREE.BufferGeometry
 ): THREE.Material {
   switch (rendererType) {
     case RendererType.INSTANCED:
-      return createInstancedBillboardTSLMaterial(sharedUniforms, rendererConfig, gpuCompute);
+      return createInstancedBillboardTSLMaterial(
+        sharedUniforms,
+        rendererConfig,
+        gpuCompute
+      );
     case RendererType.MESH:
-      return createMeshParticleTSLMaterial(sharedUniforms, rendererConfig, gpuCompute);
+      return createMeshParticleTSLMaterial(
+        sharedUniforms,
+        rendererConfig,
+        gpuCompute
+      );
+    case RendererType.FLUID: {
+      const fluidCfg: FluidConfig = {
+        stretch: readFluidScalar(sharedUniforms, 'fluidStretch', 1),
+        absorption: readFluidScalar(sharedUniforms, 'fluidAbsorption', 1.44),
+        ior: readFluidScalar(sharedUniforms, 'fluidIor', 1.33),
+        sphereSize: readFluidScalar(sharedUniforms, 'fluidSphereSize', 1.2),
+        density: readFluidScalar(sharedUniforms, 'fluidDensity', 0.7),
+        waterColor: readFluidWaterColor(sharedUniforms),
+        sphereRender: readFluidFlag(sharedUniforms, 'fluidSphereRender'),
+      };
+      // `sphereRender` short-circuits into the direct sphere shading; the rest
+      // is the reference pass chain (depth / bilateral / thickness / gaussian /
+      // shading). The `pass()` nodes get their camera late-bound per frame.
+      // `particleGeometry` (the instanced pool) is forwarded so the depth and
+      // thickness passes draw the real billboards, as in the upstream
+      // `draw(6, numParticles)`; the image-space stages keep the NDC triangle.
+      const chain = buildFluidScreenSpacePasses(
+        fluidCfg,
+        (sharedUniforms as Record<string, { value: unknown } | undefined>)
+          .envMap?.value ?? null,
+        undefined,
+        particleGeometry
+      );
+      (
+        chain.material as unknown as {
+          __fluidPassNodes?: Array<{ camera: unknown }>;
+          __fluidPassGeometry?: THREE.BufferGeometry;
+        }
+      ).__fluidPassNodes = chain.passNodes;
+      if (chain.geometry) {
+        (
+          chain.material as unknown as {
+            __fluidPassGeometry?: THREE.BufferGeometry;
+          }
+        ).__fluidPassGeometry = chain.geometry;
+      }
+      return chain.material;
+    }
     case RendererType.POINTS:
     default:
-      return createPointSpriteTSLMaterial(sharedUniforms, rendererConfig, gpuCompute);
+      return createPointSpriteTSLMaterial(
+        sharedUniforms,
+        rendererConfig,
+        gpuCompute
+      );
   }
+}
+
+/**
+ * Reads an optional scalar fluid parameter from the shared uniform table.
+ * The main `createParticleSystem` writes `fluidStretch`, `fluidAbsorption`,
+ * and `fluidIor` when `renderer.fluid` is present; missing entries fall back
+ * to the documented defaults.
+ */
+const readFluidScalar = (
+  sharedUniforms: SharedUniforms,
+  key: string,
+  fallback: number
+): number => {
+  const raw = (
+    sharedUniforms as Record<string, { value: unknown } | undefined>
+  )[key]?.value;
+  return typeof raw === 'number' && Number.isFinite(raw) ? raw : fallback;
+};
+
+/** Boolean reader for the `fluidSphereRender` style flags. */
+const readFluidFlag = (
+  sharedUniforms: SharedUniforms,
+  key: string
+): boolean => {
+  const raw = (
+    sharedUniforms as Record<string, { value: unknown } | undefined>
+  )[key]?.value;
+  return raw === true;
+};
+
+/** `rgb` tuple reader with the `fluid.wgsl` water tint as the fallback. */
+const readFluidWaterColor = (
+  sharedUniforms: SharedUniforms
+): [number, number, number] => {
+  const raw = (sharedUniforms as Record<string, { value: unknown } | undefined>)
+    .fluidWaterColor?.value;
+  if (Array.isArray(raw) && raw.length === 3) {
+    return [Number(raw[0]) || 0, Number(raw[1]) || 0, Number(raw[2]) || 0];
+  }
+  return [0.0, 0.7375, 0.95];
+};
+
+/**
+ * Builds one ocean-style fluid solver pipeline on top of an existing particle
+ * pool. `shared` must be the base pipeline's `position` / `velocity` storage
+ * attributes so the render material reads the integrated state directly.
+ *
+ * @param solver - `'MLS-MPM'` (grid, 2 sub-steps) or `'SPH'` (neighbour search).
+ * @param shared - Shared position / velocity storage of the base pipeline.
+ * @param maxParticles - Particle capacity of the base pool.
+ * @param normalizedConfig - Merged system config (`renderer.mlsMpm` / `.sph`).
+ * @returns Kernels, per-pass budgets, buffers, live uniforms and lattice size.
+ */
+export function createFluidSimPipeline(
+  solver: FluidSolverId,
+  shared: {
+    position: { array: Float32Array };
+    velocity: { array: Float32Array };
+  },
+  maxParticles: number,
+  normalizedConfig: NormalizedParticleSystemConfig
+): FluidSimPipeline {
+  // `NormalizedParticleSystemConfig` is `Required<ParticleSystemConfig>`, so
+  // `renderer` is non-nullable and `Renderer` already carries the `sph` /
+  // `mlsMpm` optional sub-blocks.
+  const renderer = normalizedConfig.renderer;
+  const isSPH = solver === 'SPH';
+  const sharedPair = {
+    position: shared.position as never,
+    velocity: shared.velocity as never,
+  };
+
+  if (isSPH) {
+    const cfg = renderer.sph;
+    const halfBox: [number, number, number] = [
+      ...(cfg?.halfBoxSize ?? SPH_DEFAULTS.halfBoxSize),
+    ] as [number, number, number];
+    const ratio =
+      typeof cfg?.boxWidthRatio === 'number' &&
+      Number.isFinite(cfg.boxWidthRatio)
+        ? (cfg.boxWidthRatio as number)
+        : 1;
+    // Seed the shared pos / vec4 storage with the reference dambreak lattice.
+    const state = initSPHDambreak(halfBox, Math.max(1, maxParticles));
+    shared.position.array.set(state.position);
+    shared.velocity.array.set(state.velocity);
+    const sph: SPHPipeline = createSPHPipeline(
+      state.count,
+      resolveSPHParams(cfg, halfBox),
+      [halfBox[0], halfBox[1], halfBox[2] * ratio],
+      sharedPair
+    );
+    return {
+      computeNodes: sph.computeNodes,
+      passNames: sph.passNames,
+      passLayouts: sph.passLayouts,
+      buffers: sph.buffers as unknown as Record<string, unknown>,
+      uniforms: sph.uniforms as unknown as Record<string, { value: unknown }>,
+      gridCount: sph.gridCount,
+      numParticles: sph.numParticles,
+    };
+  }
+
+  const cfg = renderer.mlsMpm;
+  const box: [number, number, number] = [
+    ...(cfg?.boxSize ?? MLS_MPM_DEFAULTS.boxSize),
+  ] as [number, number, number];
+  const ratio =
+    typeof cfg?.boxWidthRatio === 'number' && Number.isFinite(cfg.boxWidthRatio)
+      ? (cfg.boxWidthRatio as number)
+      : 1;
+  const state = initMLSMPMDambreak(box, Math.max(1, maxParticles));
+  shared.position.array.set(state.position);
+  shared.velocity.array.set(state.velocity);
+  const mls: MLSMPMPipeline = createMLSMPMPipeline(
+    state.count,
+    resolveMLSMPMParams(cfg, box),
+    [box[0], box[1], box[2] * ratio],
+    sharedPair
+  );
+  return {
+    computeNodes: mls.computeNodes,
+    passNames: mls.passNames,
+    passLayouts: mls.passLayouts,
+    buffers: mls.buffers as unknown as Record<string, unknown>,
+    uniforms: mls.uniforms as unknown as Record<string, { value: unknown }>,
+    gridCount: mls.gridCount,
+    numParticles: mls.numParticles,
+  };
 }
 
 export function createTSLTrailMaterial(
@@ -112,19 +348,24 @@ const pair = (v: unknown): [number, number] => {
 /** Map the public `Shape` string onto the GPU kernel kind. */
 const shapeKindOf = (t: ShapeConfig['shape']): 0 | 1 | 2 | 3 | 4 => {
   switch (t) {
-    case 'SPHERE': return 0;
-    case 'CONE': return 1;
-    case 'CIRCLE': return 2;
-    case 'RECTANGLE': return 3;
-    case 'BOX': return 4;
-    default: return 0; // SPHERE, matching DEFAULT_PARTICLE_SYSTEM_CONFIG.shape.shape
+    case 'SPHERE':
+      return 0;
+    case 'CONE':
+      return 1;
+    case 'CIRCLE':
+      return 2;
+    case 'RECTANGLE':
+      return 3;
+    case 'BOX':
+      return 4;
+    default:
+      return 0; // SPHERE, matching DEFAULT_PARTICLE_SYSTEM_CONFIG.shape.shape
   }
 };
 
 /** Map `EmitFrom` onto the box-emission kernel code. */
 const boxEmitFromOf = (e: string | undefined): 0 | 1 | 2 =>
   e === 'SHELL' ? 1 : e === 'EDGE' ? 2 : 0;
-
 
 /**
  * Decodes the nested public `ShapeConfig` (+ start values / sheet frame) into
@@ -135,25 +376,26 @@ export function encodeShapeEmitParams(
   normalizedConfig: NormalizedParticleSystemConfig,
   particleSystemId: number
 ): ShapeEmitParams {
-  const bakedCurves = bakeParticleSystemCurves(normalizedConfig, particleSystemId);
+  const bakedCurves = bakeParticleSystemCurves(
+    normalizedConfig,
+    particleSystemId
+  );
   const pairLocal = pair;
   const [lifeMin, lifeMax] = pairLocal(normalizedConfig.startLifetime);
   const [spdMin, spdMax] = pairLocal(normalizedConfig.startSpeed);
   const [szMin, szMax] = pairLocal(normalizedConfig.startSize);
   const [rotMin, rotMax] = pairLocal(normalizedConfig.startRotation);
   const [opMin, opMax] = pairLocal(normalizedConfig.startOpacity);
-  const cMin =
-    (
-      normalizedConfig.startColor as {
-        min?: { r: number; g: number; b: number };
-      }
-    ).min || { r: 1, g: 1, b: 1 };
-  const cMax =
-    (
-      normalizedConfig.startColor as {
-        max?: { r: number; g: number; b: number };
-      }
-    ).max || { r: 1, g: 1, b: 1 };
+  const cMin = (
+    normalizedConfig.startColor as {
+      min?: { r: number; g: number; b: number };
+    }
+  ).min || { r: 1, g: 1, b: 1 };
+  const cMax = (
+    normalizedConfig.startColor as {
+      max?: { r: number; g: number; b: number };
+    }
+  ).max || { r: 1, g: 1, b: 1 };
   const sf =
     (normalizedConfig.textureSheetAnimation &&
       (normalizedConfig.textureSheetAnimation as { startFrame?: unknown })
@@ -219,15 +461,17 @@ export function encodeShapeEmitParams(
     // Separate rotationOverLifetime range (never the startRotation pair).
     rotOverLifeMin: (() => {
       const rol = normalizedConfig.rotationOverLifetime as unknown as
-        | { min?: number; max?: number }
-        | undefined;
-      return typeof rol?.min === 'number' && Number.isFinite(rol.min) ? rol.min : 0;
+        { min?: number; max?: number } | undefined;
+      return typeof rol?.min === 'number' && Number.isFinite(rol.min)
+        ? rol.min
+        : 0;
     })(),
     rotOverLifeMax: (() => {
       const rol = normalizedConfig.rotationOverLifetime as unknown as
-        | { min?: number; max?: number }
-        | undefined;
-      return typeof rol?.max === 'number' && Number.isFinite(rol.max) ? rol.max : 0;
+        { min?: number; max?: number } | undefined;
+      return typeof rol?.max === 'number' && Number.isFinite(rol.max)
+        ? rol.max
+        : 0;
     })(),
     noiseOctaves: num(normalizedConfig.noise?.octaves, 1),
     noiseUseRandomOffset: !!normalizedConfig.noise?.useRandomOffset,
@@ -248,7 +492,6 @@ export function encodeShapeEmitParams(
 }
 
 export function createComputePipeline(
-
   maxParticles: number,
   instanced: boolean,
   normalizedConfig: NormalizedParticleSystemConfig,
@@ -258,8 +501,10 @@ export function createComputePipeline(
   subFifos?: SubEmitterFifo[],
   trailDesc?: TrailHistoryDesc
 ): ModifierComputePipeline {
-
-  const bakedCurves = bakeParticleSystemCurves(normalizedConfig, particleSystemId);
+  const bakedCurves = bakeParticleSystemCurves(
+    normalizedConfig,
+    particleSystemId
+  );
   const v = normalizedConfig.velocityOverLifetime;
 
   const flags: ModifierFlags = {
@@ -295,16 +540,12 @@ export function createComputePipeline(
     particleSystemId
   );
 
-    // Raw axis values (constants / random ranges / curves) for the seed-based
-    // per-particle axis derivation in the kernels (oracle-parity randomness).
-    const velocityValues = {
-      linear: [v.linear.x as never, v.linear.y as never, v.linear.z as never],
-      orbital: [
-        v.orbital.x as never,
-        v.orbital.y as never,
-        v.orbital.z as never,
-      ],
-    } as const;
+  // Raw axis values (constants / random ranges / curves) for the seed-based
+  // per-particle axis derivation in the kernels (oracle-parity randomness).
+  const velocityValues = {
+    linear: [v.linear.x as never, v.linear.y as never, v.linear.z as never],
+    orbital: [v.orbital.x as never, v.orbital.y as never, v.orbital.z as never],
+  };
 
   // Trail ring integer metadata (atomic<u32>): two cursor/count words.
   if (trailDesc && !trailDesc.meta) {
@@ -339,4 +580,3 @@ export function createComputePipeline(
     velocityValues
   );
 }
-

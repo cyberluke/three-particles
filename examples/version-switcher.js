@@ -8,8 +8,9 @@ const MAX_VERSIONS = 10;
 const VERSION_KEY = "three-particles-version";
 
 /**
- * Fetch the last N published 2.x versions from the npm registry.
- * Returns an array sorted newest-first, e.g. ["2.4.0", "2.3.0", ...].
+ * Fetch the last N published stable versions from the npm registry.
+ * Returns an array sorted newest-first, e.g. ["4.0.1", "3.0.0", "2.4.0", ...].
+ * Stable-semver filtering: any `X.Y.Z` triple, no major-number assumption.
  */
 let cachedVersions = null;
 
@@ -20,10 +21,13 @@ export async function getAvailableVersions() {
 }
 
 async function fetchVersions() {
-  const res = await fetch(NPM_API);
+  const res = await Promise.race([
+    fetch(NPM_API),
+    new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 4000)),
+  ]);
   const data = await res.json();
   const all = Object.keys(data.versions)
-    .filter((v) => v.startsWith("2."))
+    .filter((v) => /^\d+\.\d+\.\d+$/.test(v))
     .sort((a, b) => {
       const pa = a.split(".").map(Number);
       const pb = b.split(".").map(Number);
@@ -39,6 +43,16 @@ async function fetchVersions() {
 export function cdnUrl(version) {
   if (version === LOCAL_VERSION) return "./three-particles.esm.js";
   return `${CDN_BASE}${version}${BUNDLE_PATH}`;
+}
+
+/**
+ * Build the WebGPU entry URL for a given version, or the local mirror.
+ * The `/webgpu` entry registers both the particle TSL/compute factories
+ * and the ElectricArc GPU factory via `enableWebGPU(renderer)`.
+ */
+export function webgpuUrl(version) {
+  if (version === LOCAL_VERSION) return "./three-particles-webgpu.esm.js";
+  return `${CDN_BASE}${version}/dist/webgpu.js`;
 }
 
 /**

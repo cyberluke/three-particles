@@ -1,24 +1,16 @@
 /**
- * Extended tests for compute-modifiers.ts — pipeline creation with all modifier
- * combinations and force fields enabled.
- *
- * Covers previously uncovered lines:
- *   - createCurveLookup (lines 471-482)
- *   - createModifierComputeUpdate full kernel (lines 558-896)
+ * Extended coverage for compute-modifiers.ts — pipeline creation with every
+ * modifier-flag combination, force fields and collision planes.
  *
  * Since TSL compute kernels cannot be executed in Jest, these tests validate:
  *   - Pipeline creation succeeds with every modifier flag combination
- *   - Force field integration via the forceFields flag
+ *   - The packed f32 table carries curves + optional ff / cp records
  *   - Uniforms are properly exposed for noise, gravity, world-space, etc.
- *   - curveDataLength is correctly computed
  */
 
-import { StorageBufferAttribute } from 'three/webgpu';
 import {
   createModifierStorageBuffers,
   createModifierComputeUpdate,
-  registerCurveDataLength,
-  INIT_STRIDE,
   type ModifierFlags,
 } from '../js/effects/three-particles/webgpu/compute-modifiers.js';
 import { CURVE_RESOLUTION } from '../js/effects/three-particles/webgpu/curve-bake.js';
@@ -55,6 +47,7 @@ const NO_FLAGS: ModifierFlags = {
   orbitalVelocity: false,
   noise: false,
   forceFields: false,
+  collisionPlanes: false,
 };
 
 // ─── Pipeline with individual modifier flags ────────────────────────────────
@@ -64,7 +57,7 @@ describe('createModifierComputeUpdate — modifier flag coverage', () => {
 
   it('creates pipeline with sizeOverLifetime active', () => {
     const curveData = new Float32Array(CURVE_RESOLUTION);
-    const buffers = createModifierStorageBuffers(
+    const { buffers } = createModifierStorageBuffers(
       maxParticles,
       false,
       curveData
@@ -82,13 +75,13 @@ describe('createModifierComputeUpdate — modifier flag coverage', () => {
       curveMap,
       flags
     );
-    expect(pipeline.computeNode).toBeDefined();
-    expect(pipeline.curveDataLength).toBe(CURVE_RESOLUTION);
+    expect(pipeline.simNode).toBeDefined();
+    expect(pipeline.buffers.packedData).toHaveLength(CURVE_RESOLUTION);
   });
 
   it('creates pipeline with opacityOverLifetime active', () => {
     const curveData = new Float32Array(CURVE_RESOLUTION);
-    const buffers = createModifierStorageBuffers(
+    const { buffers } = createModifierStorageBuffers(
       maxParticles,
       false,
       curveData
@@ -106,12 +99,12 @@ describe('createModifierComputeUpdate — modifier flag coverage', () => {
       curveMap,
       flags
     );
-    expect(pipeline.computeNode).toBeDefined();
+    expect(pipeline.simNode).toBeDefined();
   });
 
   it('creates pipeline with colorOverLifetime active (3 curves)', () => {
     const curveData = new Float32Array(CURVE_RESOLUTION * 3);
-    const buffers = createModifierStorageBuffers(
+    const { buffers } = createModifierStorageBuffers(
       maxParticles,
       false,
       curveData
@@ -131,12 +124,12 @@ describe('createModifierComputeUpdate — modifier flag coverage', () => {
       curveMap,
       flags
     );
-    expect(pipeline.computeNode).toBeDefined();
-    expect(pipeline.curveDataLength).toBe(CURVE_RESOLUTION * 3);
+    expect(pipeline.simNode).toBeDefined();
+    expect(pipeline.buffers.packedData).toHaveLength(CURVE_RESOLUTION * 3);
   });
 
   it('creates pipeline with rotationOverLifetime active', () => {
-    const buffers = createModifierStorageBuffers(
+    const { buffers } = createModifierStorageBuffers(
       maxParticles,
       false,
       new Float32Array(0)
@@ -149,12 +142,12 @@ describe('createModifierComputeUpdate — modifier flag coverage', () => {
       makeCurveMap(),
       flags
     );
-    expect(pipeline.computeNode).toBeDefined();
+    expect(pipeline.simNode).toBeDefined();
   });
 
   it('creates pipeline with linearVelocity active (all 3 axes)', () => {
     const curveData = new Float32Array(CURVE_RESOLUTION * 3);
-    const buffers = createModifierStorageBuffers(
+    const { buffers } = createModifierStorageBuffers(
       maxParticles,
       false,
       curveData
@@ -174,12 +167,12 @@ describe('createModifierComputeUpdate — modifier flag coverage', () => {
       curveMap,
       flags
     );
-    expect(pipeline.computeNode).toBeDefined();
+    expect(pipeline.simNode).toBeDefined();
   });
 
   it('creates pipeline with orbitalVelocity active (all 3 axes)', () => {
     const curveData = new Float32Array(CURVE_RESOLUTION * 3);
-    const buffers = createModifierStorageBuffers(
+    const { buffers } = createModifierStorageBuffers(
       maxParticles,
       false,
       curveData
@@ -199,11 +192,11 @@ describe('createModifierComputeUpdate — modifier flag coverage', () => {
       curveMap,
       flags
     );
-    expect(pipeline.computeNode).toBeDefined();
+    expect(pipeline.simNode).toBeDefined();
   });
 
   it('creates pipeline with noise active', () => {
-    const buffers = createModifierStorageBuffers(
+    const { buffers } = createModifierStorageBuffers(
       maxParticles,
       false,
       new Float32Array(0)
@@ -216,7 +209,7 @@ describe('createModifierComputeUpdate — modifier flag coverage', () => {
       makeCurveMap(),
       flags
     );
-    expect(pipeline.computeNode).toBeDefined();
+    expect(pipeline.simNode).toBeDefined();
     expect(pipeline.uniforms.noiseStrength).toBeDefined();
     expect(pipeline.uniforms.noiseFrequency).toBeDefined();
     expect(pipeline.uniforms.noisePower).toBeDefined();
@@ -226,7 +219,7 @@ describe('createModifierComputeUpdate — modifier flag coverage', () => {
   });
 
   it('creates pipeline with forceFields active', () => {
-    const buffers = createModifierStorageBuffers(
+    const { buffers } = createModifierStorageBuffers(
       maxParticles,
       false,
       new Float32Array(0),
@@ -239,16 +232,17 @@ describe('createModifierComputeUpdate — modifier flag coverage', () => {
       maxParticles,
       makeCurveMap(),
       flags,
+      undefined,
       3
     );
-    expect(pipeline.computeNode).toBeDefined();
+    expect(pipeline.simNode).toBeDefined();
     expect(pipeline.forceFieldInfo).not.toBeNull();
     expect(pipeline.forceFieldInfo!.countUniform).toBeDefined();
   });
 
   it('creates pipeline with all modifiers active simultaneously', () => {
     const curveData = new Float32Array(CURVE_RESOLUTION * 11);
-    const buffers = createModifierStorageBuffers(
+    const { buffers } = createModifierStorageBuffers(
       maxParticles,
       false,
       curveData,
@@ -263,6 +257,7 @@ describe('createModifierComputeUpdate — modifier flag coverage', () => {
       orbitalVelocity: true,
       noise: true,
       forceFields: true,
+      collisionPlanes: false,
     };
     const curveMap = makeCurveMap({
       curveCount: 11,
@@ -285,10 +280,14 @@ describe('createModifierComputeUpdate — modifier flag coverage', () => {
       maxParticles,
       curveMap,
       allFlags,
+      undefined,
       5
     );
-    expect(pipeline.computeNode).toBeDefined();
-    expect(pipeline.curveDataLength).toBe(CURVE_RESOLUTION * 11);
+    expect(pipeline.simNode).toBeDefined();
+    // curves + one force-field table (16 fields * 12 words)
+    expect(pipeline.buffers.packedData).toHaveLength(
+      CURVE_RESOLUTION * 11 + 192
+    );
     expect(pipeline.uniforms.delta).toBeDefined();
     expect(pipeline.uniforms.gravityVelocity).toBeDefined();
     expect(pipeline.uniforms.noiseStrength).toBeDefined();
@@ -304,7 +303,7 @@ describe('createModifierComputeUpdate — partial velocity axes', () => {
 
   it('handles linearVelocity with only X axis', () => {
     const curveData = new Float32Array(CURVE_RESOLUTION);
-    const buffers = createModifierStorageBuffers(
+    const { buffers } = createModifierStorageBuffers(
       maxParticles,
       false,
       curveData
@@ -324,12 +323,12 @@ describe('createModifierComputeUpdate — partial velocity axes', () => {
       curveMap,
       flags
     );
-    expect(pipeline.computeNode).toBeDefined();
+    expect(pipeline.simNode).toBeDefined();
   });
 
   it('handles orbitalVelocity with only Z axis', () => {
     const curveData = new Float32Array(CURVE_RESOLUTION);
-    const buffers = createModifierStorageBuffers(
+    const { buffers } = createModifierStorageBuffers(
       maxParticles,
       false,
       curveData
@@ -349,7 +348,7 @@ describe('createModifierComputeUpdate — partial velocity axes', () => {
       curveMap,
       flags
     );
-    expect(pipeline.computeNode).toBeDefined();
+    expect(pipeline.simNode).toBeDefined();
   });
 });
 
@@ -357,7 +356,7 @@ describe('createModifierComputeUpdate — partial velocity axes', () => {
 
 describe('createModifierComputeUpdate — uniforms', () => {
   it('exposes all core physics uniforms', () => {
-    const buffers = createModifierStorageBuffers(
+    const { buffers } = createModifierStorageBuffers(
       10,
       false,
       new Float32Array(0)
@@ -375,7 +374,7 @@ describe('createModifierComputeUpdate — uniforms', () => {
   });
 
   it('exposes noise uniforms even when noise is disabled', () => {
-    const buffers = createModifierStorageBuffers(
+    const { buffers } = createModifierStorageBuffers(
       10,
       false,
       new Float32Array(0)

@@ -146,7 +146,7 @@ describe('createComputePipeline', () => {
     const config = createConfig();
     const pipeline = createComputePipeline(100, false, config, 0, 0);
 
-    expect(pipeline.computeNode).toBeDefined();
+    expect(pipeline.simNode).toBeDefined();
     expect(pipeline.uniforms).toBeDefined();
     expect(pipeline.buffers).toBeDefined();
   });
@@ -166,13 +166,13 @@ describe('createComputePipeline', () => {
       },
     });
     const pipeline = createComputePipeline(50, false, config, 0, 0);
-    expect(pipeline.computeNode).toBeDefined();
+    expect(pipeline.simNode).toBeDefined();
   });
 
   it('creates pipeline with force fields', () => {
     const config = createConfig();
     const pipeline = createComputePipeline(50, false, config, 0, 3);
-    expect(pipeline.computeNode).toBeDefined();
+    expect(pipeline.simNode).toBeDefined();
     expect(pipeline.forceFieldInfo).not.toBeNull();
     expect(pipeline.forceFieldInfo!.countUniform).toBeDefined();
   });
@@ -180,7 +180,7 @@ describe('createComputePipeline', () => {
   it('creates pipeline in instanced mode', () => {
     const config = createConfig();
     const pipeline = createComputePipeline(50, true, config, 0, 0);
-    expect(pipeline.computeNode).toBeDefined();
+    expect(pipeline.simNode).toBeDefined();
   });
 
   it('creates pipeline with noise active', () => {
@@ -196,7 +196,7 @@ describe('createComputePipeline', () => {
       },
     });
     const pipeline = createComputePipeline(50, false, config, 0, 0);
-    expect(pipeline.computeNode).toBeDefined();
+    expect(pipeline.simNode).toBeDefined();
     expect(pipeline.uniforms.noiseStrength).toBeDefined();
   });
 
@@ -209,6 +209,6 @@ describe('createComputePipeline', () => {
       },
     });
     const pipeline = createComputePipeline(50, false, config, 0, 0);
-    expect(pipeline.computeNode).toBeDefined();
+    expect(pipeline.simNode).toBeDefined();
   });
 });

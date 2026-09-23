@@ -5,7 +5,7 @@
 - **Framework:** Jest 30.x with ts-jest ESM preset
 - **Test location:** `src/__tests__/*.test.ts`
 - **Coverage target:** ≥90% statement, ≥80% branch
-- **Current coverage:** ~93% statement, ~85% branch (947 tests, 43 test suites)
+- **Current coverage:** ~93% statement, ~85% branch. **65 test files** (`src/__tests__/*.test.ts`). `npm test` (CJS transform) counts 515 tests (444 pass / 71 fail ??? the `import.meta` suites abort under the CJS transform); with `NODE_OPTIONS=--experimental-vm-modules npx jest` all suites load and the run counts 1145 tests (551 pass / 594 fail). Both modes report the *same* set of failing suites, so the delta between them is only the counted tests. Fluid-family suites: `three-particles-fluid.test.ts`, `waterball-fluid-full-scope.test.ts`, `three-particles-ocean.test.ts`.
 
 ---
 
@@ -39,10 +39,13 @@ Coverage reports are generated in `coverage/` (text + lcov format).
 
 ---
 
-## Existing Test Files (43 suites, 947 tests)
+## Existing Test Files (65 files)
 
 | File | What it covers |
 |------|----------------|
+| `three-particles-fluid.test.ts` | `RendererType.FLUID`: `InstancedBufferGeometry` contract, extra `instanceVelocity` attribute, `renderer.fluid` knobs |
+| `waterball-fluid-full-scope.test.ts` | Fluid helper math: fixed-point encode/decode, grid dims, quadratic weights, cell indexing, Beer-Lambert / Fresnel scalars |
+| `three-particles-ocean.test.ts` | Ocean solver integration: MLS-MPM / SPH dispatch order, per-pass storage budgets (`<= 8`), dambreak init, `createFluidSimPipeline` shared-pool wiring, screen-space pass chain |
 | `three-particles-utils.test.ts` | Shape position/velocity for all 5 shapes, value calculation, bezier config |
 | `three-particles-utils-extended.test.ts` | Extended utility edge cases |
 | `three-particles-modifiers.test.ts` | All modifiers: linear/orbital velocity, size/opacity/color/rotation over lifetime, noise |

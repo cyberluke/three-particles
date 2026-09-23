@@ -18,7 +18,7 @@ Author: **CyberLuke** — the single maintained line since v4.
 *   Collision planes — kill, clamp, or bounce particles off infinite planes (e.g., water surfaces, floors, walls). Part of the compute pass.
 *   Sub-emitters triggered on particle birth or death events (GPU ping-pong event buffers).
 *   Baked Bézier over-lifetime curves — 256-sample lookup arrays (`curve-bake.ts`), <0.4% max interpolation error.
-*   Four renderer types (`RendererType`): `POINTS` (billboard quads), `INSTANCED` (GPU instancing, no `gl_PointSize` limit), `TRAIL` (ribbon trails with width/opacity/color tapering), `MESH` (instanced 3D meshes with full rotation and lighting).
+*   Five renderer types (`RendererType`): `POINTS` (billboard quads), `INSTANCED` (GPU instancing, no `gl_PointSize` limit), `TRAIL` (ribbon trails with width/opacity/color tapering), `MESH` (instanced 3D meshes with full rotation and lighting), `FLUID` (screen-space fluid: volumetric metaball spheres with spherical-cap normals, Beer-Lambert absorption and Fresnel-mixed environment reflections — see `renderer.fluid`).
 *   Soft particles — depth-based alpha fade near opaque geometry.
 *   **WebGPU compute** — all per-particle physics runs in TSL compute kernels (`SimulationBackend.GPU`); `AUTO` uses the registered WebGPU path, `CPU` maps to the identical GPU path in this GPU-only build.
 *   TypeScript definitions shipped (`dist/index.d.ts`, `webgpu.d.ts`).
@@ -80,6 +80,13 @@ updateParticleSystems({ now: performance.now(), delta, elapsed });
 
 Note on `rendererType`: `POINTS` is the billboard-quad path (a unit quad per particle sampled with a computed point UV — there is no point-sprite mode on the GPU backend because WGSL has no `gl_PointCoord`), `INSTANCED`/`MESH` use `InstancedBufferGeometry`, `TRAIL` fills a GPU history ring (`StorageBufferAttribute`) that the ribbon material reads.
 
+Note on `FLUID`: the fluid family is selected through `renderer.fluid.solver`, which picks the compute kernels while every solver writes the same `instanceOffset` / `instanceVelocity` storage the material reads:
+
+* `'MLS-MPM'` (default) — grid-based Material Point Method: `clearGrid -> p2g_1 -> p2g_2 -> updateGrid -> g2p`, 2 sub-steps per frame on a `64^3` lattice with a fixed-point `u32` atomic scatter (upstream `1e7` multiplier, two's-complement decode). Params in `renderer.mlsMpm` (`MLSMPMConfig`).
+* `'SPH'` — fixed-radius neighbour search with double-density relaxation: `gridClear -> gridBuild -> 3-pass exclusive prefix scan -> reorder -> density -> reorder -> force -> integrate`. Params in `renderer.sph` (`SPHConfig`).
+
+Both are fed by the dambreak initialisation in `fluid-mpm.ts` / `fluid-sph.ts` and rendered through the pass chain in `tsl-fluid-screen-space-material.ts` (depth map → four bilateral up-samples → additive thickness map → separable Gaussian blur → shading), or directly as spheres with `renderer.fluid.sphereRender = true`. `renderer.fluid.boxWidthRatio` reproduces the upstream `changeBoxSize()` `z` squeeze. Modules: `webgpu/fluid-mpm.ts`, `webgpu/fluid-sph.ts`, `webgpu/tsl-fluid-metaball-material.ts`, `webgpu/tsl-fluid-screen-space-material.ts` (+ `createFluidSimPipeline` in `webgpu/tsl-materials.ts`).
+
 # Usage with Three.js
 
 - **Three.js r186+** (`"three": "^0.186.0"` — the exact peer version pinned in `package.json`) with the WebGPU build (`three/webgpu`).
@@ -88,7 +95,7 @@ Note on `rendererType`: `POINTS` is the billboard-quad path (a unit quad per par
 
 # Usage with React Three Fiber
 
-As of now we **do not recommend** using react-three-fiber with this engine: with react 19.3 the fiber integration is breaking (tracked upstream in [pmndrs/react-three-fiber#3915](https://github.com/pmndrs/react-three-fiber/issues/3915)). Use **three.js r186+ directly** — `WebGPURenderer` + the loop shown above is all you need:
+React Three Fiber is **supported and working** with this engine. No wrapper package is needed — use `createParticleSystem` directly with R3F hooks:
 
 ```javascript
 import * as THREE from "three/webgpu";
