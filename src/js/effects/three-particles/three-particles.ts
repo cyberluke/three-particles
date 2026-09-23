@@ -59,6 +59,7 @@ import {
   Constant,
   CurveFunction,
   CycleData,
+  FluidTelemetry,
   ForceFieldConfig,
   GeneralData,
   LifetimeCurve,
@@ -1092,6 +1093,62 @@ export const prefillFluidState = (
   }
 };
 /**
+ * Writes the spherical-domain and pointer-force uniforms of an FLUID solver
+ * from the live `renderer.fluid` block (WaterBall contract). `radius: 0`
+ * keeps the classic box domain / disables the pointer force. Scalar-only:
+ * no pool reconstruction is required, so the sim keeps running.
+ */
+export const writeFluidDomainUniforms = (
+  uniforms: Record<string, { value: unknown } | undefined>,
+  fluid: {
+    domain?: {
+      kind: 'box' | 'sphere';
+      center?: readonly [number, number, number];
+      radius?: number;
+    };
+    pointer?: {
+      position: readonly [number, number, number];
+      velocity: readonly [number, number, number];
+      radius: number;
+    };
+  } | undefined
+): void => {
+  if (!fluid) return;
+  const setV4 = (slot: { value: unknown } | undefined, v: readonly number[]) => {
+    const target = slot?.value as
+      | { set?: (x: number, y: number, z: number, w: number) => void }
+      | undefined;
+    if (!target || typeof target.set !== 'function') return;
+    target.set(
+      Number(v[0]) || 0,
+      Number(v[1]) || 0,
+      Number(v[2]) || 0,
+      Number(v[3]) || 0
+    );
+  };
+  const domain = fluid.domain;
+  setV4(
+    uniforms.fluidSphereDomain,
+    domain && domain.kind === 'sphere'
+      ? [
+          domain.center?.[0] ?? 0,
+          domain.center?.[1] ?? 0,
+          domain.center?.[2] ?? 0,
+          domain.radius ?? 0,
+        ]
+      : [0, 0, 0, 0]
+  );
+  const ptr = fluid.pointer;
+  setV4(
+    uniforms.fluidPointerPos,
+    ptr ? [ptr.position[0], ptr.position[1], ptr.position[2], ptr.radius] : [0, 0, 0, 0]
+  );
+  setV4(
+    uniforms.fluidPointerVel,
+    ptr ? [ptr.velocity[0], ptr.velocity[1], ptr.velocity[2], 0] : [0, 0, 0, 0]
+  );
+};
+/**
  * Create a new particle system (GPU-only). Every per-particle slot lives
  * on the GPU inside the 8 storage buffers that the WebGPU compute kernels
  * read/write. The CPU only:
@@ -1237,6 +1294,9 @@ export const createParticleSystem = (
   let fluidHighWater = 0;
   let fluidSolverId: FluidSolverId | null = null;
   let fluidBoxWidthRatioValue = 1;
+  let fluidGridCount = 0;
+  let fluidSolverPassNames: string[] = [];
+  let fluidScreenSpacePasses = 0;
   if (rrType === RendererType.FLUID) {
     type SB =
       | StorageBufferAttribute
@@ -1283,6 +1343,7 @@ export const createParticleSystem = (
     }
     fluidHighWater = solver.numParticles;
     fluidSolverId = solverId;
+    fluidGridCount = solver.gridCount;
     fluidBoxWidthRatioValue = isSPHSolver
       ? (normalizedConfig.renderer.sph?.boxWidthRatio ?? 1)
       : (normalizedConfig.renderer.mlsMpm?.boxWidthRatio ?? 1);
@@ -1297,6 +1358,18 @@ export const createParticleSystem = (
     // refreshed from `normalizedConfig` every frame like the other scalars.
     (pipeline.uniforms as Record<string, unknown>).fluidBoxWidthRatio =
       solver.uniforms.boxWidthRatio;
+    // Aliases of the spherical-domain / pointer-force uniforms (WaterBall
+    // contract): the per-frame update writes them from `renderer.fluid`.
+    (pipeline.uniforms as Record<string, unknown>).fluidSphereDomain =
+      solver.uniforms.sphereDomain;
+    (pipeline.uniforms as Record<string, unknown>).fluidPointerPos =
+      solver.uniforms.pointerPos;
+    (pipeline.uniforms as Record<string, unknown>).fluidPointerVel =
+      solver.uniforms.pointerVel;
+    writeFluidDomainUniforms(
+      pipeline.uniforms as Record<string, { value: unknown } | undefined>,
+      normalizedConfig.renderer.fluid
+    );
     const fl = pipeline as unknown as {
       computeNodes?: unknown[];
       passNames?: string[];
@@ -1317,6 +1390,7 @@ export const createParticleSystem = (
       ...(fl.passNames ?? ['emit', 'simulate']),
       ...solver.passNames.map((n) => `${solverPrefix}:${n}`),
     ];
+    fluidSolverPassNames = fl.passNames as string[];
     fl.passLayouts = [
       ...(fl.passLayouts ?? []),
       ...solver.passLayouts.map((p) => ({
@@ -1799,6 +1873,13 @@ export const createParticleSystem = (
     true,
     geometry as THREE.BufferGeometry
   );
+  if (rrType === RendererType.FLUID) {
+    // Screen-space chain length (0 for the sphere debug mode): depth +
+    // bilateral x4 + thickness + blurX + blurY = 8 `pass()` nodes.
+    fluidScreenSpacePasses =
+      (material as unknown as { __fluidPassNodes?: unknown[] })
+        .__fluidPassNodes?.length ?? 0;
+  }
 
   // ?? 4b. TRAIL renderer: indexed ribbon geometry + ribbon TSL material ??
   let trailGeometry: THREE.BufferGeometry | null = null;
@@ -2510,6 +2591,48 @@ export const createParticleSystem = (
         ? props.allComputeNodes
         : (pipeline.computeNodes ?? pipeline.computeNode),
     /**
+     * Binds the active perspective camera to every screen-space fluid pass
+     * (depth / bilateral / thickness / blur). Call once after the demo
+     * camera exists and again after any camera replacement (resize /
+     * restart). No-op outside FLUID or when the camera is already bound.
+     */
+    bindCamera: (cam: unknown): void => {
+      if (!cam) return;
+      const mats = [material, trailMaterial] as Array<
+        | (THREE.Material & { __fluidPassNodes?: Array<{ camera: unknown }> })
+        | null
+        | undefined
+      >;
+      for (const m of mats) {
+        const passNodes = m?.__fluidPassNodes;
+        if (!passNodes) continue;
+        for (const node of passNodes) {
+          if (node && node.camera == null) node.camera = cam;
+        }
+      }
+    },
+    /**
+     * FLUID telemetry snapshot with no per-frame GPU read-back: solver id,
+     * seeded particle count, ordered compute pass names, live box ratio and
+     * the screen-space render pass count. `null` on non-solver systems.
+     */
+    getFluidTelemetry: (): FluidTelemetry | null =>
+      fluidSolverId
+        ? {
+            solver: fluidSolverId,
+            filledParticles: fluidHighWater,
+            maxParticles,
+            gridCount: fluidGridCount,
+            passNames: [...fluidSolverPassNames],
+            passCount: fluidSolverPassNames.length,
+            boxWidthRatio: Number(
+              (pipeline.uniforms as Record<string, { value: unknown }>)
+                .fluidBoxWidthRatio?.value ?? fluidBoxWidthRatioValue
+            ),
+            screenSpacePasses: fluidScreenSpacePasses,
+          }
+        : null,
+    /**
      * ?? Temporary one-shot GPU debug handle (deprecated, no per-frame cost) ????
      * getActiveParticleCount() stays -1; this object is the raw material for an
      * explicit 
@@ -2813,9 +2936,33 @@ const updateParticleSystemInstance = (
     (u.emitCount as { value: number }).value = 0;
     (pipeline.emitNode as unknown as { count: number }).count = 1;
     if (u.fluidBoxWidthRatio) {
+      // Read the live `normalizedConfig` (patched by `updateConfig`) so the
+      // `z` squeeze updates WITHOUT a pool rebuild; the creation-time
+      // `generalData` snapshot is the fallback only.
+      const solverName = String(
+        (normalizedConfig.renderer.fluid as { solver?: string } | undefined)
+          ?.solver ?? ''
+      )
+        .trim()
+        .toUpperCase();
+      const liveRatio =
+        solverName === 'SPH'
+          ? normalizedConfig.renderer.sph?.boxWidthRatio
+          : normalizedConfig.renderer.mlsMpm?.boxWidthRatio;
       (u.fluidBoxWidthRatio as { value: number }).value =
-        generalData.fluidBoxWidthRatio ?? 1;
+        (typeof liveRatio === 'number' && Number.isFinite(liveRatio)
+          ? liveRatio
+          : generalData.fluidBoxWidthRatio) ?? 1;
     }
+    // Spherical boundary + pointer force (WaterBall): scalar uniform writes
+    // picked up live from `normalizedConfig.renderer.fluid` via
+    // `updateConfig`, exactly like the `z` squeeze above.
+    writeFluidDomainUniforms(
+      u as Record<string, { value: unknown } | undefined>,
+      normalizedConfig.renderer.fluid as
+        | Parameters<typeof writeFluidDomainUniforms>[1]
+        | undefined
+    );
   }
 
   // ?? Emitter pose for the emit kernel (scalar/vector writes only) ??

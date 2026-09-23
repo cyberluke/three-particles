@@ -36,6 +36,7 @@ import {
   floor,
   instanceIndex,
   invocationLocalIndex,
+  length,
   min as tslMin,
   normalize,
   sqrt,
@@ -50,6 +51,7 @@ import {
   type Node,
   type ShaderNodeObject,
 } from 'three/tsl';
+import { Vector4 } from 'three';
 import {
   StorageBufferAttribute,
   StorageInstancedBufferAttribute,
@@ -200,7 +202,8 @@ export const initSPHDambreak = (
   halfBoxSize: readonly [number, number, number],
   capacity: number,
   kernelRadius: number = SPH_DEFAULT_KERNEL_RADIUS,
-  random: () => number = Math.random
+  random: () => number = Math.random,
+  seedSphere?: { center: readonly [number, number, number]; radius: number }
 ): {
   count: number;
   position: Float32Array;
@@ -215,16 +218,29 @@ export const initSPHDambreak = (
   const mx = SPH_LATTICE_MARGIN * halfBoxSize[0];
   const my = SPH_LATTICE_MARGIN * halfBoxSize[1];
   const mz = SPH_LATTICE_MARGIN * halfBoxSize[2];
+  const r2 = seedSphere ? seedSphere.radius * seedSphere.radius : 0;
   let count = 0;
+
+  const inSphere = (px: number, py: number, pz: number): boolean => {
+    if (!seedSphere) return true;
+    const dx = px - seedSphere.center[0];
+    const dy = py - seedSphere.center[1];
+    const dz = pz - seedSphere.center[2];
+    return dx * dx + dy * dy + dz * dz <= r2;
+  };
 
   for (let y = -my; count < slots; y += step) {
     for (let x = -mx; x < mx && count < slots; x += step) {
       for (let z = -mz; z < 0 && count < slots; z += step) {
         const jitter = 0.001 * random();
+        const px = x + jitter;
+        const py = y + jitter;
+        const pz = z + jitter;
+        if (!inSphere(px, py, pz)) continue;
         const base = count * 4;
-        position[base] = x + jitter;
-        position[base + 1] = y + jitter;
-        position[base + 2] = z + jitter;
+        position[base] = px;
+        position[base + 1] = py;
+        position[base + 2] = pz;
         count++;
       }
     }
@@ -237,9 +253,10 @@ export const initSPHDambreak = (
 export const countSPHDambreak = (
   halfBoxSize: readonly [number, number, number],
   capacity: number,
-  kernelRadius?: number
+  kernelRadius?: number,
+  seedSphere?: { center: readonly [number, number, number]; radius: number }
 ): number =>
-  initSPHDambreak(halfBoxSize, capacity, kernelRadius, () => 0).count;
+  initSPHDambreak(halfBoxSize, capacity, kernelRadius, () => 0, seedSphere).count;
 
 // ─── Storage pool ─────────────────────────────────────────────────────────────
 
@@ -405,6 +422,12 @@ type SPHContext = {
   halfZ: ShaderNodeObject<Node>;
   /** Animated `z` squeeze ratio of the walls / lattice (`changeBoxSize`). */
   uBoxWidthRatio: ShaderNodeObject<Node>;
+  /** Spherical boundary `(center.xyz, radius)`; radius `0` keeps the box. */
+  uSphere: ShaderNodeObject<Node>;
+  /** Pointer force `(position.xyz, radius)`; radius `0` disables it. */
+  uPointerPos: ShaderNodeObject<Node>;
+  /** Pointer velocity `(vx, vy, vz, 0)`. */
+  uPointerVel: ShaderNodeObject<Node>;
   radius: ShaderNodeObject<Node>;
   radiusPow2: ShaderNodeObject<Node>;
   r2Epsilon: ShaderNodeObject<Node>;
@@ -855,21 +878,55 @@ const createIntegrateKernel = (ctx: SPHContext) =>
           float(0)
         ).toVar();
         const wall = float(SPH_WALL_STIFFNESS);
-        // Six signed distances to the (animated) box walls.
-        signedWall(accel.x, wall, ctx.halfX.sub(posVec.x));
-        signedWall(accel.x, wall, ctx.halfX.add(posVec.x));
-        signedWall(accel.y, wall, ctx.halfY.sub(posVec.y));
-        signedWall(accel.y, wall, ctx.halfY.add(posVec.y));
-        signedWall(accel.z, wall, ctx.halfZ.sub(posVec.z));
-        signedWall(accel.z, wall, ctx.halfZ.add(posVec.z));
+        // Six signed distances to the (animated) box walls. The sphere domain
+        // (`domain.kind === 'sphere'`) replaces them with one radial distance.
+        If(ctx.uSphere.w.greaterThan(float(0)), () => {
+          const rel = posVec.xyz.sub(ctx.uSphere.xyz);
+          const d = tslMin(ctx.uSphere.w.sub(length(rel)), float(0));
+          const n = normalize(rel);
+          accel.x.addAssign(wall.mul(d).mul(n.x));
+          accel.y.addAssign(wall.mul(d).mul(n.y));
+          accel.z.addAssign(wall.mul(d).mul(n.z));
+        });
+        If(ctx.uSphere.w.equal(float(0)), () => {
+          signedWall(accel.x, wall, ctx.halfX.sub(posVec.x));
+          signedWall(accel.x, wall, ctx.halfX.add(posVec.x));
+          signedWall(accel.y, wall, ctx.halfY.sub(posVec.y));
+          signedWall(accel.y, wall, ctx.halfY.add(posVec.y));
+          signedWall(accel.z, wall, ctx.halfZ.sub(posVec.z));
+          signedWall(accel.z, wall, ctx.halfZ.add(posVec.z));
+        });
 
+        // Pointer force: linear-falloff transfer of the pointer velocity.
         const velVec = ctx.sVel.element(i).toVar();
+        If(ctx.uPointerPos.w.greaterThan(float(0)), () => {
+          const rel = posVec.xyz.sub(ctx.uPointerPos.xyz);
+          const d = length(rel);
+          If(d.lessThan(ctx.uPointerPos.w), () => {
+            const f = float(1).sub(d.div(ctx.uPointerPos.w));
+            velVec.x.addAssign(ctx.uPointerVel.x.mul(f));
+            velVec.y.addAssign(ctx.uPointerVel.y.mul(f));
+            velVec.z.addAssign(ctx.uPointerVel.z.mul(f));
+          });
+        });
+
         velVec.x.addAssign(accel.x.mul(ctx.dt));
         velVec.y.addAssign(accel.y.mul(ctx.dt));
         velVec.z.addAssign(accel.z.mul(ctx.dt));
         posVec.x.addAssign(velVec.x.mul(ctx.dt));
         posVec.y.addAssign(velVec.y.mul(ctx.dt));
         posVec.z.addAssign(velVec.z.mul(ctx.dt));
+        // Hard sphere projection keeps the particle inside the domain.
+        If(ctx.uSphere.w.greaterThan(float(0)), () => {
+          const rel = posVec.xyz.sub(ctx.uSphere.xyz);
+          const d = length(rel);
+          If(d.greaterThan(ctx.uSphere.w), () => {
+            const n = rel.div(d);
+            posVec.x.assign(ctx.uSphere.x.add(n.mul(ctx.uSphere.w).x));
+            posVec.y.assign(ctx.uSphere.y.add(n.mul(ctx.uSphere.w).y));
+            posVec.z.assign(ctx.uSphere.z.add(n.mul(ctx.uSphere.w).z));
+          });
+        });
         ctx.sVel.element(i).assign(velVec);
         ctx.sPos.element(i).assign(posVec);
       });
@@ -906,7 +963,15 @@ export type SPHPipeline = {
   /** Particle capacity of the pool. */
   numParticles: number;
   /** Host-written scalars (`boxWidthRatio` = `z` squeeze of the box). */
-  uniforms: { boxWidthRatio: { value: number } };
+  uniforms: {
+    boxWidthRatio: { value: number };
+    /** `(cx, cy, cz, radius)`; radius `0` = box domain. */
+    sphereDomain: { value: Vector4 };
+    /** `(px, py, pz, influenceRadius)`; radius `0` disables the force. */
+    pointerPos: { value: Vector4 };
+    /** `(vx, vy, vz, 0)` pointer velocity. */
+    pointerVel: { value: Vector4 };
+  };
 };
 
 /** Per-pass accounting identical to the modifier kernels (`<= 8` storages). */
@@ -948,6 +1013,11 @@ export function createSPHPipeline(
   const uBoxWidthRatio = uniform(
     params.halfBoxSize[2] > 0 ? box[2] / params.halfBoxSize[2] : 1
   );
+  // Spherical boundary + pointer force (both `0`-radius = inert defaults).
+  // `Vector4`-backed uniforms so the host mutates them in place per frame.
+  const uSphere = uniform(new Vector4(0, 0, 0, 0));
+  const uPointerPos = uniform(new Vector4(0, 0, 0, 0));
+  const uPointerVel = uniform(new Vector4(0, 0, 0, 0));
 
   const sPos = storage(buffers.position, 'vec4', count);
   const sVel = storage(buffers.velocity, 'vec4', count);
@@ -985,6 +1055,9 @@ export function createSPHPipeline(
     cellSizeInv: float(1 / params.cellSize),
     offset: float(params.offset),
     uBoxWidthRatio,
+    uSphere,
+    uPointerPos,
+    uPointerVel,
     // One half-max set feeds both the lattice coordinates and the walls
     // (`xHalfMax` / `yHalfMax` / `zHalfMax` of the reference params block);
     // the `z` axis carries the animated `boxWidthRatio` squeeze.
@@ -1102,6 +1175,11 @@ export function createSPHPipeline(
     buffers,
     gridCount,
     numParticles: count,
-    uniforms: { boxWidthRatio: uBoxWidthRatio },
+    uniforms: {
+      boxWidthRatio: uBoxWidthRatio,
+      sphereDomain: uSphere,
+      pointerPos: uPointerPos,
+      pointerVel: uPointerVel,
+    },
   };
 }

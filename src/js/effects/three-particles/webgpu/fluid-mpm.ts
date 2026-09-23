@@ -24,9 +24,11 @@ import {
   atomicLoad,
   atomicStore,
   compute,
+  dot,
   float,
   floor,
   instanceIndex,
+  length,
   uint as tuint,
   max as tslMax,
   min as tslMin,
@@ -38,6 +40,7 @@ import {
   type Node,
   type ShaderNodeObject,
 } from 'three/tsl';
+import { Vector4 } from 'three';
 import {
   StorageBufferAttribute,
   StorageInstancedBufferAttribute,
@@ -161,7 +164,8 @@ export const initMLSMPMDambreak = (
   boxSize: readonly [number, number, number],
   capacity: number,
   spacing: number = MLS_MPM_PARTICLE_SPACING,
-  random: () => number = Math.random
+  random: () => number = Math.random,
+  seedSphere?: { center: readonly [number, number, number]; radius: number }
 ): {
   count: number;
   position: Float32Array;
@@ -173,16 +177,29 @@ export const initMLSMPMDambreak = (
   const velocity = new Float32Array(slots * 4);
   const coefficients = new Float32Array(slots * MLS_MPM_C_WORDS * 4);
   const yLimit = boxSize[1] * 0.8;
+  const r2 = seedSphere ? seedSphere.radius * seedSphere.radius : 0;
   let count = 0;
+
+  const inSphere = (px: number, py: number, pz: number): boolean => {
+    if (!seedSphere) return true;
+    const dx = px - seedSphere.center[0];
+    const dy = py - seedSphere.center[1];
+    const dz = pz - seedSphere.center[2];
+    return dx * dx + dy * dy + dz * dz <= r2;
+  };
 
   for (let y = 0; y < yLimit && count < slots; y += spacing) {
     for (let x = 3; x < boxSize[0] - 4 && count < slots; x += spacing) {
       for (let z = 3; z < boxSize[2] / 2 && count < slots; z += spacing) {
         const jitter = 2 * random();
+        const px = x + jitter;
+        const py = y + jitter;
+        const pz = z + jitter;
+        if (!inSphere(px, py, pz)) continue;
         const base = count * 4;
-        position[base] = x + jitter;
-        position[base + 1] = y + jitter;
-        position[base + 2] = z + jitter;
+        position[base] = px;
+        position[base + 1] = py;
+        position[base + 2] = pz;
         velocity[base] = 0;
         velocity[base + 1] = 0;
         velocity[base + 2] = 0;
@@ -202,8 +219,9 @@ export const initMLSMPMDambreak = (
 export const countMLSMPMDambreak = (
   boxSize: readonly [number, number, number],
   capacity: number,
-  spacing: number = MLS_MPM_PARTICLE_SPACING
-): number => initMLSMPMDambreak(boxSize, capacity, spacing, () => 0).count;
+  spacing: number = MLS_MPM_PARTICLE_SPACING,
+  seedSphere?: { center: readonly [number, number, number]; radius: number }
+): number => initMLSMPMDambreak(boxSize, capacity, spacing, () => 0, seedSphere).count;
 
 // ─── Storage pool ─────────────────────────────────────────────────────────────
 
@@ -340,6 +358,12 @@ type KernelContext = {
   rx: ShaderNodeObject<Node>;
   ry: ShaderNodeObject<Node>;
   rz: ShaderNodeObject<Node>;
+  /** Spherical boundary `(center.xyz, radius)`; radius `0` keeps the box. */
+  uSphere: ShaderNodeObject<Node>;
+  /** Pointer force `(position.xyz, radius)`; radius `0` disables it. */
+  uPointerPos: ShaderNodeObject<Node>;
+  /** Pointer velocity `(vx, vy, vz, 0)` transferred inside `uPointerPos.w`. */
+  uPointerVel: ShaderNodeObject<Node>;
 };
 
 /** Offsets of the `3 x 3 x 3` quadratic stencil, in `(gx, gy, gz)` order. */
@@ -713,6 +737,31 @@ const createG2PKernel = (ctx: KernelContext) =>
           ctx.wallStiffness.mul(ctx.rz.sub(maxOffset).sub(ex.z))
         );
       });
+
+      // Spherical boundary (`domain: { kind: 'sphere' }`, upstream WaterBall):
+      // project the particle onto the sphere and mirror-reflect the velocity.
+      If(ctx.uSphere.w.greaterThan(float(0)), () => {
+        const rel = pos.sub(ctx.uSphere.xyz);
+        const dist = length(rel);
+        If(dist.greaterThan(ctx.uSphere.w), () => {
+          const n = rel.div(dist);
+          pos.assign(ctx.uSphere.xyz.add(n.mul(ctx.uSphere.w)));
+          const vn = dot(newVel, n);
+          newVel.assign(newVel.sub(n.mul(vn.mul(float(2)))));
+        });
+      });
+
+      // Pointer force: linear falloff transfer of the pointer velocity.
+      If(ctx.uPointerPos.w.greaterThan(float(0)), () => {
+        const rel = pos.sub(ctx.uPointerPos.xyz);
+        const dist = length(rel);
+        If(dist.lessThan(ctx.uPointerPos.w), () => {
+          const f = float(1).sub(dist.div(ctx.uPointerPos.w));
+          newVel.addAssign(ctx.uPointerVel.mul(f));
+        });
+      });
+
+      ctx.sPos.element(i).assign(vec4(pos, float(0)));
       ctx.sVel.element(i).assign(vec4(newVel, float(0)));
     });
   });
@@ -734,7 +783,15 @@ export type MLSMPMPipeline = {
   /** Particle capacity of the pool. */
   numParticles: number;
   /** Host-written scalars (`boxWidthRatio` = `z` squeeze of the box). */
-  uniforms: { boxWidthRatio: { value: number } };
+  uniforms: {
+    boxWidthRatio: { value: number };
+    /** `(cx, cy, cz, radius)`; radius `0` = box domain. */
+    sphereDomain: { value: Vector4 };
+    /** `(px, py, pz, influenceRadius)`; radius `0` disables the force. */
+    pointerPos: { value: Vector4 };
+    /** `(vx, vy, vz, 0)` pointer velocity. */
+    pointerVel: { value: Vector4 };
+  };
 };
 
 /** Per-pass accounting identical to the modifier kernels (`<= 8` storages). */
@@ -775,6 +832,11 @@ export function createMLSMPMPipeline(
   const uBoxWidthRatio = uniform(
     params.boxSize[2] > 0 ? box[2] / params.boxSize[2] : 1
   );
+  // Spherical boundary + pointer force (both `0`-radius = inert defaults).
+  // `Vector4`-backed uniforms so the host mutates them in place per frame.
+  const uSphere = uniform(new Vector4(0, 0, 0, 0));
+  const uPointerPos = uniform(new Vector4(0, 0, 0, 0));
+  const uPointerVel = uniform(new Vector4(0, 0, 0, 0));
 
   const sPos = storage(buffers.position, 'vec4', count);
   const sVel = storage(buffers.velocity, 'vec4', count);
@@ -807,6 +869,9 @@ export function createMLSMPMPipeline(
     ry: float(box[1]),
     // Animated `z` extent = init extent * `uBoxWidthRatio` (`changeBoxSize`).
     rz: float(params.boxSize[2]).mul(uBoxWidthRatio),
+    uSphere,
+    uPointerPos,
+    uPointerVel,
   };
 
   const clearGrid = createClearGridKernel(ctx);
@@ -838,6 +903,11 @@ export function createMLSMPMPipeline(
     buffers,
     gridCount,
     numParticles: count,
-    uniforms: { boxWidthRatio: uBoxWidthRatio },
+    uniforms: {
+      boxWidthRatio: uBoxWidthRatio,
+      sphereDomain: uSphere,
+      pointerPos: uPointerPos,
+      pointerVel: uPointerVel,
+    },
   };
 }

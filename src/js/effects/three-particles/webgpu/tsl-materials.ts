@@ -268,6 +268,21 @@ export function createFluidSimPipeline(
     position: shared.position as never,
     velocity: shared.velocity as never,
   };
+  // Optional spherical boundary (`domain: { kind: 'sphere' }`, upstream
+  // WaterBall): constrains the CPU seed AND the GPU wall kernels. Radius 0 /
+  // missing block keeps the classic box domain.
+  const domain = renderer.fluid?.domain;
+  const seedSphere =
+    domain && domain.kind === 'sphere' && domain.radius > 0
+      ? {
+          center: (domain.center ?? [0, 0, 0]) as readonly [
+            number,
+            number,
+            number,
+          ],
+          radius: domain.radius,
+        }
+      : undefined;
 
   if (isSPH) {
     const cfg = renderer.sph;
@@ -280,7 +295,13 @@ export function createFluidSimPipeline(
         ? (cfg.boxWidthRatio as number)
         : 1;
     // Seed the shared pos / vec4 storage with the reference dambreak lattice.
-    const state = initSPHDambreak(halfBox, Math.max(1, maxParticles));
+    const state = initSPHDambreak(
+      halfBox,
+      Math.max(1, maxParticles),
+      undefined,
+      Math.random,
+      seedSphere
+    );
     shared.position.array.set(state.position);
     shared.velocity.array.set(state.velocity);
     const sph: SPHPipeline = createSPHPipeline(
@@ -308,7 +329,13 @@ export function createFluidSimPipeline(
     typeof cfg?.boxWidthRatio === 'number' && Number.isFinite(cfg.boxWidthRatio)
       ? (cfg.boxWidthRatio as number)
       : 1;
-  const state = initMLSMPMDambreak(box, Math.max(1, maxParticles));
+  const state = initMLSMPMDambreak(
+    box,
+    Math.max(1, maxParticles),
+    undefined,
+    Math.random,
+    seedSphere
+  );
   shared.position.array.set(state.position);
   shared.velocity.array.set(state.velocity);
   const mls: MLSMPMPipeline = createMLSMPMPipeline(

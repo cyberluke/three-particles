@@ -656,6 +656,32 @@ export type FluidConfig = {
    * @default 1
    */
   boxWidthRatio?: number;
+  /**
+   * Boundary shape of the solver domain. `'box'` (default) uses the solver's
+   * own box (`mlsMpm.boxSize` / `sph.halfBoxSize`); `'sphere'` clamps every
+   * particle to a sphere (upstream WaterBall domain) inside the kernels.
+   */
+  domain?: FluidDomain;
+  /**
+   * Live pointer state forwarded to the solver as a GPU uniform (upstream
+   * WaterBall mouse interaction): position + velocity + influence radius.
+   * Written every frame by the host through {@link ParticleSystem.updateConfig};
+   * no pool reconstruction is required.
+   */
+  pointer?: FluidPointerState;
+};
+
+/** Boundary shape accepted by both boxed solvers. */
+export type FluidDomain =
+  | { kind: 'box' }
+  | { kind: 'sphere'; center?: readonly [number, number, number]; radius: number };
+
+/** Per-frame pointer force input of the fluid solvers. */
+export type FluidPointerState = {
+  position: readonly [number, number, number];
+  velocity: readonly [number, number, number];
+  /** Influence radius in world units; `0` disables the force. */
+  radius: number;
 };
 
 /**
@@ -2216,6 +2242,22 @@ export type ParticleSystem = {
   computeNode: unknown | unknown[] | null;
 
   /**
+   * Binds the active perspective camera to every screen-space fluid pass of
+   * this system (the depth / bilateral / thickness / blur `pass()` nodes).
+   * Call once after the demo camera exists and again after any camera
+   * replacement (resize or restart). No-op on non-FLUID renderers.
+   */
+  bindCamera?: (camera: unknown) => void;
+
+  /**
+   * Solver telemetry snapshot (FLUID systems only): filled particle count,
+   * solver id, ordered compute pass names and the live `z` box ratio.
+   * `null` on non-solver systems. Derived from creation-time snapshots and
+   * live uniforms, with no per-frame GPU read-back.
+   */
+  getFluidTelemetry?: () => FluidTelemetry | null;
+
+  /**
    * Updates the particle system configuration at runtime without recreating the system.
    *
    * System-level properties (gravity, force fields, noise, emission rates, color/size/opacity
@@ -2256,6 +2298,26 @@ export type ParticleSystem = {
    * ```
    */
   updateConfig: (config: Partial<ParticleSystemConfig>) => void;
+};
+
+/** Solver telemetry returned by {@link ParticleSystem.getFluidTelemetry}. */
+export type FluidTelemetry = {
+  /** Active solver: `'MLS-MPM'`, `'SPH'`, or `null` (metaball-only path). */
+  solver: 'MLS-MPM' | 'SPH' | null;
+  /** Particles actually seeded by the dambreak init (filled slots). */
+  filledParticles: number;
+  /** Pool capacity of the shared storage. */
+  maxParticles: number;
+  /** Lattice size (cells) of the active solver. */
+  gridCount: number;
+  /** Ordered compute pass names, matching `computeNode` dispatch order. */
+  passNames: string[];
+  /** Number of compute passes dispatched per simulation tick. */
+  passCount: number;
+  /** Live `z` squeeze ratio currently written to the solver uniform. */
+  boxWidthRatio: number;
+  /** Screen-space render pass count (0 for the sphere debug mode). */
+  screenSpacePasses: number;
 };
 
 /**
